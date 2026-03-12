@@ -41,8 +41,7 @@ jobs:
 
   deploy:
     needs: build
-    # PR previews require repository write permissions and are skipped for forks.
-    if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -51,5 +50,19 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-preview:
+    needs: build
+    # PR previews require repository write permissions and are skipped for forks.
+    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    # Use a separate environment so github-pages branch protection can remain locked to main.
+    environment:
+      name: github-pages-preview
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy PR preview to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
         with:
-          preview: ${{ github.event_name == 'pull_request' }}
+          preview: true
