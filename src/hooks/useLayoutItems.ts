@@ -9,8 +9,15 @@ interface LayoutItemRow {
   device_id: string
   start_u: number
   facing: string
+  preferred_lane?: number | null
   notes: string | null
   device: Record<string, unknown>
+}
+
+function isMissingPreferredLaneColumn(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : ''
+  return message.includes('preferred_lane')
 }
 
 export function useLayoutItems(layoutId: string | undefined, totalRackUnits: number) {
@@ -36,6 +43,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
         device_id: row.device_id,
         start_u: row.start_u,
         facing: row.facing as DeviceFacing,
+        preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
         notes: row.notes,
         device: row.device as unknown as LayoutItemWithDevice['device'],
       }))
@@ -54,25 +62,51 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     startU: number,
     facing: DeviceFacing,
     deviceRackUnits: number,
+    preferredLane?: 0 | 1,
+    allowOverlap = false,
   ) => {
-    if (!layoutId) return
+    if (!layoutId) throw new Error('Missing layout id')
 
     if (!isWithinBounds(startU, deviceRackUnits, totalRackUnits)) {
       throw new Error('Device exceeds rack bounds')
     }
 
-    if (hasOverlap(startU, deviceRackUnits, facing, items)) {
+    if (!allowOverlap && hasOverlap(startU, deviceRackUnits, facing, items)) {
       throw new Error('Position overlaps with existing device')
     }
 
-    const { error: err } = await supabase.from('layout_items').insert({
+    const payload = {
       layout_id: layoutId,
       device_id: deviceId,
       start_u: startU,
       facing,
-    })
+      preferred_lane: preferredLane ?? null,
+    }
+    let { data, error: err } = await supabase
+      .from('layout_items')
+      .insert(payload)
+      .select('id')
+      .single()
+
+    if (err && isMissingPreferredLaneColumn(err)) {
+      const fallback = await supabase
+        .from('layout_items')
+        .insert({
+          layout_id: layoutId,
+          device_id: deviceId,
+          start_u: startU,
+          facing,
+        })
+        .select('id')
+        .single()
+      data = fallback.data
+      err = fallback.error
+    }
+
     if (err) throw err
+    const createdId = (data as { id: string }).id
     await fetchItems()
+    return createdId
   }
 
   const removeItem = async (itemId: string) => {
@@ -81,7 +115,13 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     await fetchItems()
   }
 
-  const moveItem = async (itemId: string, newStartU: number, facing: DeviceFacing) => {
+  const moveItem = async (
+    itemId: string,
+    newStartU: number,
+    facing: DeviceFacing,
+    preferredLane?: 0 | 1,
+    allowOverlap = false,
+  ) => {
     const item = items.find((i) => i.id === itemId)
     if (!item) return
 
@@ -89,14 +129,23 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
       throw new Error('Device exceeds rack bounds')
     }
 
-    if (hasOverlap(newStartU, item.device.rack_units, facing, items, itemId)) {
+    if (!allowOverlap && hasOverlap(newStartU, item.device.rack_units, facing, items, itemId)) {
       throw new Error('Position overlaps with existing device')
     }
 
-    const { error: err } = await supabase
+    let { error: err } = await supabase
       .from('layout_items')
-      .update({ start_u: newStartU, facing })
+      .update({ start_u: newStartU, facing, preferred_lane: preferredLane ?? null })
       .eq('id', itemId)
+
+    if (err && isMissingPreferredLaneColumn(err)) {
+      const fallback = await supabase
+        .from('layout_items')
+        .update({ start_u: newStartU, facing })
+        .eq('id', itemId)
+      err = fallback.error
+    }
+
     if (err) throw err
     await fetchItems()
   }

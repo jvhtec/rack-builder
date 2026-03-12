@@ -4,6 +4,7 @@ import DeviceManagerPage from './pages/DeviceManagerPage'
 import RackManagerPage from './pages/RackManagerPage'
 import LayoutManagerPage from './pages/LayoutManagerPage'
 import LayoutEditorPage from './pages/LayoutEditorPage'
+import LayoutPrintPage from './pages/LayoutPrintPage'
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
           <Route path="/layouts" element={<LayoutManagerPage />} />
         </Route>
         <Route path="/editor/:layoutId" element={<LayoutEditorPage />} />
+        <Route path="/editor/:layoutId/print" element={<LayoutPrintPage />} />
       </Routes>
     </BrowserRouter>
   )

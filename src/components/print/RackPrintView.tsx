@@ -1,0 +1,168 @@
+import { useMemo, type CSSProperties } from 'react'
+import type { DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
+import { getDeviceImageUrl } from '../../hooks/useDevices'
+import { buildSlots, getSlotTopPx, overlaps } from '../editor/rackGeometry'
+
+const PRINT_SLOT_HEIGHT_PX = 22
+const PRINT_RAIL_WIDTH_PX = 10
+const PRINT_SINGLE_WIDTH_PX = 420
+const PRINT_DUAL_WIDTH_PX = 690
+const PRINT_LABEL_OFFSET_PX = 44
+
+interface LaneAssignments {
+  laneByItemId: Map<string, number>
+  laneItems: [LayoutItemWithDevice[], LayoutItemWithDevice[]]
+}
+
+interface RackPrintViewProps {
+  rack: Rack
+  items: LayoutItemWithDevice[]
+  facing: DeviceFacing
+  showDeviceDetails?: boolean
+}
+
+function buildLaneAssignments(items: LayoutItemWithDevice[]): LaneAssignments {
+  const laneByItemId = new Map<string, number>()
+  const laneItems: [LayoutItemWithDevice[], LayoutItemWithDevice[]] = [[], []]
+  const ordered = [...items].sort((a, b) => {
+    if (a.start_u !== b.start_u) return a.start_u - b.start_u
+    return a.id.localeCompare(b.id)
+  })
+
+  for (const item of ordered) {
+    const lane0Blocked = laneItems[0].some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
+    if (!lane0Blocked) {
+      laneByItemId.set(item.id, 0)
+      laneItems[0].push(item)
+      continue
+    }
+
+    const lane1Blocked = laneItems[1].some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
+    if (!lane1Blocked) {
+      laneByItemId.set(item.id, 1)
+      laneItems[1].push(item)
+      continue
+    }
+
+    laneByItemId.set(item.id, 0)
+    laneItems[0].push(item)
+  }
+
+  return { laneByItemId, laneItems }
+}
+
+export default function RackPrintView({
+  rack,
+  items,
+  facing,
+  showDeviceDetails = true,
+}: RackPrintViewProps) {
+  const laneCount = rack.width === 'dual' ? 2 : 1
+  const visibleItems = useMemo(
+    () => items.filter((item) => item.facing === facing),
+    [items, facing],
+  )
+  const slots = useMemo(() => buildSlots(rack.rack_units), [rack.rack_units])
+  const laneAssignments = useMemo(() => {
+    if (laneCount === 1) {
+      return {
+        laneByItemId: new Map<string, number>(visibleItems.map((item) => [item.id, 0])),
+        laneItems: [visibleItems, []] as [LayoutItemWithDevice[], LayoutItemWithDevice[]],
+      }
+    }
+    return buildLaneAssignments(visibleItems)
+  }, [laneCount, visibleItems])
+
+  const rackStyle = {
+    '--print-slot-height': `${PRINT_SLOT_HEIGHT_PX}px`,
+    '--print-rail-width': `${PRINT_RAIL_WIDTH_PX}px`,
+    width: `${rack.width === 'dual' ? PRINT_DUAL_WIDTH_PX : PRINT_SINGLE_WIDTH_PX}px`,
+  } as CSSProperties
+
+  return (
+    <section className="print-rack-view">
+      <div className="print-rack-caption">
+        {rack.name} - {rack.rack_units}U - {facing === 'front' ? 'Front' : 'Rear'} View
+      </div>
+
+      <div className="print-rack-viewport">
+        <div className="print-rack-u-labels" style={{ paddingTop: `${PRINT_LABEL_OFFSET_PX}px` }}>
+          {slots.map((u) => (
+            <div key={`${facing}-label-${u}`} className="print-rack-u-label-row" style={{ height: `${PRINT_SLOT_HEIGHT_PX}px` }}>
+              <span className="print-rack-u-label">{u}</span>
+              <span className="print-rack-u-line" />
+            </div>
+          ))}
+        </div>
+
+        <div className="print-rack-cabinet" style={rackStyle}>
+          <div className="print-rack-shell print-rack-shell-top" />
+          <div className="print-rack-header">
+            {facing === 'front' ? 'Front' : 'Rear'}
+          </div>
+          <div className="print-rack-body">
+            <div className="print-rack-rails">
+              <div className="print-rack-rail print-rack-rail-left" />
+              <div className="print-rack-rail print-rack-rail-right" />
+              {laneCount === 2 && <div className="print-rack-rail print-rack-rail-divider" />}
+            </div>
+
+            {slots.map((u) => (
+              <div
+                key={`${facing}-slot-${u}`}
+                className="print-rack-slot-row"
+                style={{ height: `${PRINT_SLOT_HEIGHT_PX}px` }}
+              />
+            ))}
+
+            <div className="print-rack-device-layer">
+              {visibleItems.map((item, index) => {
+                const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, PRINT_SLOT_HEIGHT_PX)
+                const laneIndex = laneAssignments.laneByItemId.get(item.id) ?? 0
+                const laneLeft = laneCount === 1 ? '0%' : `${laneIndex * 50}%`
+                const laneWidth = laneCount === 1 ? '100%' : '50%'
+                const height = item.device.rack_units * PRINT_SLOT_HEIGHT_PX
+                const imagePath = facing === 'front' ? item.device.front_image_path : item.device.rear_image_path
+                const imageUrl = getDeviceImageUrl(imagePath)
+
+                return (
+                  <div
+                    key={item.id}
+                    className="print-rack-device-wrap"
+                    style={{
+                      top: `${topPx}px`,
+                      left: laneLeft,
+                      width: laneWidth,
+                      height: `${height}px`,
+                      zIndex: 5 + index,
+                    }}
+                  >
+                    <div className={`print-rack-device ${item.device.rack_units === 1 ? 'print-rack-device--compact' : ''}`}>
+                      <div className="print-rack-device-media">
+                        {imageUrl ? (
+                          <img src={imageUrl} alt={`${item.device.brand} ${item.device.model}`} />
+                        ) : (
+                          <div className="print-rack-device-fallback">No Image</div>
+                        )}
+                      </div>
+
+                      {showDeviceDetails && (
+                        <div className="print-rack-device-meta">
+                          <p className="print-rack-device-title">
+                            {item.device.brand} {item.device.model}
+                          </p>
+                          {item.notes && <p className="print-rack-device-note">{item.notes}</p>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          <div className="print-rack-shell print-rack-shell-bottom" />
+        </div>
+      </div>
+    </section>
+  )
+}

@@ -5,6 +5,7 @@ import Modal from '../ui/Modal'
 import ImageCropper from './ImageCropper'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import type { Device } from '../../types'
+import { getRackPanelAspect, normalizeRackUnits } from '../../lib/rackVisual'
 
 interface DeviceFormProps {
   initialData?: Device
@@ -30,6 +31,10 @@ export default function DeviceForm({ initialData, onSubmit, onCancel }: DeviceFo
 
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [cropSide, setCropSide] = useState<'front' | 'rear'>('front')
+  const normalizedRackUnits = normalizeRackUnits(rackUnits)
+  const cropAspect = getRackPanelAspect(normalizedRackUnits)
+  const cropOutputWidth = 1900
+  const cropOutputHeight = Math.round(cropOutputWidth / cropAspect)
 
   const { uploadImage, uploading } = useImageUpload()
 
@@ -52,7 +57,7 @@ export default function DeviceForm({ initialData, onSubmit, onCancel }: DeviceFo
       await onSubmit({
         brand,
         model,
-        rack_units: rackUnits,
+        rack_units: normalizedRackUnits,
         depth_mm: depthMm,
         front_image_path: frontPath,
         rear_image_path: rearPath,
@@ -71,8 +76,13 @@ export default function DeviceForm({ initialData, onSubmit, onCancel }: DeviceFo
           label="Rack Units"
           type="number"
           min={1}
+          step={1}
           value={rackUnits}
-          onChange={(e) => setRackUnits(Number(e.target.value))}
+          onChange={(e) => {
+            const next = Number(e.target.value)
+            setRackUnits(Number.isFinite(next) && next > 0 ? next : 1)
+          }}
+          onBlur={() => setRackUnits(normalizedRackUnits)}
           required
         />
         <Input
@@ -133,7 +143,11 @@ export default function DeviceForm({ initialData, onSubmit, onCancel }: DeviceFo
       >
         {cropSrc && (
           <ImageCropper
+            key={`${cropSide}-${normalizedRackUnits}`}
             imageSrc={cropSrc}
+            aspect={cropAspect}
+            outputWidth={cropOutputWidth}
+            outputHeight={cropOutputHeight}
             onCropComplete={handleCropComplete}
             onCancel={() => setCropSrc(null)}
           />

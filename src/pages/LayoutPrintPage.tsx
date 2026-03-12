@@ -1,0 +1,271 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import RackPrintView from '../components/print/RackPrintView'
+import PrintCartouche from '../components/print/PrintCartouche'
+import Button from '../components/ui/Button'
+import type { Layout, LayoutItemWithDevice, Rack } from '../types'
+import { supabase } from '../lib/supabase'
+import { getDeviceImageUrl } from '../hooks/useDevices'
+import '../components/print/layoutPrint.css'
+
+interface LayoutItemRow {
+  id: string
+  layout_id: string
+  device_id: string
+  start_u: number
+  facing: string
+  preferred_lane?: number | null
+  notes: string | null
+  device: Record<string, unknown>
+}
+
+function preloadImage(url: string): Promise<void> {
+  return new Promise((resolve) => {
+    const image = new Image()
+    image.onload = () => resolve()
+    image.onerror = () => resolve()
+    image.src = url
+  })
+}
+
+export default function LayoutPrintPage() {
+  const { layoutId } = useParams<{ layoutId: string }>()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  const [layout, setLayout] = useState<Layout | null>(null)
+  const [rack, setRack] = useState<Rack | null>(null)
+  const [items, setItems] = useState<LayoutItemWithDevice[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [imagesReady, setImagesReady] = useState(false)
+  const [scale, setScale] = useState(1)
+  const [autoPrintDone, setAutoPrintDone] = useState(false)
+  const [generatedAt] = useState(() => new Date())
+
+  const drawingFrameRef = useRef<HTMLDivElement | null>(null)
+  const drawingContentRef = useRef<HTMLDivElement | null>(null)
+
+  const autoPrintRequested = searchParams.get('autoprint') === '1'
+
+  const scaleLabel = useMemo(() => `Fit (shared) ${scale.toFixed(2)}x`, [scale])
+
+  const imageUrls = useMemo(() => {
+    const urls = new Set<string>()
+    for (const item of items) {
+      const frontUrl = getDeviceImageUrl(item.device.front_image_path)
+      const rearUrl = getDeviceImageUrl(item.device.rear_image_path)
+      if (frontUrl) urls.add(frontUrl)
+      if (rearUrl) urls.add(rearUrl)
+    }
+    return Array.from(urls)
+  }, [items])
+
+  const loadData = useCallback(async () => {
+    if (!layoutId) {
+      setError('Missing layout id')
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    setImagesReady(false)
+
+    const { data: layoutData, error: layoutError } = await supabase
+      .from('layouts')
+      .select('*')
+      .eq('id', layoutId)
+      .single()
+
+    if (layoutError) {
+      setError('Layout not found')
+      setLoading(false)
+      return
+    }
+
+    const typedLayout = layoutData as Layout
+    setLayout(typedLayout)
+
+    const { data: rackData, error: rackError } = await supabase
+      .from('racks')
+      .select('*')
+      .eq('id', typedLayout.rack_id)
+      .single()
+
+    if (rackError) {
+      setError('Rack not found')
+      setLoading(false)
+      return
+    }
+
+    const { data: itemData, error: itemError } = await supabase
+      .from('layout_items')
+      .select('*, device:devices(*)')
+      .eq('layout_id', layoutId)
+
+    if (itemError) {
+      setError(itemError.message)
+      setLoading(false)
+      return
+    }
+
+    const rows = (itemData ?? []) as LayoutItemRow[]
+    const mapped: LayoutItemWithDevice[] = rows.map((row) => ({
+      id: row.id,
+      layout_id: row.layout_id,
+      device_id: row.device_id,
+      start_u: row.start_u,
+      facing: row.facing as LayoutItemWithDevice['facing'],
+      preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
+      notes: row.notes,
+      device: row.device as unknown as LayoutItemWithDevice['device'],
+    }))
+
+    setRack(rackData as Rack)
+    setItems(mapped)
+    setLoading(false)
+  }, [layoutId])
+
+  const recalculateScale = useCallback(() => {
+    const frame = drawingFrameRef.current
+    const content = drawingContentRef.current
+    if (!frame || !content) return
+
+    const frameWidth = frame.clientWidth
+    const frameHeight = frame.clientHeight
+    const contentWidth = content.scrollWidth
+    const contentHeight = content.scrollHeight
+
+    if (frameWidth <= 0 || frameHeight <= 0 || contentWidth <= 0 || contentHeight <= 0) {
+      setScale(1)
+      return
+    }
+
+    const nextScale = Math.min(frameWidth / contentWidth, frameHeight / contentHeight, 1)
+    setScale((previous) => (Math.abs(previous - nextScale) < 0.001 ? previous : nextScale))
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    let cancelled = false
+    setImagesReady(false)
+
+    if (imageUrls.length === 0) {
+      setImagesReady(true)
+      return
+    }
+
+    void Promise.allSettled(imageUrls.map((url) => preloadImage(url))).then(() => {
+      if (!cancelled) setImagesReady(true)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [imageUrls])
+
+  useEffect(() => {
+    const frame = drawingFrameRef.current
+    const content = drawingContentRef.current
+    if (!frame || !content) return
+
+    recalculateScale()
+    const observer = new ResizeObserver(() => recalculateScale())
+    observer.observe(frame)
+    observer.observe(content)
+
+    return () => observer.disconnect()
+  }, [recalculateScale, rack?.id])
+
+  useEffect(() => {
+    recalculateScale()
+  }, [recalculateScale, items, imagesReady])
+
+  useEffect(() => {
+    if (!autoPrintRequested || autoPrintDone || loading || error || !layout || !rack || !imagesReady) return
+    const timer = window.setTimeout(() => {
+      setAutoPrintDone(true)
+      window.print()
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [autoPrintRequested, autoPrintDone, loading, error, layout, rack, imagesReady])
+
+  if (error) {
+    return (
+      <div className="layout-print-error">
+        <p>{error}</p>
+        <Button variant="secondary" onClick={() => navigate('/layouts')}>
+          Back to layouts
+        </Button>
+      </div>
+    )
+  }
+
+  if (loading || !layout || !rack) {
+    return (
+      <div className="layout-print-loading">
+        <p>Preparing A3 print preview...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="layout-print-page">
+      <header className="layout-print-toolbar">
+        <div className="layout-print-toolbar-actions">
+          <Button
+            variant="secondary"
+            onClick={() => navigate(layoutId ? `/editor/${layoutId}` : '/layouts')}
+          >
+            Back
+          </Button>
+          <Button onClick={() => window.print()}>
+            Print
+          </Button>
+        </div>
+        <p className="layout-print-toolbar-meta">
+          {layout.name} | {rack.name} | {imagesReady ? 'Ready' : 'Loading images'}
+        </p>
+      </header>
+
+      <main className="layout-print-stage">
+        <section className="layout-print-sheet" aria-label="A3 drawing sheet">
+          <div className="layout-print-sheet-inner">
+            <div ref={drawingFrameRef} className="layout-print-drawing-frame">
+              <div
+                className="layout-print-drawing-scale"
+                style={{ transform: `scale(${scale})` }}
+              >
+                <div ref={drawingContentRef} className="layout-print-drawing-row">
+                  <RackPrintView
+                    rack={rack}
+                    items={items}
+                    facing="front"
+                    showDeviceDetails
+                  />
+                  <RackPrintView
+                    rack={rack}
+                    items={items}
+                    facing="rear"
+                    showDeviceDetails
+                  />
+                </div>
+              </div>
+            </div>
+
+            <PrintCartouche
+              layout={layout}
+              rack={rack}
+              scaleLabel={scaleLabel}
+              generatedAt={generatedAt}
+            />
+          </div>
+        </section>
+      </main>
+    </div>
+  )
+}

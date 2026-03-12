@@ -3,19 +3,32 @@ import { useDrag } from 'react-dnd'
 import { PLACED_DEVICE_TYPE, type PlacedDeviceDragItem } from './DraggableDevice'
 import type { DeviceFacing, LayoutItemWithDevice } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
+import { RACK_SLOT_HEIGHT_PX } from './rackGeometry'
 
-const SLOT_HEIGHT = 28
+const SLOT_HEIGHT = RACK_SLOT_HEIGHT_PX
 
 interface PlacedDeviceProps {
   item: LayoutItemWithDevice
   facing: DeviceFacing
+  slotHeight?: number
+  showDeviceDetails?: boolean
+  interactive?: boolean
   onRemove: (itemId: string) => void
   onEditNotes: (item: LayoutItemWithDevice) => void
 }
 
-export default function PlacedDevice({ item, facing, onRemove, onEditNotes }: PlacedDeviceProps) {
+export default function PlacedDevice({
+  item,
+  facing,
+  slotHeight = SLOT_HEIGHT,
+  showDeviceDetails = true,
+  interactive = true,
+  onRemove,
+  onEditNotes,
+}: PlacedDeviceProps) {
   const [{ isDragging }, dragRef] = useDrag<PlacedDeviceDragItem, unknown, { isDragging: boolean }>({
     type: PLACED_DEVICE_TYPE,
+    canDrag: interactive,
     item: {
       type: PLACED_DEVICE_TYPE,
       itemId: item.id,
@@ -28,44 +41,67 @@ export default function PlacedDevice({ item, facing, onRemove, onEditNotes }: Pl
   const imageUrl = getDeviceImageUrl(
     facing === 'front' ? item.device.front_image_path : item.device.rear_image_path,
   )
+  const imageSrc = imageUrl ?? undefined
+  const hasImage = imageSrc !== undefined
 
-  const height = item.device.rack_units * SLOT_HEIGHT
+  const height = item.device.rack_units * slotHeight
 
   return (
     <div
       ref={dragRef as unknown as LegacyRef<HTMLDivElement>}
-      className={`absolute left-0 right-0 bg-blue-50 border border-blue-300 rounded-sm overflow-hidden cursor-grab active:cursor-grabbing z-10 ${
-        isDragging ? 'opacity-40' : ''
-      }`}
-      style={{ height: `${height}px` }}
+      className={`rack-device ${hasImage ? 'rack-device--has-image' : ''} ${isDragging ? 'rack-device--dragging' : ''}`}
+      style={{ height: `${height}px`, cursor: interactive ? undefined : 'default' }}
     >
-      <div className="flex items-center h-full px-1 gap-1">
-        {imageUrl && (
-          <img src={imageUrl} alt={item.device.model} className="h-full w-12 object-contain shrink-0" />
+      <div className="rack-device-media">
+        {hasImage ? (
+          <img
+            src={imageSrc}
+            alt={`${item.device.brand} ${item.device.model}`}
+          />
+        ) : (
+          <div className="rack-device-fallback">No Image</div>
         )}
-        <div className="flex-1 min-w-0 px-1">
-          <div className="text-xs font-medium truncate">
-            {item.device.brand} {item.device.model}
-          </div>
-          {item.notes && <div className="text-[10px] text-gray-500 truncate">{item.notes}</div>}
-        </div>
-        <div className="flex gap-0.5 shrink-0">
+      </div>
+
+      {!hasImage && (
+        <>
+          <div className="rack-device-wire" />
+          <span className="rack-device-screw lt" />
+          <span className="rack-device-screw rt" />
+          <span className="rack-device-screw lb" />
+          <span className="rack-device-screw rb" />
+        </>
+      )}
+
+      {showDeviceDetails && <div className="rack-device-gradient" />}
+
+      {interactive && (
+        <div className="rack-device-actions">
           <button
             onClick={(e) => { e.stopPropagation(); onEditNotes(item) }}
-            className="text-gray-400 hover:text-blue-600 text-xs px-1"
+            className="rack-device-action"
             title="Notes"
           >
             N
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onRemove(item.id) }}
-            className="text-gray-400 hover:text-red-600 text-xs px-1"
+            className="rack-device-action"
             title="Remove"
           >
             &times;
           </button>
         </div>
-      </div>
+      )}
+
+      {showDeviceDetails && (
+        <div className="rack-device-meta">
+          <div className="rack-device-title">
+            {item.device.brand} {item.device.model}
+          </div>
+          {item.notes && <div className="rack-device-note">{item.notes}</div>}
+        </div>
+      )}
     </div>
   )
 }

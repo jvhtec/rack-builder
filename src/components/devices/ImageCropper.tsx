@@ -1,31 +1,45 @@
 import { useState, useRef, useCallback } from 'react'
-import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop'
+import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 import Button from '../ui/Button'
 
 interface ImageCropperProps {
   imageSrc: string
+  aspect?: number
+  outputWidth?: number
+  outputHeight?: number
   onCropComplete: (blob: Blob) => void
   onCancel: () => void
 }
 
-function getCroppedBlob(image: HTMLImageElement, crop: PixelCrop): Promise<Blob> {
+function getCroppedBlob(
+  image: HTMLImageElement,
+  crop: PixelCrop,
+  outputWidth?: number,
+  outputHeight?: number,
+): Promise<Blob> {
   const canvas = document.createElement('canvas')
   const scaleX = image.naturalWidth / image.width
   const scaleY = image.naturalHeight / image.height
-  canvas.width = crop.width * scaleX
-  canvas.height = crop.height * scaleY
+  const sourceWidth = crop.width * scaleX
+  const sourceHeight = crop.height * scaleY
+  const targetWidth = outputWidth && outputWidth > 0 ? outputWidth : Math.round(sourceWidth)
+  const targetHeight = outputHeight && outputHeight > 0 ? outputHeight : Math.round(sourceHeight)
+  canvas.width = targetWidth
+  canvas.height = targetHeight
   const ctx = canvas.getContext('2d')!
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(
     image,
     crop.x * scaleX,
     crop.y * scaleY,
-    crop.width * scaleX,
-    crop.height * scaleY,
+    sourceWidth,
+    sourceHeight,
     0,
     0,
-    canvas.width,
-    canvas.height,
+    targetWidth,
+    targetHeight,
   )
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -36,22 +50,74 @@ function getCroppedBlob(image: HTMLImageElement, crop: PixelCrop): Promise<Blob>
   })
 }
 
-export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCropperProps) {
+function getCenteredAspectCrop(
+  mediaWidth: number,
+  mediaHeight: number,
+  aspect?: number,
+): Crop {
+  if (!aspect || aspect <= 0) {
+    return {
+      unit: '%',
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    }
+  }
+
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: '%',
+        width: 100,
+      },
+      aspect,
+      mediaWidth,
+      mediaHeight,
+    ),
+    mediaWidth,
+    mediaHeight,
+  )
+}
+
+export default function ImageCropper({
+  imageSrc,
+  aspect,
+  outputWidth,
+  outputHeight,
+  onCropComplete,
+  onCancel,
+}: ImageCropperProps) {
   const [crop, setCrop] = useState<Crop>()
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>()
   const imgRef = useRef<HTMLImageElement>(null)
 
   const handleConfirm = useCallback(async () => {
     if (!imgRef.current || !completedCrop) return
-    const blob = await getCroppedBlob(imgRef.current, completedCrop)
+    const blob = await getCroppedBlob(imgRef.current, completedCrop, outputWidth, outputHeight)
     onCropComplete(blob)
-  }, [completedCrop, onCropComplete])
+  }, [completedCrop, onCropComplete, outputWidth, outputHeight])
 
   return (
     <div className="space-y-4">
       <div className="max-h-96 overflow-auto">
-        <ReactCrop crop={crop} onChange={setCrop} onComplete={setCompletedCrop}>
-          <img ref={imgRef} src={imageSrc} alt="Crop preview" className="max-w-full" />
+        <ReactCrop
+          crop={crop}
+          aspect={aspect}
+          keepSelection
+          onChange={setCrop}
+          onComplete={setCompletedCrop}
+        >
+          <img
+            ref={imgRef}
+            src={imageSrc}
+            alt="Crop preview"
+            className="max-w-full"
+            onLoad={(event) => {
+              const target = event.currentTarget
+              setCrop(getCenteredAspectCrop(target.width, target.height, aspect))
+            }}
+          />
         </ReactCrop>
       </div>
       <div className="flex justify-end gap-3">

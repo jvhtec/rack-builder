@@ -37,6 +37,7 @@ export interface LayoutItem {
   device_id: string
   start_u: number
   facing: DeviceFacing
+  preferred_lane: 0 | 1 | null
   notes: string | null
 }
 

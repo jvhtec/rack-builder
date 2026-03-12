@@ -35,15 +35,15 @@ export default function DraggableDevice({ device }: DraggableDeviceProps) {
   return (
     <div
       ref={dragRef as unknown as LegacyRef<HTMLDivElement>}
-      className={`border rounded p-2 bg-white cursor-grab active:cursor-grabbing transition-opacity ${
+      className={`border rounded-md p-3 bg-white cursor-grab active:cursor-grabbing transition-opacity shadow-sm ${
         isDragging ? 'opacity-40' : 'opacity-100'
       }`}
     >
       {thumbUrl && (
-        <img src={thumbUrl} alt={device.model} className="w-full h-12 object-contain bg-gray-50 rounded mb-1" />
+        <img src={thumbUrl} alt={device.model} className="w-full h-14 object-contain bg-gray-50 rounded mb-2" />
       )}
-      <div className="text-xs font-medium truncate">{device.brand} {device.model}</div>
-      <div className="text-xs text-gray-400">{device.rack_units}U</div>
+      <div className="text-sm font-medium truncate">{device.brand} {device.model}</div>
+      <div className="text-xs text-gray-500">{device.rack_units}U</div>
     </div>
   )
 }

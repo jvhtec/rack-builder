@@ -1,4 +1,4 @@
-import type { LegacyRef } from 'react'
+import { useCallback, useRef, type RefCallback } from 'react'
 import { useDrop } from 'react-dnd'
 import {
   DEVICE_TYPE,
@@ -6,18 +6,28 @@ import {
   type DeviceDragItem,
   type PlacedDeviceDragItem,
 } from './DraggableDevice'
+import type { XYCoord } from 'dnd-core'
 import type { DeviceFacing, LayoutItemWithDevice } from '../../types'
-import { hasOverlap, isWithinBounds } from '../../lib/overlap'
+import { isWithinBounds } from '../../lib/overlap'
+import { RACK_SLOT_HEIGHT_PX, RACK_RAIL_WIDTH_PX } from './rackGeometry'
 
-const SLOT_HEIGHT = 28
+const SLOT_HEIGHT = RACK_SLOT_HEIGHT_PX
 
 interface RackSlotProps {
   slotU: number
   totalRackUnits: number
   facing: DeviceFacing
   items: LayoutItemWithDevice[]
-  onDropNew: (deviceId: string, startU: number, rackUnits: number) => void
-  onDropMove: (itemId: string, newStartU: number) => void
+  laneCount?: 1 | 2
+  slotHeight?: number
+  canPlaceAtSlot?: (
+    slotU: number,
+    rackUnits: number,
+    excludeItemId?: string,
+    preferredLane?: 0 | 1,
+  ) => boolean
+  onDropNew: (deviceId: string, startU: number, rackUnits: number, preferredLane?: 0 | 1) => void
+  onDropMove: (itemId: string, newStartU: number, preferredLane?: 0 | 1) => void
 }
 
 export default function RackSlot({
@@ -25,25 +35,52 @@ export default function RackSlot({
   totalRackUnits,
   facing,
   items,
+  laneCount = 1,
+  slotHeight = SLOT_HEIGHT,
+  canPlaceAtSlot,
   onDropNew,
   onDropMove,
 }: RackSlotProps) {
+  const slotRef = useRef<HTMLDivElement | null>(null)
+
+  const getPreferredLane = useCallback((point: XYCoord | null): 0 | 1 => {
+    if (laneCount === 1) return 0
+    if (!point || !slotRef.current) return 0
+
+    const bounds = slotRef.current.getBoundingClientRect()
+    const laneAreaLeft = bounds.left + RACK_RAIL_WIDTH_PX
+    const laneAreaWidth = bounds.width - RACK_RAIL_WIDTH_PX * 2
+    if (laneAreaWidth <= 0) return 0
+    return point.x >= laneAreaLeft + laneAreaWidth / 2 ? 1 : 0
+  }, [laneCount])
+
   const [{ isOver, canDrop }, dropRef] = useDrop<
     DeviceDragItem | PlacedDeviceDragItem,
     void,
     { isOver: boolean; canDrop: boolean }
   >({
     accept: [DEVICE_TYPE, PLACED_DEVICE_TYPE],
-    canDrop: (dragItem) => {
+    canDrop: (dragItem, monitor) => {
       if (!isWithinBounds(slotU, dragItem.rackUnits, totalRackUnits)) return false
       const excludeId = dragItem.type === PLACED_DEVICE_TYPE ? dragItem.itemId : undefined
-      return !hasOverlap(slotU, dragItem.rackUnits, facing, items, excludeId)
+      const preferredLane = getPreferredLane(monitor.getClientOffset())
+      if (canPlaceAtSlot) {
+        return canPlaceAtSlot(slotU, dragItem.rackUnits, excludeId, preferredLane)
+      }
+      return !items
+        .filter((item) => item.facing === facing && item.id !== excludeId)
+        .some((item) => {
+          const existingTop = item.start_u + item.device.rack_units - 1
+          const droppedTop = slotU + dragItem.rackUnits - 1
+          return slotU <= existingTop && droppedTop >= item.start_u
+        })
     },
-    drop: (dragItem) => {
+    drop: (dragItem, monitor) => {
+      const preferredLane = getPreferredLane(monitor.getClientOffset())
       if (dragItem.type === PLACED_DEVICE_TYPE) {
-        onDropMove(dragItem.itemId, slotU)
+        onDropMove(dragItem.itemId, slotU, preferredLane)
       } else {
-        onDropNew(dragItem.deviceId, slotU, dragItem.rackUnits)
+        onDropNew(dragItem.deviceId, slotU, dragItem.rackUnits, preferredLane)
       }
     },
     collect: (monitor) => ({
@@ -51,20 +88,22 @@ export default function RackSlot({
       canDrop: monitor.canDrop(),
     }),
   })
+  const setRefs: RefCallback<HTMLDivElement> = useCallback((node) => {
+    slotRef.current = node
+    dropRef(node)
+  }, [dropRef])
 
-  let bgClass = ''
-  if (isOver && canDrop) bgClass = 'bg-green-100'
-  else if (isOver && !canDrop) bgClass = 'bg-red-100'
+  let stateClass = ''
+  if (isOver && canDrop) stateClass = 'rack-slot-drop-ok'
+  else if (isOver && !canDrop) stateClass = 'rack-slot-drop-bad'
 
   return (
     <div
-      ref={dropRef as unknown as LegacyRef<HTMLDivElement>}
-      className={`relative border-b border-gray-200 flex items-center ${bgClass}`}
-      style={{ height: `${SLOT_HEIGHT}px` }}
+      ref={setRefs}
+      className={`rack-slot-row ${stateClass}`}
+      style={{ height: `${slotHeight}px` }}
     >
-      <span className="text-[10px] text-gray-400 w-8 text-center shrink-0 select-none">
-        {slotU}
-      </span>
+      <div className="rack-slot-track" />
     </div>
   )
 }

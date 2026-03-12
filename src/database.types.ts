@@ -114,6 +114,7 @@ export interface Database {
           device_id: string
           start_u: number
           facing: 'front' | 'rear'
+          preferred_lane: number | null
           notes: string | null
         }
         Insert: {
@@ -122,6 +123,7 @@ export interface Database {
           device_id: string
           start_u: number
           facing?: 'front' | 'rear'
+          preferred_lane?: number | null
           notes?: string | null
         }
         Update: {
@@ -130,6 +132,7 @@ export interface Database {
           device_id?: string
           start_u?: number
           facing?: 'front' | 'rear'
+          preferred_lane?: number | null
           notes?: string | null
         }
         Relationships: [
