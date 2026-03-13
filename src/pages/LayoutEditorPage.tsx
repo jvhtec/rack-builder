@@ -137,6 +137,7 @@ export default function LayoutEditorPage() {
   )
   const [mobileDualLane, setMobileDualLane] = useState<0 | 1>(0)
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
+  const [selectedItemToMove, setSelectedItemToMove] = useState<string | null>(null)
 
   const [createLayoutOpen, setCreateLayoutOpen] = useState(false)
   const [renameLayoutOpen, setRenameLayoutOpen] = useState(false)
@@ -313,6 +314,30 @@ export default function LayoutEditorPage() {
       setSelectedDeviceTemplate(null)
     } catch (err) {
       console.error('Tap placement failed:', err)
+    }
+  }
+
+  const handleMobileMoveToSlot = async (slotU: number, colIndex: number) => {
+    if (!selectedItemToMove || !rack) return
+    const item = items.find((i) => i.id === selectedItemToMove)
+    if (!item) return
+
+    if (!isWithinBounds(slotU, item.device.rack_units, rack.rack_units)) return
+    if (hasDepthConflict(slotU, item.device.rack_units, facing, item.device.depth_mm, items, rack.depth_mm, selectedItemToMove)) return
+
+    const { preferredLane, preferredSubLane } = visualColToLanePreference(
+      colIndex, rack.width, facing, item.device.is_half_rack,
+    )
+    const targetSlot = preferenceToSlot(rack.width, item.device.is_half_rack, preferredLane, preferredSubLane)
+    const otherItems = mobileItems.filter((i) => i.id !== selectedItemToMove)
+    if (!canPlaceAtPosition(slotU, item.device.rack_units, targetSlot, otherItems, rack.width)) return
+
+    try {
+      const allowOverlap = rack.width === 'dual' || item.device.is_half_rack
+      await moveItem(selectedItemToMove, slotU, facing, preferredLane, allowOverlap, preferredSubLane)
+      setSelectedItemToMove(null)
+    } catch (err) {
+      console.error('Tap move failed:', err)
     }
   }
 
@@ -584,7 +609,7 @@ export default function LayoutEditorPage() {
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden">
-      <header className="flex items-center justify-between px-4 h-14 bg-slate-900 border-b border-slate-800 shrink-0 z-30">
+      <header className="flex items-center justify-between px-4 h-14 bg-slate-900 border-b border-slate-800 shrink-0 z-30" style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(3.5rem + env(safe-area-inset-top))' }}>
         <button onClick={() => navigate('/projects')} className="text-slate-300 text-sm font-semibold">
           ← Back
         </button>
@@ -644,10 +669,10 @@ export default function LayoutEditorPage() {
           </button>
         </div>
 
-        {selectedDeviceTemplate && (
+        {(selectedDeviceTemplate || selectedItemToMove) && (
           <div className="fixed top-28 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 px-4 py-2 rounded-full shadow-2xl border border-indigo-400 flex items-center gap-2">
-            <span className="text-xs font-bold">Tap a slot to place</span>
-            <button onClick={() => setSelectedDeviceTemplate(null)} className="text-xs">✕</button>
+            <span className="text-xs font-bold">{selectedItemToMove ? 'Tap a slot to move' : 'Tap a slot to place'}</span>
+            <button onClick={() => { setSelectedDeviceTemplate(null); setSelectedItemToMove(null) }} className="text-xs">✕</button>
           </div>
         )}
 
@@ -679,7 +704,7 @@ export default function LayoutEditorPage() {
           </div>
         )}
 
-        <div className="flex justify-center p-5 pb-28 min-h-full">
+        <div className="flex justify-center p-5 min-h-full" style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}>
           <div className="relative w-full max-w-[360px]">
             <div className="bg-slate-900 rounded-t-xl border-x-[10px] border-t-[10px] border-slate-800 shadow-2xl">
               {slots.map((u) => (
@@ -712,17 +737,30 @@ export default function LayoutEditorPage() {
                       const isLeadCol = visualColIndex === startCol
                       const visibleSpanCols = Math.max(0, Math.min(spanCols, mobileColumnCount - colIndex))
 
-                      const isSelectableEmpty = !item && selectedDeviceTemplate
+                      const isSelectableEmpty = !item && (!!selectedDeviceTemplate || !!selectedItemToMove)
                       const colBaseClass = isSelectableEmpty ? 'bg-indigo-500/15 active:bg-indigo-500/30' : ''
                       const colLeft = `${colIndex * colWidthPct}%`
                       const colWidth = `${colWidthPct}%`
+
+                      const handleColClick = isSelectableEmpty
+                        ? () => void (selectedItemToMove ? handleMobileMoveToSlot(u, visualColIndex) : handleMobileSlotClick(u, visualColIndex))
+                        : item && !showOppositePreview
+                          ? () => {
+                              if (selectedItemToMove === item.id) {
+                                setSelectedItemToMove(null)
+                              } else {
+                                setSelectedItemToMove(item.id)
+                                setSelectedDeviceTemplate(null)
+                              }
+                            }
+                          : undefined
 
                       return (
                         <div
                           key={`${u}-${colIndex}`}
                           className={`absolute top-0 h-full border-r border-slate-800/60 ${colBaseClass}`}
                           style={{ left: colLeft, width: colWidth }}
-                          onClick={isSelectableEmpty ? () => void handleMobileSlotClick(u, visualColIndex) : undefined}
+                          onClick={handleColClick}
                         >
                           {isTop && item && isLeadCol && visibleSpanCols > 0 && (
                             <div
@@ -734,7 +772,11 @@ export default function LayoutEditorPage() {
                                 width: `${visibleSpanCols * 100}%`,
                               }}
                             >
-                              <div className="relative w-full h-full rounded border border-indigo-300/70 overflow-hidden bg-slate-700">
+                              <div
+                                className={`relative w-full h-full rounded overflow-hidden bg-slate-700 border-2 transition-colors ${selectedItemToMove === item.id ? 'border-amber-400 opacity-70' : 'border-indigo-300/70'}`}
+                                style={{ WebkitTouchCallout: 'none', userSelect: 'none' }}
+                                onContextMenu={(e) => e.preventDefault()}
+                              >
                                 {(() => {
                                   const imagePath = facing === 'front'
                                     ? item.device.front_image_path
@@ -745,6 +787,8 @@ export default function LayoutEditorPage() {
                                       src={imageUrl}
                                       alt={item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
                                       className="w-full h-full object-fill"
+                                      draggable={false}
+                                      onContextMenu={(e) => e.preventDefault()}
                                     />
                                   ) : (
                                     <div className="w-full h-full bg-indigo-500/80" />
@@ -784,7 +828,7 @@ export default function LayoutEditorPage() {
         </div>
       </main>
 
-      <footer className="h-16 bg-slate-900 border-t border-slate-800 flex items-center justify-around shrink-0 z-30">
+      <footer className="bg-slate-900 border-t border-slate-800 flex items-center justify-around shrink-0 z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom)', minHeight: 'calc(4rem + env(safe-area-inset-bottom))' }}>
         <button
           onClick={() => { setActiveTab('devices'); setIsSheetOpen(true) }}
           className={`flex flex-col items-center gap-1 ${selectedDeviceTemplate ? 'text-indigo-400' : 'text-slate-400'}`}
