@@ -35,7 +35,7 @@ export default function PlacedDevice({
       itemId: item.id,
       deviceId: item.device_id,
       rackUnits: item.device.rack_units,
-      isHalfRack: item.device.is_half_rack,
+      isHalfRack: item.device.is_half_rack && !item.force_full_width,
       depthMm: item.device.depth_mm,
     },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),

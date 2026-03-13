@@ -9,11 +9,11 @@ import { useLayouts } from '../hooks/useLayouts'
 import { useRacks } from '../hooks/useRacks'
 import { hasDepthConflict, isWithinBounds } from '../lib/overlap'
 import {
+  availableSlots,
   buildSlotAssignments,
   canPlaceAtPosition,
   getItemSlot,
   getSlotStyle,
-  preferenceToSlot,
 } from '../lib/rackPositions'
 import type { DeviceFacing, LayoutItemWithDevice, Project } from '../types'
 import DevicePalette from '../components/editor/DevicePalette'
@@ -220,10 +220,12 @@ export default function LayoutEditorPage() {
 
   const canPlaceOnRack = useCallback((slotU: number, device: { rack_units: number; is_half_rack: boolean; depth_mm: number }) => {
     if (!rack) return false
-    const targetSlot = preferenceToSlot(rack.width, device.is_half_rack, undefined, undefined)
-    if (!canPlaceAtPosition(slotU, device.rack_units, targetSlot, mobileItems, rack.width)) return false
+    // Depth conflict applies regardless of horizontal slot
     if (hasDepthConflict(slotU, device.rack_units, facing, device.depth_mm, items, rack.depth_mm)) return false
-    return true
+    // Accept if any valid horizontal slot is free
+    return availableSlots(rack.width, device.is_half_rack).some(
+      (slot) => canPlaceAtPosition(slotU, device.rack_units, slot, mobileItems, rack.width),
+    )
   }, [mobileItems, items, rack, facing])
 
   const handleMobileSlotClick = async (slotU: number) => {
