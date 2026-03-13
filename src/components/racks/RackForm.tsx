@@ -55,11 +55,11 @@ export default function RackForm({ initialData, onSubmit, onCancel }: RackFormPr
           { value: 'dual', label: 'Dual' },
         ]}
       />
-      <div className="flex justify-end gap-3 pt-2">
-        <Button variant="secondary" type="button" onClick={onCancel}>
+      <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+        <Button variant="secondary" type="button" onClick={onCancel} className="w-full sm:w-auto">
           Cancel
         </Button>
-        <Button type="submit" disabled={saving || !name}>
+        <Button type="submit" disabled={saving || !name} className="w-full sm:w-auto">
           {saving ? 'Saving...' : initialData ? 'Update' : 'Create'}
         </Button>
       </div>

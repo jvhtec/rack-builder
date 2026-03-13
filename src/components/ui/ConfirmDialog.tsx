@@ -19,12 +19,13 @@ export default function ConfirmDialog({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <p className="text-sm text-gray-600 mb-6">{message}</p>
-      <div className="flex justify-end gap-3">
-        <Button variant="secondary" onClick={onClose}>
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
           Cancel
         </Button>
         <Button
           variant="danger"
+          className="w-full sm:w-auto"
           onClick={() => {
             onConfirm()
             onClose()

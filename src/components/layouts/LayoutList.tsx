@@ -18,41 +18,64 @@ export default function LayoutList({ layouts, racks, onDelete }: LayoutListProps
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-gray-500">
-            <th className="pb-2 font-medium">Name</th>
-            <th className="pb-2 font-medium">Rack</th>
-            <th className="pb-2 font-medium">Created</th>
-            <th className="pb-2 font-medium text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {layouts.map((layout) => {
-            const rack = rackMap.get(layout.rack_id)
-            return (
-              <tr key={layout.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="py-3 font-medium text-gray-900">{layout.name}</td>
-                <td className="py-3">{rack ? `${rack.name} (${rack.rack_units}U)` : 'Unknown'}</td>
-                <td className="py-3 text-gray-500">
-                  {new Date(layout.created_at).toLocaleDateString()}
-                </td>
-                <td className="py-3 text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button onClick={() => navigate(`/editor/${layout.id}`)}>
-                      Open Editor
-                    </Button>
-                    <Button variant="danger" onClick={() => onDelete(layout)}>
-                      Delete
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <div className="space-y-3 md:hidden">
+        {layouts.map((layout) => {
+          const rack = rackMap.get(layout.rack_id)
+          return (
+            <article key={layout.id} className="rounded-lg border bg-white p-4">
+              <div className="font-medium text-gray-900">{layout.name}</div>
+              <div className="mt-2 text-sm text-gray-600">{rack ? `${rack.name} (${rack.rack_units}U)` : 'Unknown rack'}</div>
+              <div className="mt-1 text-xs text-gray-500">{new Date(layout.created_at).toLocaleDateString()}</div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button className="w-full" onClick={() => navigate(`/editor/${layout.id}`)}>
+                  Open
+                </Button>
+                <Button variant="danger" className="w-full" onClick={() => onDelete(layout)}>
+                  Delete
+                </Button>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-gray-500">
+              <th className="pb-2 font-medium">Name</th>
+              <th className="pb-2 font-medium">Rack</th>
+              <th className="pb-2 font-medium">Created</th>
+              <th className="pb-2 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {layouts.map((layout) => {
+              const rack = rackMap.get(layout.rack_id)
+              return (
+                <tr key={layout.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <td className="py-3 font-medium text-gray-900">{layout.name}</td>
+                  <td className="py-3">{rack ? `${rack.name} (${rack.rack_units}U)` : 'Unknown'}</td>
+                  <td className="py-3 text-gray-500">
+                    {new Date(layout.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button onClick={() => navigate(`/editor/${layout.id}`)}>
+                        Open Editor
+                      </Button>
+                      <Button variant="danger" onClick={() => onDelete(layout)}>
+                        Delete
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }
