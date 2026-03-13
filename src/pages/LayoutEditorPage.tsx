@@ -41,6 +41,17 @@ function buildLaneAssignments(items: LayoutItemWithDevice[]): LaneAssignments {
   })
 
   for (const item of ordered) {
+    const preferredLane = item.preferred_lane === 0 || item.preferred_lane === 1 ? item.preferred_lane : null
+    if (preferredLane !== null) {
+      const preferredBlocked = laneItems[preferredLane]
+        .some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
+      if (!preferredBlocked) {
+        laneByItemId.set(item.id, preferredLane)
+        laneItems[preferredLane].push(item)
+        continue
+      }
+    }
+
     const lane0Blocked = laneItems[0].some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
     if (!lane0Blocked) {
       laneByItemId.set(item.id, 0)
@@ -609,7 +620,8 @@ export default function LayoutEditorPage() {
 
                   <div className="flex-1 h-full relative">
                     {Array.from({ length: laneCount }, (_, laneIndex) => {
-                      const item = getDeviceAtU(u, laneIndex)
+                      const dataLaneIndex = laneCount === 2 && facing === 'rear' ? 1 - laneIndex : laneIndex
+                      const item = getDeviceAtU(u, dataLaneIndex)
                       const topU = item ? getTopU(item) : null
                       const isTop = item && topU === u
                       const isSelectableEmpty = !item && selectedDeviceTemplate
