@@ -15,6 +15,8 @@ interface LayoutItemRow {
   start_u: number
   facing: string
   preferred_lane?: number | null
+  preferred_sub_lane?: number | null
+  force_full_width?: boolean | null
   custom_name?: string | null
   notes: string | null
   device: Record<string, unknown>
@@ -122,17 +124,25 @@ export default function LayoutPrintPage() {
     }
 
     const rows = (itemData ?? []) as LayoutItemRow[]
-    const mapped: LayoutItemWithDevice[] = rows.map((row) => ({
-      id: row.id,
-      layout_id: row.layout_id,
-      device_id: row.device_id,
-      start_u: row.start_u,
-      facing: row.facing as LayoutItemWithDevice['facing'],
-      preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
-      custom_name: row.custom_name ?? null,
-      notes: row.notes,
-      device: row.device as unknown as LayoutItemWithDevice['device'],
-    }))
+    const mapped: LayoutItemWithDevice[] = rows.map((row) => {
+      const rawDevice = row.device as Record<string, unknown>
+      return {
+        id: row.id,
+        layout_id: row.layout_id,
+        device_id: row.device_id,
+        start_u: row.start_u,
+        facing: row.facing as LayoutItemWithDevice['facing'],
+        preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
+        preferred_sub_lane: row.preferred_sub_lane === 0 || row.preferred_sub_lane === 1 ? row.preferred_sub_lane : null,
+        force_full_width: row.force_full_width === true,
+        custom_name: row.custom_name ?? null,
+        notes: row.notes,
+        device: {
+          ...rawDevice,
+          is_half_rack: rawDevice.is_half_rack === true,
+        } as unknown as LayoutItemWithDevice['device'],
+      }
+    })
 
     setRack(rackData as Rack)
     setItems(mapped)

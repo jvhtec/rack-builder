@@ -26,6 +26,7 @@ export interface Device {
   depth_mm: number
   weight_kg: number
   power_w: number
+  is_half_rack: boolean
   category_id: string
   category?: DeviceCategory | null
   front_image_path: string | null
@@ -61,6 +62,8 @@ export interface LayoutItem {
   start_u: number
   facing: DeviceFacing
   preferred_lane: 0 | 1 | null
+  preferred_sub_lane: 0 | 1 | null
+  force_full_width: boolean
   custom_name: string | null
   notes: string | null
 }

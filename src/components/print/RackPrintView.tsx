@@ -1,8 +1,9 @@
 import { useMemo, type CSSProperties } from 'react'
 import type { DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
-import { buildSlots, getSlotTopPx, overlaps } from '../editor/rackGeometry'
+import { buildSlots, getSlotTopPx } from '../editor/rackGeometry'
 import { getRackPanelAspect } from '../../lib/rackVisual'
+import { buildSlotAssignments, getItemSlot, getSlotStyle } from '../../lib/rackPositions'
 
 const PRINT_RAIL_WIDTH_PX = 10
 const PRINT_SINGLE_WIDTH_PX = 420
@@ -17,57 +18,11 @@ function getPrintSlotHeight(rackWidth: 'single' | 'dual'): number {
   return Math.round(lanePx / getRackPanelAspect(1))
 }
 
-interface LaneAssignments {
-  laneByItemId: Map<string, number>
-  laneItems: [LayoutItemWithDevice[], LayoutItemWithDevice[]]
-}
-
 interface RackPrintViewProps {
   rack: Rack
   items: LayoutItemWithDevice[]
   facing: DeviceFacing
   showDeviceDetails?: boolean
-}
-
-function buildLaneAssignments(items: LayoutItemWithDevice[]): LaneAssignments {
-  const laneByItemId = new Map<string, number>()
-  const laneItems: [LayoutItemWithDevice[], LayoutItemWithDevice[]] = [[], []]
-  const ordered = [...items].sort((a, b) => {
-    if (a.start_u !== b.start_u) return a.start_u - b.start_u
-    return a.id.localeCompare(b.id)
-  })
-
-  for (const item of ordered) {
-    const preferredLane = item.preferred_lane === 0 || item.preferred_lane === 1 ? item.preferred_lane : null
-    if (preferredLane !== null) {
-      const preferredBlocked = laneItems[preferredLane]
-        .some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
-      if (!preferredBlocked) {
-        laneByItemId.set(item.id, preferredLane)
-        laneItems[preferredLane].push(item)
-        continue
-      }
-    }
-
-    const lane0Blocked = laneItems[0].some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
-    if (!lane0Blocked) {
-      laneByItemId.set(item.id, 0)
-      laneItems[0].push(item)
-      continue
-    }
-
-    const lane1Blocked = laneItems[1].some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
-    if (!lane1Blocked) {
-      laneByItemId.set(item.id, 1)
-      laneItems[1].push(item)
-      continue
-    }
-
-    laneByItemId.set(item.id, 0)
-    laneItems[0].push(item)
-  }
-
-  return { laneByItemId, laneItems }
 }
 
 export default function RackPrintView({
@@ -79,20 +34,11 @@ export default function RackPrintView({
   const laneCount = rack.width === 'dual' ? 2 : 1
   const slotHeight = useMemo(() => getPrintSlotHeight(rack.width), [rack.width])
   const labelOffsetPx = PRINT_CASING_HEIGHT_PX + PRINT_HEADER_HEIGHT_PX
-  const visibleItems = useMemo(
-    () => items,
-    [items],
-  )
   const slots = useMemo(() => buildSlots(rack.rack_units), [rack.rack_units])
-  const laneAssignments = useMemo(() => {
-    if (laneCount === 1) {
-      return {
-        laneByItemId: new Map<string, number>(visibleItems.map((item) => [item.id, 0])),
-        laneItems: [visibleItems, []] as [LayoutItemWithDevice[], LayoutItemWithDevice[]],
-      }
-    }
-    return buildLaneAssignments(visibleItems)
-  }, [laneCount, visibleItems])
+  const slotAssignments = useMemo(
+    () => buildSlotAssignments(items, rack.width),
+    [items, rack.width],
+  )
 
   const rackStyle = {
     '--print-slot-height': `${slotHeight}px`,
@@ -137,13 +83,11 @@ export default function RackPrintView({
             ))}
 
             <div className="print-rack-device-layer">
-              {visibleItems.map((item, index) => {
+              {items.map((item, index) => {
                 const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
-                const laneIndex = laneAssignments.laneByItemId.get(item.id) ?? 0
-                const visualLaneIndex = laneCount === 2 && facing === 'rear' ? 1 - laneIndex : laneIndex
-                const laneLeft = laneCount === 1 ? '0%' : `${visualLaneIndex * 50}%`
-                const laneWidth = laneCount === 1 ? '100%' : '50%'
+                const slot = slotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
+                const { left: laneLeft, width: laneWidth } = getSlotStyle(slot, rack.width, facing)
                 const height = item.device.rack_units * slotHeight
                 const preferredImagePath = facing === 'front' ? item.device.front_image_path : item.device.rear_image_path
                 const imageUrl = getDeviceImageUrl(preferredImagePath)

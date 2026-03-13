@@ -10,6 +10,7 @@ interface DeviceRow {
   depth_mm: number
   weight_kg: number
   power_w: number
+  is_half_rack?: boolean
   category_id: string
   front_image_path: string | null
   rear_image_path: string | null
@@ -165,6 +166,7 @@ export function useDevices() {
       depth_mm: row.depth_mm,
       weight_kg: row.weight_kg,
       power_w: row.power_w,
+      is_half_rack: row.is_half_rack === true,
       category_id: row.category_id,
       front_image_path: row.front_image_path,
       rear_image_path: row.rear_image_path,
@@ -196,6 +198,7 @@ export function useDevices() {
     depth_mm: number
     weight_kg: number
     power_w: number
+    is_half_rack?: boolean
     category_id: string
     front_image_path?: string | null
     rear_image_path?: string | null
@@ -214,6 +217,7 @@ export function useDevices() {
       depth_mm: number
       weight_kg: number
       power_w: number
+      is_half_rack: boolean
       category_id: string
       front_image_path: string | null
       rear_image_path: string | null

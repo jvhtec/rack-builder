@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import type { DeviceFacing, LayoutItemWithDevice } from '../types'
-import { hasOverlap, isWithinBounds } from '../lib/overlap'
+import { isWithinBounds } from '../lib/overlap'
 
 interface LayoutItemRow {
   id: string
@@ -10,6 +10,8 @@ interface LayoutItemRow {
   start_u: number
   facing: string
   preferred_lane?: number | null
+  preferred_sub_lane?: number | null
+  force_full_width?: boolean | null
   custom_name?: string | null
   notes: string | null
   device: Record<string, unknown>
@@ -44,17 +46,25 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
       setError(err.message)
     } else {
       const rows = (data ?? []) as LayoutItemRow[]
-      const mapped: LayoutItemWithDevice[] = rows.map((row) => ({
-        id: row.id,
-        layout_id: row.layout_id,
-        device_id: row.device_id,
-        start_u: row.start_u,
-        facing: row.facing as DeviceFacing,
-        preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
-        custom_name: row.custom_name ?? null,
-        notes: row.notes,
-        device: row.device as unknown as LayoutItemWithDevice['device'],
-      }))
+      const mapped: LayoutItemWithDevice[] = rows.map((row) => {
+        const rawDevice = row.device as Record<string, unknown>
+        return {
+          id: row.id,
+          layout_id: row.layout_id,
+          device_id: row.device_id,
+          start_u: row.start_u,
+          facing: row.facing as DeviceFacing,
+          preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
+          preferred_sub_lane: row.preferred_sub_lane === 0 || row.preferred_sub_lane === 1 ? row.preferred_sub_lane : null,
+          force_full_width: row.force_full_width === true,
+          custom_name: row.custom_name ?? null,
+          notes: row.notes,
+          device: {
+            ...rawDevice,
+            is_half_rack: rawDevice.is_half_rack === true,
+          } as unknown as LayoutItemWithDevice['device'],
+        }
+      })
       setItems(mapped)
       setError(null)
     }
@@ -78,6 +88,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     deviceRackUnits: number,
     preferredLane?: 0 | 1,
     allowOverlap = false,
+    preferredSubLane?: 0 | 1,
   ) => {
     if (!layoutId) throw new Error('Missing layout id')
 
@@ -85,8 +96,16 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
       throw new Error('Device exceeds rack bounds')
     }
 
-    if (!allowOverlap && hasOverlap(startU, deviceRackUnits, facing, items)) {
-      throw new Error('Position overlaps with existing device')
+    if (!allowOverlap) {
+      // Basic overlap check for full-rack single-rack placements only
+      const newTop = startU + deviceRackUnits - 1
+      const hasConflict = items
+        .filter((item) => item.facing === facing)
+        .some((item) => {
+          const existingTop = item.start_u + item.device.rack_units - 1
+          return startU <= existingTop && newTop >= item.start_u
+        })
+      if (hasConflict) throw new Error('Position overlaps with existing device')
     }
 
     const payload = {
@@ -95,6 +114,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
       start_u: startU,
       facing,
       preferred_lane: preferredLane ?? null,
+      preferred_sub_lane: preferredSubLane ?? null,
     }
     let { data, error: err } = await supabase
       .from('layout_items')
@@ -135,6 +155,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     facing: DeviceFacing,
     preferredLane?: 0 | 1,
     allowOverlap = false,
+    preferredSubLane?: 0 | 1,
   ) => {
     const item = items.find((i) => i.id === itemId)
     if (!item) return
@@ -143,13 +164,25 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
       throw new Error('Device exceeds rack bounds')
     }
 
-    if (!allowOverlap && hasOverlap(newStartU, item.device.rack_units, facing, items, itemId)) {
-      throw new Error('Position overlaps with existing device')
+    if (!allowOverlap) {
+      const newTop = newStartU + item.device.rack_units - 1
+      const hasConflict = items
+        .filter((i) => i.facing === facing && i.id !== itemId)
+        .some((existing) => {
+          const existingTop = existing.start_u + existing.device.rack_units - 1
+          return newStartU <= existingTop && newTop >= existing.start_u
+        })
+      if (hasConflict) throw new Error('Position overlaps with existing device')
     }
 
     let { error: err } = await supabase
       .from('layout_items')
-      .update({ start_u: newStartU, facing, preferred_lane: preferredLane ?? null })
+      .update({
+        start_u: newStartU,
+        facing,
+        preferred_lane: preferredLane ?? null,
+        preferred_sub_lane: preferredSubLane ?? null,
+      })
       .eq('id', itemId)
 
     if (err && isMissingPreferredLaneColumn(err)) {
@@ -166,7 +199,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
 
   const updateItemDetails = async (
     itemId: string,
-    updates: Partial<{ notes: string; custom_name: string | null }>,
+    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean }>,
   ) => {
     let { error: err } = await supabase
       .from('layout_items')

@@ -23,11 +23,14 @@ interface RackSlotProps {
   canPlaceAtSlot?: (
     slotU: number,
     rackUnits: number,
+    isHalfRack: boolean,
+    depthMm: number,
     excludeItemId?: string,
     preferredLane?: 0 | 1,
+    preferredSubLane?: 0 | 1,
   ) => boolean
-  onDropNew: (deviceId: string, startU: number, rackUnits: number, preferredLane?: 0 | 1) => void
-  onDropMove: (itemId: string, newStartU: number, preferredLane?: 0 | 1) => void
+  onDropNew: (deviceId: string, startU: number, rackUnits: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => void
+  onDropMove: (itemId: string, newStartU: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => void
 }
 
 export default function RackSlot({
@@ -43,19 +46,50 @@ export default function RackSlot({
 }: RackSlotProps) {
   const slotRef = useRef<HTMLDivElement | null>(null)
 
-  const getPreferredLane = useCallback((point: XYCoord | null): 0 | 1 => {
-    if (laneCount === 1) return 0
-    if (!point || !slotRef.current) return 0
+  /**
+   * Detect which preferred lane/sub-lane the user is hovering over.
+   * Returns { preferredLane, preferredSubLane } based on drag item type and rack config.
+   */
+  const getPreferredPosition = useCallback(
+    (point: XYCoord | null, isHalfRack: boolean): { preferredLane: 0 | 1 | undefined; preferredSubLane: 0 | 1 | undefined } => {
+      if (!point || !slotRef.current) return { preferredLane: undefined, preferredSubLane: undefined }
 
-    const bounds = slotRef.current.getBoundingClientRect()
-    const laneAreaLeft = bounds.left + RACK_RAIL_WIDTH_PX
-    const laneAreaWidth = bounds.width - RACK_RAIL_WIDTH_PX * 2
-    if (laneAreaWidth <= 0) return 0
+      const bounds = slotRef.current.getBoundingClientRect()
+      const laneAreaLeft = bounds.left + RACK_RAIL_WIDTH_PX
+      const laneAreaWidth = bounds.width - RACK_RAIL_WIDTH_PX * 2
+      if (laneAreaWidth <= 0) return { preferredLane: undefined, preferredSubLane: undefined }
 
-    const visualLane = point.x >= laneAreaLeft + laneAreaWidth / 2 ? 1 : 0
-    if (facing === 'rear') return (1 - visualLane) as 0 | 1
-    return visualLane
-  }, [facing, laneCount])
+      const relX = point.x - laneAreaLeft
+      const fraction = Math.max(0, Math.min(1, relX / laneAreaWidth))
+
+      if (laneCount === 1) {
+        if (!isHalfRack) return { preferredLane: undefined, preferredSubLane: undefined }
+        // Single rack + half-rack: detect left (0) or right (1) half
+        const visualLane = fraction >= 0.5 ? 1 : 0
+        const preferredLane = facing === 'rear' ? ((1 - visualLane) as 0 | 1) : (visualLane as 0 | 1)
+        return { preferredLane, preferredSubLane: undefined }
+      }
+
+      // Dual rack
+      if (!isHalfRack) {
+        // Detect which column (0 = left, 1 = right)
+        const visualLane = fraction >= 0.5 ? 1 : 0
+        const preferredLane = facing === 'rear' ? ((1 - visualLane) as 0 | 1) : (visualLane as 0 | 1)
+        return { preferredLane, preferredSubLane: undefined }
+      }
+
+      // Dual rack + half-rack: detect which quarter (4 zones)
+      const quarter = Math.floor(fraction * 4) as 0 | 1 | 2 | 3
+      const safeQuarter = Math.min(3, quarter) as 0 | 1 | 2 | 3
+      // Quarters 0,1 = column 0 (sub 0,1); Quarters 2,3 = column 1 (sub 0,1)
+      const visualCol = safeQuarter >= 2 ? 1 : 0
+      const visualSub = (safeQuarter % 2) as 0 | 1
+      const preferredLane = facing === 'rear' ? ((1 - visualCol) as 0 | 1) : (visualCol as 0 | 1)
+      const preferredSubLane = facing === 'rear' ? ((1 - visualSub) as 0 | 1) : visualSub
+      return { preferredLane, preferredSubLane }
+    },
+    [facing, laneCount],
+  )
 
   const [{ isOver, canDrop }, dropRef] = useDrop<
     DeviceDragItem | PlacedDeviceDragItem,
@@ -66,9 +100,12 @@ export default function RackSlot({
     canDrop: (dragItem, monitor) => {
       if (!isWithinBounds(slotU, dragItem.rackUnits, totalRackUnits)) return false
       const excludeId = dragItem.type === PLACED_DEVICE_TYPE ? dragItem.itemId : undefined
-      const preferredLane = getPreferredLane(monitor.getClientOffset())
+      const { preferredLane, preferredSubLane } = getPreferredPosition(
+        monitor.getClientOffset(),
+        dragItem.isHalfRack,
+      )
       if (canPlaceAtSlot) {
-        return canPlaceAtSlot(slotU, dragItem.rackUnits, excludeId, preferredLane)
+        return canPlaceAtSlot(slotU, dragItem.rackUnits, dragItem.isHalfRack, dragItem.depthMm, excludeId, preferredLane, preferredSubLane)
       }
       return !items
         .filter((item) => item.facing === facing && item.id !== excludeId)
@@ -79,11 +116,14 @@ export default function RackSlot({
         })
     },
     drop: (dragItem, monitor) => {
-      const preferredLane = getPreferredLane(monitor.getClientOffset())
+      const { preferredLane, preferredSubLane } = getPreferredPosition(
+        monitor.getClientOffset(),
+        dragItem.isHalfRack,
+      )
       if (dragItem.type === PLACED_DEVICE_TYPE) {
-        onDropMove(dragItem.itemId, slotU, preferredLane)
+        onDropMove(dragItem.itemId, slotU, preferredLane, preferredSubLane)
       } else {
-        onDropNew(dragItem.deviceId, slotU, dragItem.rackUnits, preferredLane)
+        onDropNew(dragItem.deviceId, slotU, dragItem.rackUnits, preferredLane, preferredSubLane)
       }
     },
     collect: (monitor) => ({
@@ -91,6 +131,7 @@ export default function RackSlot({
       canDrop: monitor.canDrop(),
     }),
   })
+
   const setRefs: RefCallback<HTMLDivElement> = useCallback((node) => {
     slotRef.current = node
     dropRef(node)

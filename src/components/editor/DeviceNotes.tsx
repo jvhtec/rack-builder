@@ -6,13 +6,14 @@ import type { LayoutItemWithDevice } from '../../types'
 
 interface DeviceNotesProps {
   item: LayoutItemWithDevice | null
-  onSave: (itemId: string, updates: { notes: string; custom_name: string | null }) => Promise<void>
+  onSave: (itemId: string, updates: { notes: string; custom_name: string | null; force_full_width?: boolean }) => Promise<void>
   onClose: () => void
 }
 
 export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps) {
   const [customName, setCustomName] = useState(item?.custom_name ?? '')
   const [notes, setNotes] = useState(item?.notes ?? '')
+  const [forceFullWidth, setForceFullWidth] = useState(item?.force_full_width ?? false)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -21,6 +22,7 @@ export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps)
     await onSave(item.id, {
       custom_name: customName.trim() || null,
       notes,
+      ...(item.device.is_half_rack ? { force_full_width: forceFullWidth } : {}),
     })
     setSaving(false)
     onClose()
@@ -47,6 +49,19 @@ export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps)
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Add notes for this device placement..."
         />
+        {item?.device.is_half_rack && (
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={forceFullWidth}
+              onChange={(e) => setForceFullWidth(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">
+              Full-width span (shelf / custom ears)
+            </span>
+          </label>
+        )}
       </div>
       <div className="flex justify-end gap-3 mt-4">
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
