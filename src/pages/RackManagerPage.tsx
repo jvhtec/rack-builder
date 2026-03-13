@@ -47,7 +47,7 @@ export default function RackManagerPage() {
     <div>
       <PageHeader
         title="Rack Manager"
-        action={<Button onClick={() => setFormOpen(true)}>Add Rack</Button>}
+        action={<Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">Add Rack</Button>}
       />
       <RackList racks={racks} onEdit={handleEdit} onDelete={setDeletingRack} />
 

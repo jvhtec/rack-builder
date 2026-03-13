@@ -34,7 +34,7 @@ export default function LayoutManagerPage() {
       <PageHeader
         title="Layout Manager"
         action={
-          <Button onClick={() => setFormOpen(true)} disabled={racks.length === 0}>
+          <Button onClick={() => setFormOpen(true)} disabled={racks.length === 0} className="w-full sm:w-auto">
             New Layout
           </Button>
         }

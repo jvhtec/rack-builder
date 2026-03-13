@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
+import { TouchBackend } from 'react-dnd-touch-backend'
 import { supabase } from '../lib/supabase'
 import { useLayoutItems } from '../hooks/useLayoutItems'
 import { filterDevicesByCategory, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
@@ -131,6 +132,9 @@ export default function LayoutEditorPage() {
   const [selectedDeviceTemplate, setSelectedDeviceTemplate] = useState<string | null>(null)
   const [showDeviceNames, setShowDeviceNames] = useState(true)
   const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768)
+  const [isTouchLikeDevice, setIsTouchLikeDevice] = useState<boolean>(
+    () => window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window,
+  )
   const [mobileDualLane, setMobileDualLane] = useState<0 | 1>(0)
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
 
@@ -185,6 +189,27 @@ export default function LayoutEditorPage() {
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
+
+  useEffect(() => {
+    const coarsePointerQuery = window.matchMedia('(pointer: coarse)')
+    const updateTouchLike = () => {
+      setIsTouchLikeDevice(coarsePointerQuery.matches || 'ontouchstart' in window)
+    }
+
+    updateTouchLike()
+    coarsePointerQuery.addEventListener('change', updateTouchLike)
+    return () => coarsePointerQuery.removeEventListener('change', updateTouchLike)
+  }, [])
+
+  const dndBackend = isTouchLikeDevice ? TouchBackend : HTML5Backend
+  const dndOptions = isTouchLikeDevice
+    ? {
+        enableMouseEvents: true,
+        delayTouchStart: 120,
+        touchSlop: 8,
+        ignoreContextMenu: true,
+      }
+    : undefined
 
   useEffect(() => {
     if (rack?.width !== 'dual') {
@@ -405,7 +430,7 @@ export default function LayoutEditorPage() {
 
   if (!isMobile) {
     return (
-      <DndProvider backend={HTML5Backend}>
+      <DndProvider backend={dndBackend} options={dndOptions}>
         <div className="flex h-screen bg-gray-100">
           <DevicePalette
             devices={filteredDevices}
