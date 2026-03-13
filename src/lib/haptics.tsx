@@ -5,17 +5,12 @@ import type { HapticInput, TriggerOptions } from 'web-haptics'
 
 type Trigger = (input?: HapticInput, options?: TriggerOptions) => void
 
-const noop: Trigger = () => {}
-
-const HapticsContext = createContext<{ trigger: Trigger }>({ trigger: noop })
+const HapticsContext = createContext<{ trigger: Trigger }>({ trigger: () => {} })
 
 export function HapticsProvider({ children }: { children: ReactNode }) {
-  const { trigger, isSupported } = useWebHaptics()
+  const { trigger } = useWebHaptics()
 
-  const value = useMemo(
-    () => ({ trigger: isSupported ? trigger : noop }),
-    [trigger, isSupported],
-  )
+  const value = useMemo(() => ({ trigger }), [trigger])
 
   return <HapticsContext value={value}>{children}</HapticsContext>
 }
