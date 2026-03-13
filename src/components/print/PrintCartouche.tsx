@@ -14,6 +14,7 @@ export default function PrintCartouche({
   scaleLabel,
   generatedAt,
 }: PrintCartoucheProps) {
+  const logoSrc = '/sector%20pro%20logo.png'
   const generatedAtLabel = useMemo(
     () => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(generatedAt),
     [generatedAt],
@@ -43,6 +44,9 @@ export default function PrintCartouche({
               <p className="print-cartouche-label">{field.label}</p>
               <p className="print-cartouche-value" title={field.value}>{field.value}</p>
             </>
+          )}
+          {field.isLogo && (
+            <img src={logoSrc} alt="Sector Pro" className="print-cartouche-logo-image" />
           )}
         </div>
       ))}

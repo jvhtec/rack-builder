@@ -38,6 +38,17 @@ function buildLaneAssignments(items: LayoutItemWithDevice[]): LaneAssignments {
   })
 
   for (const item of ordered) {
+    const preferredLane = item.preferred_lane === 0 || item.preferred_lane === 1 ? item.preferred_lane : null
+    if (preferredLane !== null) {
+      const preferredBlocked = laneItems[preferredLane]
+        .some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
+      if (!preferredBlocked) {
+        laneByItemId.set(item.id, preferredLane)
+        laneItems[preferredLane].push(item)
+        continue
+      }
+    }
+
     const lane0Blocked = laneItems[0].some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
     if (!lane0Blocked) {
       laneByItemId.set(item.id, 0)
@@ -132,8 +143,8 @@ export default function RackPrintView({
                 const laneLeft = laneCount === 1 ? '0%' : `${laneIndex * 50}%`
                 const laneWidth = laneCount === 1 ? '100%' : '50%'
                 const height = item.device.rack_units * slotHeight
-                const imagePath = facing === 'front' ? item.device.front_image_path : item.device.rear_image_path
-                const imageUrl = getDeviceImageUrl(imagePath)
+                const preferredImagePath = facing === 'front' ? item.device.front_image_path : item.device.rear_image_path
+                const imageUrl = getDeviceImageUrl(preferredImagePath)
 
                 return (
                   <div
@@ -152,7 +163,9 @@ export default function RackPrintView({
                         {imageUrl ? (
                           <img src={imageUrl} alt={`${item.device.brand} ${item.device.model}`} />
                         ) : (
-                          <div className="print-rack-device-fallback">No Image</div>
+                          <div className="print-rack-device-fallback">
+                            <span>{item.device.brand} {item.device.model}</span>
+                          </div>
                         )}
                       </div>
 
