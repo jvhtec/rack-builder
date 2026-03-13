@@ -93,7 +93,9 @@
   padding: 5mm;
   display: flex;
   gap: 8mm;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
 .print-rack-view {
