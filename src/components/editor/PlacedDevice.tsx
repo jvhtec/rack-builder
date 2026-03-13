@@ -55,12 +55,14 @@ export default function PlacedDevice({
       ref={dragRef as unknown as LegacyRef<HTMLDivElement>}
       className={`rack-device ${hasImage ? 'rack-device--has-image' : ''} ${isDragging ? 'rack-device--dragging' : ''}`}
       style={{ height: `${height}px`, cursor: interactive ? undefined : 'default' }}
+      onContextMenu={(event) => event.preventDefault()}
     >
       <div className="rack-device-media">
         {hasImage ? (
           <img
             src={imageSrc}
             alt={label}
+            draggable={false}
           />
         ) : (
           <div className="rack-device-fallback">No Image</div>

@@ -36,7 +36,7 @@ export default function DeviceList({ devices, onEdit, onDelete }: DeviceListProp
             <div className="text-xs text-gray-500 mb-3">
               {device.rack_units}U &middot; {device.depth_mm}mm &middot; {device.weight_kg}kg &middot; {device.power_w}W
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <Button variant="secondary" onClick={() => onEdit(device)}>
                 Edit
               </Button>

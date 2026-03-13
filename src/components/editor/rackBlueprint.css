@@ -209,6 +209,8 @@
   pointer-events: auto;
   transition: border-color 0.2s ease;
   box-sizing: border-box;
+  -webkit-touch-callout: none;
+  touch-action: none;
 }
 
 .rack-device:active {
@@ -236,6 +238,8 @@
   object-fit: contain;
   object-position: center;
   display: block;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
 }
 
 .rack-device--has-image .rack-device-media {

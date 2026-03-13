@@ -51,9 +51,15 @@ export default function DraggableDevice({ device }: DraggableDeviceProps) {
       className={`border rounded-md p-3 bg-white cursor-grab active:cursor-grabbing transition-opacity shadow-sm ${
         isDragging ? 'opacity-40' : 'opacity-100'
       }`}
+      onContextMenu={(event) => event.preventDefault()}
     >
       {thumbUrl && (
-        <img src={thumbUrl} alt={device.model} className="w-full h-14 object-contain bg-gray-50 rounded mb-2" />
+        <img
+          src={thumbUrl}
+          alt={device.model}
+          draggable={false}
+          className="w-full h-14 object-contain bg-gray-50 rounded mb-2"
+        />
       )}
       <div className="text-sm font-medium truncate">{device.brand} {device.model}</div>
       <div className="text-xs text-gray-500">

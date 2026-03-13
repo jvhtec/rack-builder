@@ -7,9 +7,9 @@ interface PageHeaderProps {
 
 export default function PageHeader({ title, action }: PageHeaderProps) {
   return (
-    <div className="flex items-center justify-between mb-6">
-      <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-      {action}
+    <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+      <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">{title}</h1>
+      {action ? <div className="w-full sm:w-auto">{action}</div> : null}
     </div>
   )
 }
