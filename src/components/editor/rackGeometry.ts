@@ -3,8 +3,8 @@ import { getRackPanelAspect } from '../../lib/rackVisual'
 
 export const RACK_SLOT_HEIGHT_PX = 40
 export const RACK_RAIL_WIDTH_PX = 14
-export const RACK_SINGLE_WIDTH = 'clamp(600px, 62vw, 900px)'
-export const RACK_DUAL_WIDTH = 'clamp(800px, 78vw, 1200px)'
+export const RACK_SINGLE_WIDTH = 'clamp(700px, 70vw, 1100px)'
+export const RACK_DUAL_WIDTH = 'clamp(900px, 85vw, 1400px)'
 export const STANDARD_PANEL_ASPECT = getRackPanelAspect(1)
 export const MIN_SLOT_HEIGHT_PX = 34
 
