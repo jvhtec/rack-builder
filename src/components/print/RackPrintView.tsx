@@ -59,8 +59,8 @@ export default function RackPrintView({
 }: RackPrintViewProps) {
   const laneCount = rack.width === 'dual' ? 2 : 1
   const visibleItems = useMemo(
-    () => items.filter((item) => item.facing === facing),
-    [items, facing],
+    () => items,
+    [items],
   )
   const slots = useMemo(() => buildSlots(rack.rack_units), [rack.rack_units])
   const laneAssignments = useMemo(() => {
