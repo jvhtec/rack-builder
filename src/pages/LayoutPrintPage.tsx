@@ -15,6 +15,7 @@ interface LayoutItemRow {
   start_u: number
   facing: string
   preferred_lane?: number | null
+  custom_name?: string | null
   notes: string | null
   device: Record<string, unknown>
 }
@@ -29,7 +30,7 @@ function preloadImage(url: string): Promise<void> {
 }
 
 export default function LayoutPrintPage() {
-  const { layoutId } = useParams<{ layoutId: string }>()
+  const { projectId, layoutId } = useParams<{ projectId: string; layoutId: string }>()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
@@ -49,6 +50,15 @@ export default function LayoutPrintPage() {
   const autoPrintRequested = searchParams.get('autoprint') === '1'
 
   const scaleLabel = useMemo(() => `Fit (shared) ${scale.toFixed(2)}x`, [scale])
+  const rackTotals = useMemo(() => {
+    return items.reduce(
+      (acc, item) => ({
+        weightKg: acc.weightKg + item.device.weight_kg,
+        powerW: acc.powerW + item.device.power_w,
+      }),
+      { weightKg: 0, powerW: 0 },
+    )
+  }, [items])
 
   const imageUrls = useMemo(() => {
     const urls = new Set<string>()
@@ -62,8 +72,8 @@ export default function LayoutPrintPage() {
   }, [items])
 
   const loadData = useCallback(async () => {
-    if (!layoutId) {
-      setError('Missing layout id')
+    if (!layoutId || !projectId) {
+      setError('Missing project or layout id')
       setLoading(false)
       return
     }
@@ -76,10 +86,11 @@ export default function LayoutPrintPage() {
       .from('layouts')
       .select('*')
       .eq('id', layoutId)
+      .eq('project_id', projectId)
       .single()
 
     if (layoutError) {
-      setError('Layout not found')
+      setError('Layout not found in project')
       setLoading(false)
       return
     }
@@ -118,6 +129,7 @@ export default function LayoutPrintPage() {
       start_u: row.start_u,
       facing: row.facing as LayoutItemWithDevice['facing'],
       preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
+      custom_name: row.custom_name ?? null,
       notes: row.notes,
       device: row.device as unknown as LayoutItemWithDevice['device'],
     }))
@@ -125,7 +137,7 @@ export default function LayoutPrintPage() {
     setRack(rackData as Rack)
     setItems(mapped)
     setLoading(false)
-  }, [layoutId])
+  }, [layoutId, projectId])
 
   const recalculateScale = useCallback(() => {
     const frame = drawingFrameRef.current
@@ -147,16 +159,30 @@ export default function LayoutPrintPage() {
   }, [])
 
   useEffect(() => {
-    void loadData()
+    const timeoutId = window.setTimeout(() => {
+      void loadData()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
   }, [loadData])
 
   useEffect(() => {
     let cancelled = false
-    setImagesReady(false)
+    const resetTimeoutId = window.setTimeout(() => {
+      setImagesReady(false)
+    }, 0)
 
     if (imageUrls.length === 0) {
-      setImagesReady(true)
-      return
+      const readyTimeoutId = window.setTimeout(() => {
+        setImagesReady(true)
+      }, 0)
+      return () => {
+        cancelled = true
+        window.clearTimeout(resetTimeoutId)
+        window.clearTimeout(readyTimeoutId)
+      }
     }
 
     void Promise.allSettled(imageUrls.map((url) => preloadImage(url))).then(() => {
@@ -165,6 +191,7 @@ export default function LayoutPrintPage() {
 
     return () => {
       cancelled = true
+      window.clearTimeout(resetTimeoutId)
     }
   }, [imageUrls])
 
@@ -173,16 +200,20 @@ export default function LayoutPrintPage() {
     const content = drawingContentRef.current
     if (!frame || !content) return
 
-    recalculateScale()
+    const frameId = window.requestAnimationFrame(() => recalculateScale())
     const observer = new ResizeObserver(() => recalculateScale())
     observer.observe(frame)
     observer.observe(content)
 
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      window.cancelAnimationFrame(frameId)
+    }
   }, [recalculateScale, rack?.id])
 
   useEffect(() => {
-    recalculateScale()
+    const frameId = window.requestAnimationFrame(() => recalculateScale())
+    return () => window.cancelAnimationFrame(frameId)
   }, [recalculateScale, items, imagesReady])
 
   useEffect(() => {
@@ -198,8 +229,8 @@ export default function LayoutPrintPage() {
     return (
       <div className="layout-print-error">
         <p>{error}</p>
-        <Button variant="secondary" onClick={() => navigate('/layouts')}>
-          Back to layouts
+        <Button variant="secondary" onClick={() => navigate('/projects')}>
+          Back to projects
         </Button>
       </div>
     )
@@ -219,7 +250,7 @@ export default function LayoutPrintPage() {
         <div className="layout-print-toolbar-actions">
           <Button
             variant="secondary"
-            onClick={() => navigate(layoutId ? `/editor/${layoutId}` : '/layouts')}
+            onClick={() => navigate(`/editor/project/${projectId}?layout=${layoutId}`)}
           >
             Back
           </Button>
@@ -228,7 +259,7 @@ export default function LayoutPrintPage() {
           </Button>
         </div>
         <p className="layout-print-toolbar-meta">
-          {layout.name} | {rack.name} | {imagesReady ? 'Ready' : 'Loading images'}
+          {layout.name} | {rack.name} | {rackTotals.weightKg.toFixed(2)} kg | {rackTotals.powerW} W | {imagesReady ? 'Ready' : 'Loading images'}
         </p>
       </header>
 
@@ -262,6 +293,8 @@ export default function LayoutPrintPage() {
               rack={rack}
               scaleLabel={scaleLabel}
               generatedAt={generatedAt}
+              totalWeightKg={rackTotals.weightKg}
+              totalPowerW={rackTotals.powerW}
             />
           </div>
         </section>

@@ -2,17 +2,26 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Layout } from '../types'
 
-export function useLayouts() {
+export function useLayouts(projectId?: string) {
   const [layouts, setLayouts] = useState<Layout[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchLayouts = useCallback(async () => {
+  const fetchLayouts = useCallback(async (targetProjectId?: string) => {
+    const resolvedProjectId = targetProjectId ?? projectId
+    if (!resolvedProjectId) {
+      setLayouts([])
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     const { data, error: err } = await supabase
       .from('layouts')
       .select('*')
-      .order('created_at', { ascending: false })
+      .eq('project_id', resolvedProjectId)
+      .order('created_at', { ascending: true })
+
     if (err) {
       setError(err.message)
     } else {
@@ -20,36 +29,48 @@ export function useLayouts() {
       setError(null)
     }
     setLoading(false)
-  }, [])
+  }, [projectId])
 
   useEffect(() => {
-    fetchLayouts()
-  }, [fetchLayouts])
+    const timeoutId = window.setTimeout(() => {
+      void fetchLayouts(projectId)
+    }, 0)
 
-  const createLayout = async (layout: { rack_id: string; name: string }) => {
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [fetchLayouts, projectId])
+
+  const createLayout = async (layout: { project_id?: string; rack_id: string; name: string }) => {
+    const resolvedProjectId = layout.project_id ?? projectId
+    if (!resolvedProjectId) throw new Error('Missing project id')
+
     const { data, error: err } = await supabase
       .from('layouts')
-      .insert(layout)
+      .insert({ ...layout, project_id: resolvedProjectId })
       .select()
       .single()
     if (err) throw err
-    await fetchLayouts()
+    await fetchLayouts(resolvedProjectId)
     return data as Layout
   }
 
-  const updateLayout = async (id: string, updates: Partial<{ name: string; rack_id: string }>) => {
+  const updateLayout = async (
+    id: string,
+    updates: Partial<{ name: string; rack_id: string; project_id: string }>,
+  ) => {
     const { error: err } = await supabase
       .from('layouts')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
     if (err) throw err
-    await fetchLayouts()
+    await fetchLayouts(updates.project_id ?? projectId)
   }
 
   const deleteLayout = async (id: string) => {
     const { error: err } = await supabase.from('layouts').delete().eq('id', id)
     if (err) throw err
-    await fetchLayouts()
+    await fetchLayouts(projectId)
   }
 
   return { layouts, loading, error, createLayout, updateLayout, deleteLayout, refetch: fetchLayouts }

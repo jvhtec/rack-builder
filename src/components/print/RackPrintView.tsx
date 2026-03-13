@@ -138,6 +138,7 @@ export default function RackPrintView({
 
             <div className="print-rack-device-layer">
               {visibleItems.map((item, index) => {
+                const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
                 const laneIndex = laneAssignments.laneByItemId.get(item.id) ?? 0
                 const laneLeft = laneCount === 1 ? '0%' : `${laneIndex * 50}%`
@@ -161,10 +162,10 @@ export default function RackPrintView({
                     <div className={`print-rack-device ${item.device.rack_units === 1 ? 'print-rack-device--compact' : ''}`}>
                       <div className="print-rack-device-media">
                         {imageUrl ? (
-                          <img src={imageUrl} alt={`${item.device.brand} ${item.device.model}`} />
+                          <img src={imageUrl} alt={label} />
                         ) : (
                           <div className="print-rack-device-fallback">
-                            <span>{item.device.brand} {item.device.model}</span>
+                            <span>{label}</span>
                           </div>
                         )}
                       </div>
@@ -172,8 +173,9 @@ export default function RackPrintView({
                       {showDeviceDetails && (
                         <div className="print-rack-device-meta">
                           <p className="print-rack-device-title">
-                            {item.device.brand} {item.device.model}
+                            {label}
                           </p>
+                          {item.custom_name && <p className="print-rack-device-note">{item.device.brand} {item.device.model}</p>}
                           {item.notes && <p className="print-rack-device-note">{item.notes}</p>}
                         </div>
                       )}

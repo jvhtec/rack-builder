@@ -23,7 +23,13 @@ export function useRacks() {
   }, [])
 
   useEffect(() => {
-    fetchRacks()
+    const timeoutId = window.setTimeout(() => {
+      void fetchRacks()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
   }, [fetchRacks])
 
   const createRack = async (rack: {

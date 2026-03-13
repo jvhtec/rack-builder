@@ -6,6 +6,8 @@ interface PrintCartoucheProps {
   rack: Rack
   scaleLabel: string
   generatedAt: Date
+  totalWeightKg: number
+  totalPowerW: number
 }
 
 export default function PrintCartouche({
@@ -13,6 +15,8 @@ export default function PrintCartouche({
   rack,
   scaleLabel,
   generatedAt,
+  totalWeightKg,
+  totalPowerW,
 }: PrintCartoucheProps) {
   const logoSrc = '/sector%20pro%20logo.png'
   const generatedAtLabel = useMemo(
@@ -27,8 +31,8 @@ export default function PrintCartouche({
     { label: 'Job Name', value: layout.name },
     { label: 'Rack', value: rack.name },
     { label: 'Rack Spec', value: rackSpecLabel },
-    { label: 'Views', value: 'Front + Rear' },
-    { label: 'Sheet', value: 'A3 Landscape' },
+    { label: 'Total Weight', value: `${totalWeightKg.toFixed(2)} kg` },
+    { label: 'Total Power', value: `${totalPowerW} W` },
     { label: 'Scale', value: scaleLabel },
     { label: 'Generated', value: `JVH — ${generatedAtLabel}` },
     { label: '', value: '', isLogo: true },

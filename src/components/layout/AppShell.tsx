@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 const navItems = [
   { to: '/', label: 'Devices' },
   { to: '/racks', label: 'Racks' },
-  { to: '/layouts', label: 'Layouts' },
+  { to: '/projects', label: 'Projects' },
 ]
 
 export default function AppShell() {

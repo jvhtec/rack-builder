@@ -1,0 +1,117 @@
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
+import type { Project, ProjectSummary } from '../types'
+
+interface ProjectWithLayoutsRow extends Project {
+  layouts?: Array<{ id: string }>
+}
+
+export function useProjects() {
+  const [projects, setProjects] = useState<ProjectSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchProjects = useCallback(async () => {
+    setLoading(true)
+    const { data, error: err } = await supabase
+      .from('projects')
+      .select('*, layouts(id)')
+      .order('created_at', { ascending: false })
+
+    if (err) {
+      setError(err.message)
+    } else {
+      const rows = (data ?? []) as ProjectWithLayoutsRow[]
+      const mapped: ProjectSummary[] = rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        layout_count: row.layouts?.length ?? 0,
+      }))
+      setProjects(mapped)
+      setError(null)
+    }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void fetchProjects()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [fetchProjects])
+
+  const createProjectWithInitialLayout = async (payload: {
+    project_name: string
+    initial_layout_name: string
+    rack_id: string
+  }) => {
+    const { data: projectData, error: projectErr } = await supabase
+      .from('projects')
+      .insert({ name: payload.project_name })
+      .select()
+      .single()
+
+    if (projectErr) throw projectErr
+
+    const project = projectData as Project
+
+    const { data: layoutData, error: layoutErr } = await supabase
+      .from('layouts')
+      .insert({
+        project_id: project.id,
+        name: payload.initial_layout_name,
+        rack_id: payload.rack_id,
+      })
+      .select('id')
+      .single()
+
+    if (layoutErr) {
+      await supabase.from('projects').delete().eq('id', project.id)
+      throw layoutErr
+    }
+
+    await fetchProjects()
+
+    return {
+      project,
+      layout_id: (layoutData as { id: string }).id,
+    }
+  }
+
+  const updateProject = async (id: string, updates: Partial<{ name: string }>) => {
+    const { error: err } = await supabase
+      .from('projects')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (err) throw err
+    await fetchProjects()
+  }
+
+  const deleteProject = async (id: string) => {
+    const { error: err } = await supabase.from('projects').delete().eq('id', id)
+    if (err) throw err
+    await fetchProjects()
+  }
+
+  const fetchProjectById = async (id: string): Promise<Project | null> => {
+    const { data, error: err } = await supabase.from('projects').select('*').eq('id', id).single()
+    if (err) return null
+    return data as Project
+  }
+
+  return {
+    projects,
+    loading,
+    error,
+    createProjectWithInitialLayout,
+    updateProject,
+    deleteProject,
+    fetchProjectById,
+    refetch: fetchProjects,
+  }
+}

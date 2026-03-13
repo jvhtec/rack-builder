@@ -1,29 +1,192 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Device } from '../types'
+import type { Device, DeviceCategory } from '../types'
+
+interface DeviceRow {
+  id: string
+  brand: string
+  model: string
+  rack_units: number
+  depth_mm: number
+  weight_kg: number
+  power_w: number
+  category_id: string
+  front_image_path: string | null
+  rear_image_path: string | null
+  created_at: string
+  updated_at: string
+  category?: Record<string, unknown> | null
+}
+
+export type DeviceSortKey =
+  | 'category'
+  | 'brand'
+  | 'model'
+  | 'rack_units'
+  | 'depth_mm'
+  | 'weight_kg'
+  | 'power_w'
+export type SortDirection = 'asc' | 'desc'
+
+export interface DeviceSortOption {
+  key: DeviceSortKey
+  direction: SortDirection
+}
+
+function compareText(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { sensitivity: 'base' })
+}
+
+function compareNumber(a: number, b: number): number {
+  return a - b
+}
+
+function compareDevice(a: Device, b: Device, key: DeviceSortKey): number {
+  if (key === 'category') return compareText(a.category?.name ?? '', b.category?.name ?? '')
+  if (key === 'brand') return compareText(a.brand, b.brand)
+  if (key === 'model') return compareText(a.model, b.model)
+  if (key === 'rack_units') return compareNumber(a.rack_units, b.rack_units)
+  if (key === 'weight_kg') return compareNumber(a.weight_kg, b.weight_kg)
+  if (key === 'power_w') return compareNumber(a.power_w, b.power_w)
+  return compareNumber(a.depth_mm, b.depth_mm)
+}
+
+export function sortDevices(devices: Device[], options: DeviceSortOption[]): Device[] {
+  return [...devices].sort((a, b) => {
+    for (const option of options) {
+      const result = compareDevice(a, b, option.key)
+      if (result !== 0) {
+        return option.direction === 'desc' ? -result : result
+      }
+    }
+    return compareText(a.id, b.id)
+  })
+}
+
+export function filterDevicesByCategory(devices: Device[], categoryId: string): Device[] {
+  if (categoryId === 'all') return devices
+  return devices.filter((device) => device.category_id === categoryId)
+}
+
+export async function listCategories(): Promise<DeviceCategory[]> {
+  const { data, error } = await supabase
+    .from('device_categories')
+    .select('*')
+    .order('name', { ascending: true })
+
+  if (error) throw error
+  return (data as DeviceCategory[]) ?? []
+}
+
+export async function createCategory(name: string): Promise<DeviceCategory> {
+  const trimmedName = name.trim()
+  if (!trimmedName) throw new Error('Category name is required')
+
+  const { data, error } = await supabase
+    .from('device_categories')
+    .insert({ name: trimmedName })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as DeviceCategory
+}
+
+export async function ensureCategoryByName(name: string): Promise<DeviceCategory> {
+  const trimmedName = name.trim()
+  if (!trimmedName) throw new Error('Category name is required')
+
+  const { data: existing, error: queryError } = await supabase
+    .from('device_categories')
+    .select('*')
+    .ilike('name', trimmedName)
+    .limit(1)
+    .maybeSingle()
+
+  if (queryError) throw queryError
+  if (existing) return existing as DeviceCategory
+
+  try {
+    return await createCategory(trimmedName)
+  } catch (error) {
+    const code = (error as { code?: string }).code
+    if (code !== '23505') throw error
+
+    const { data: raceExisting, error: raceQueryError } = await supabase
+      .from('device_categories')
+      .select('*')
+      .ilike('name', trimmedName)
+      .limit(1)
+      .single()
+
+    if (raceQueryError) throw raceQueryError
+    return raceExisting as DeviceCategory
+  }
+}
 
 export function useDevices() {
   const [devices, setDevices] = useState<Device[]>([])
+  const [categories, setCategories] = useState<DeviceCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const fetchDevices = useCallback(async () => {
     setLoading(true)
-    const { data, error: err } = await supabase
-      .from('devices')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (err) {
-      setError(err.message)
-    } else {
-      setDevices((data as Device[]) ?? [])
-      setError(null)
+
+    const [{ data: deviceData, error: deviceError }, { data: categoryData, error: categoryError }] = await Promise.all([
+      supabase
+        .from('devices')
+        .select('*, category:device_categories(*)')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('device_categories')
+        .select('*')
+        .order('name', { ascending: true }),
+    ])
+
+    if (deviceError) {
+      setError(deviceError.message)
+      setLoading(false)
+      return
     }
+
+    if (categoryError) {
+      setError(categoryError.message)
+      setLoading(false)
+      return
+    }
+
+    const rows = (deviceData ?? []) as DeviceRow[]
+    const mappedDevices: Device[] = rows.map((row) => ({
+      id: row.id,
+      brand: row.brand,
+      model: row.model,
+      rack_units: row.rack_units,
+      depth_mm: row.depth_mm,
+      weight_kg: row.weight_kg,
+      power_w: row.power_w,
+      category_id: row.category_id,
+      front_image_path: row.front_image_path,
+      rear_image_path: row.rear_image_path,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      category: (row.category as DeviceCategory | null) ?? null,
+    }))
+
+    setDevices(mappedDevices)
+    setCategories((categoryData as DeviceCategory[]) ?? [])
+    setError(null)
     setLoading(false)
   }, [])
 
   useEffect(() => {
-    fetchDevices()
+    const timeoutId = window.setTimeout(() => {
+      void fetchDevices()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
   }, [fetchDevices])
 
   const createDevice = async (device: {
@@ -31,6 +194,9 @@ export function useDevices() {
     model: string
     rack_units: number
     depth_mm: number
+    weight_kg: number
+    power_w: number
+    category_id: string
     front_image_path?: string | null
     rear_image_path?: string | null
   }) => {
@@ -46,6 +212,9 @@ export function useDevices() {
       model: string
       rack_units: number
       depth_mm: number
+      weight_kg: number
+      power_w: number
+      category_id: string
       front_image_path: string | null
       rear_image_path: string | null
     }>,
@@ -64,7 +233,16 @@ export function useDevices() {
     await fetchDevices()
   }
 
-  return { devices, loading, error, createDevice, updateDevice, deleteDevice, refetch: fetchDevices }
+  return {
+    devices,
+    categories,
+    loading,
+    error,
+    createDevice,
+    updateDevice,
+    deleteDevice,
+    refetch: fetchDevices,
+  }
 }
 
 export function getDeviceImageUrl(path: string | null): string | null {

@@ -43,7 +43,7 @@ export default function DraggableDevice({ device }: DraggableDeviceProps) {
         <img src={thumbUrl} alt={device.model} className="w-full h-14 object-contain bg-gray-50 rounded mb-2" />
       )}
       <div className="text-sm font-medium truncate">{device.brand} {device.model}</div>
-      <div className="text-xs text-gray-500">{device.rack_units}U</div>
+      <div className="text-xs text-gray-500">{device.rack_units}U · {device.power_w}W</div>
     </div>
   )
 }

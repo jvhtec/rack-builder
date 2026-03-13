@@ -11,20 +11,43 @@ export interface Rack {
   updated_at: string
 }
 
+export interface DeviceCategory {
+  id: string
+  name: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Device {
   id: string
   brand: string
   model: string
   rack_units: number
   depth_mm: number
+  weight_kg: number
+  power_w: number
+  category_id: string
+  category?: DeviceCategory | null
   front_image_path: string | null
   rear_image_path: string | null
   created_at: string
   updated_at: string
 }
 
+export interface Project {
+  id: string
+  name: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectSummary extends Project {
+  layout_count: number
+}
+
 export interface Layout {
   id: string
+  project_id: string
   rack_id: string
   name: string
   created_at: string
@@ -38,6 +61,7 @@ export interface LayoutItem {
   start_u: number
   facing: DeviceFacing
   preferred_lane: 0 | 1 | null
+  custom_name: string | null
   notes: string | null
 }
 

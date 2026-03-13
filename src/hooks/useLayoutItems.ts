@@ -10,6 +10,7 @@ interface LayoutItemRow {
   start_u: number
   facing: string
   preferred_lane?: number | null
+  custom_name?: string | null
   notes: string | null
   device: Record<string, unknown>
 }
@@ -18,6 +19,12 @@ function isMissingPreferredLaneColumn(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
   const message = 'message' in error && typeof error.message === 'string' ? error.message : ''
   return message.includes('preferred_lane')
+}
+
+function isMissingCustomNameColumn(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : ''
+  return message.includes('custom_name')
 }
 
 export function useLayoutItems(layoutId: string | undefined, totalRackUnits: number) {
@@ -44,6 +51,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
         start_u: row.start_u,
         facing: row.facing as DeviceFacing,
         preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
+        custom_name: row.custom_name ?? null,
         notes: row.notes,
         device: row.device as unknown as LayoutItemWithDevice['device'],
       }))
@@ -54,7 +62,13 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
   }, [layoutId])
 
   useEffect(() => {
-    fetchItems()
+    const timeoutId = window.setTimeout(() => {
+      void fetchItems()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
   }, [fetchItems])
 
   const addItem = async (
@@ -150,14 +164,26 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     await fetchItems()
   }
 
-  const updateItemNotes = async (itemId: string, notes: string) => {
-    const { error: err } = await supabase
+  const updateItemDetails = async (
+    itemId: string,
+    updates: Partial<{ notes: string; custom_name: string | null }>,
+  ) => {
+    let { error: err } = await supabase
       .from('layout_items')
-      .update({ notes })
+      .update(updates)
       .eq('id', itemId)
+
+    if (err && isMissingCustomNameColumn(err) && 'custom_name' in updates) {
+      const fallback = await supabase
+        .from('layout_items')
+        .update({ notes: updates.notes })
+        .eq('id', itemId)
+      err = fallback.error
+    }
+
     if (err) throw err
     await fetchItems()
   }
 
-  return { items, loading, error, addItem, removeItem, moveItem, updateItemNotes, refetch: fetchItems }
+  return { items, loading, error, addItem, removeItem, moveItem, updateItemDetails, refetch: fetchItems }
 }

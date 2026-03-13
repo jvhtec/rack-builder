@@ -225,7 +225,7 @@ export default function RackGrid({
                   >
                     <div className="rack-ghost-outline">
                       {showDeviceDetails && (
-                        <div className="rack-ghost-label">{item.device.brand} {item.device.model}</div>
+                        <div className="rack-ghost-label">{item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}</div>
                       )}
                     </div>
                   </div>

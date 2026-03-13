@@ -1,10 +1,12 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import AppShell from './components/layout/AppShell'
 import DeviceManagerPage from './pages/DeviceManagerPage'
 import RackManagerPage from './pages/RackManagerPage'
-import LayoutManagerPage from './pages/LayoutManagerPage'
+import ProjectManagerPage from './pages/ProjectManagerPage'
 import LayoutEditorPage from './pages/LayoutEditorPage'
 import LayoutPrintPage from './pages/LayoutPrintPage'
+import LegacyLayoutEditorRedirectPage from './pages/LegacyLayoutEditorRedirectPage'
+import LegacyLayoutPrintRedirectPage from './pages/LegacyLayoutPrintRedirectPage'
 
 export default function App() {
   return (
@@ -13,10 +15,13 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<DeviceManagerPage />} />
           <Route path="/racks" element={<RackManagerPage />} />
-          <Route path="/layouts" element={<LayoutManagerPage />} />
+          <Route path="/projects" element={<ProjectManagerPage />} />
+          <Route path="/layouts" element={<Navigate to="/projects" replace />} />
         </Route>
-        <Route path="/editor/:layoutId" element={<LayoutEditorPage />} />
-        <Route path="/editor/:layoutId/print" element={<LayoutPrintPage />} />
+        <Route path="/editor/project/:projectId" element={<LayoutEditorPage />} />
+        <Route path="/editor/project/:projectId/print/:layoutId" element={<LayoutPrintPage />} />
+        <Route path="/editor/:layoutId" element={<LegacyLayoutEditorRedirectPage />} />
+        <Route path="/editor/:layoutId/print" element={<LegacyLayoutPrintRedirectPage />} />
       </Routes>
     </BrowserRouter>
   )

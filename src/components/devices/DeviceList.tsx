@@ -31,11 +31,10 @@ export default function DeviceList({ devices, onEdit, onDelete }: DeviceListProp
                 No image
               </div>
             )}
-            <div className="mb-1 font-medium text-gray-900">
-              {device.brand} {device.model}
-            </div>
+            <div className="mb-1 font-medium text-gray-900">{device.brand} {device.model}</div>
+            <div className="text-xs text-blue-700 mb-1">{device.category?.name ?? 'Uncategorized'}</div>
             <div className="text-xs text-gray-500 mb-3">
-              {device.rack_units}U &middot; {device.depth_mm}mm
+              {device.rack_units}U &middot; {device.depth_mm}mm &middot; {device.weight_kg}kg &middot; {device.power_w}W
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => onEdit(device)}>

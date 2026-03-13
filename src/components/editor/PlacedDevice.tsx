@@ -26,6 +26,7 @@ export default function PlacedDevice({
   onRemove,
   onEditNotes,
 }: PlacedDeviceProps) {
+  const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
   const [{ isDragging }, dragRef] = useDrag<PlacedDeviceDragItem, unknown, { isDragging: boolean }>({
     type: PLACED_DEVICE_TYPE,
     canDrag: interactive,
@@ -56,7 +57,7 @@ export default function PlacedDevice({
         {hasImage ? (
           <img
             src={imageSrc}
-            alt={`${item.device.brand} ${item.device.model}`}
+            alt={label}
           />
         ) : (
           <div className="rack-device-fallback">No Image</div>
@@ -97,8 +98,9 @@ export default function PlacedDevice({
       {showDeviceDetails && (
         <div className="rack-device-meta">
           <div className="rack-device-title">
-            {item.device.brand} {item.device.model}
+            {label}
           </div>
+          {item.custom_name && <div className="rack-device-note">{item.device.brand} {item.device.model}</div>}
           {item.notes && <div className="rack-device-note">{item.notes}</div>}
         </div>
       )}

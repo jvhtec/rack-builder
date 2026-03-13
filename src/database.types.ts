@@ -39,6 +39,27 @@ export interface Database {
         }
         Relationships: []
       }
+      device_categories: {
+        Row: {
+          id: string
+          name: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       devices: {
         Row: {
           id: string
@@ -46,6 +67,9 @@ export interface Database {
           model: string
           rack_units: number
           depth_mm: number
+          weight_kg: number
+          power_w: number
+          category_id: string
           front_image_path: string | null
           rear_image_path: string | null
           created_at: string
@@ -57,6 +81,9 @@ export interface Database {
           model: string
           rack_units: number
           depth_mm: number
+          weight_kg?: number
+          power_w?: number
+          category_id: string
           front_image_path?: string | null
           rear_image_path?: string | null
           created_at?: string
@@ -68,8 +95,40 @@ export interface Database {
           model?: string
           rack_units?: number
           depth_mm?: number
+          weight_kg?: number
+          power_w?: number
+          category_id?: string
           front_image_path?: string | null
           rear_image_path?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'devices_category_id_fkey'
+            columns: ['category_id']
+            isOneToOne: false
+            referencedRelation: 'device_categories'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          id: string
+          name: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
           created_at?: string
           updated_at?: string
         }
@@ -78,6 +137,7 @@ export interface Database {
       layouts: {
         Row: {
           id: string
+          project_id: string
           rack_id: string
           name: string
           created_at: string
@@ -85,6 +145,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          project_id: string
           rack_id: string
           name: string
           created_at?: string
@@ -92,12 +153,20 @@ export interface Database {
         }
         Update: {
           id?: string
+          project_id?: string
           rack_id?: string
           name?: string
           created_at?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: 'layouts_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'layouts_rack_id_fkey'
             columns: ['rack_id']
@@ -115,6 +184,7 @@ export interface Database {
           start_u: number
           facing: 'front' | 'rear'
           preferred_lane: number | null
+          custom_name: string | null
           notes: string | null
         }
         Insert: {
@@ -124,6 +194,7 @@ export interface Database {
           start_u: number
           facing?: 'front' | 'rear'
           preferred_lane?: number | null
+          custom_name?: string | null
           notes?: string | null
         }
         Update: {
@@ -133,6 +204,7 @@ export interface Database {
           start_u?: number
           facing?: 'front' | 'rear'
           preferred_lane?: number | null
+          custom_name?: string | null
           notes?: string | null
         }
         Relationships: [
