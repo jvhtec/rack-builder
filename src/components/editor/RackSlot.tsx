@@ -24,6 +24,7 @@ interface RackSlotProps {
     slotU: number,
     rackUnits: number,
     isHalfRack: boolean,
+    forceFullWidth: boolean,
     depthMm: number,
     excludeItemId?: string,
     preferredLane?: 0 | 1,
@@ -102,10 +103,19 @@ export default function RackSlot({
       const excludeId = dragItem.type === PLACED_DEVICE_TYPE ? dragItem.itemId : undefined
       const { preferredLane, preferredSubLane } = getPreferredPosition(
         monitor.getClientOffset(),
-        dragItem.isHalfRack,
+        dragItem.isHalfRack && !dragItem.forceFullWidth,
       )
       if (canPlaceAtSlot) {
-        return canPlaceAtSlot(slotU, dragItem.rackUnits, dragItem.isHalfRack, dragItem.depthMm, excludeId, preferredLane, preferredSubLane)
+        return canPlaceAtSlot(
+          slotU,
+          dragItem.rackUnits,
+          dragItem.isHalfRack,
+          dragItem.forceFullWidth,
+          dragItem.depthMm,
+          excludeId,
+          preferredLane,
+          preferredSubLane,
+        )
       }
       return !items
         .filter((item) => item.facing === facing && item.id !== excludeId)
@@ -118,7 +128,7 @@ export default function RackSlot({
     drop: (dragItem, monitor) => {
       const { preferredLane, preferredSubLane } = getPreferredPosition(
         monitor.getClientOffset(),
-        dragItem.isHalfRack,
+        dragItem.isHalfRack && !dragItem.forceFullWidth,
       )
       if (dragItem.type === PLACED_DEVICE_TYPE) {
         onDropMove(dragItem.itemId, slotU, preferredLane, preferredSubLane)

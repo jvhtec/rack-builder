@@ -57,6 +57,22 @@ function visualColToLanePreference(
   return { preferredLane: logicalLane, preferredSubLane: logicalSub }
 }
 
+function computeMobileColumnRange(
+  leftCssPct: string,
+  widthCssPct: string,
+  rackWidth: RackWidth,
+): { startCol: number; endCol: number; spanCols: number } {
+  const leftPct = parseFloat(leftCssPct)
+  const widthPct = parseFloat(widthCssPct)
+  const totalColumns = rackWidth === 'dual' ? 4 : 2
+  const colWidth = 100 / totalColumns
+  const startCol = Math.round(leftPct / colWidth)
+  const spanCols = Math.round(widthPct / colWidth)
+  const endCol = startCol + spanCols - 1
+  return { startCol, endCol, spanCols }
+}
+
+
 function useProject(projectId: string | undefined) {
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
@@ -234,14 +250,7 @@ export default function LayoutEditorPage() {
       if (slotU < item.start_u || slotU > getTopU(item)) return false
       const slot = mobileSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
       const { left, width } = getSlotStyle(slot, rack.width, facing)
-      // Convert CSS percentage to a 0-3 index for the mobile grid columns
-      const leftPct = parseFloat(left)
-      const widthPct = parseFloat(width)
-      const totalColumns = rack.width === 'dual' ? 4 : 2
-      const colWidth = 100 / totalColumns
-      const startCol = Math.round(leftPct / colWidth)
-      const spanCols = Math.round(widthPct / colWidth)
-      const endCol = startCol + spanCols - 1
+      const { startCol, endCol } = computeMobileColumnRange(left, width, rack.width)
       return visualSlotIndex >= startCol && visualSlotIndex <= endCol
     })
   }, [mobileItems, mobileSlotAssignments, rack, facing])
@@ -626,12 +635,12 @@ export default function LayoutEditorPage() {
                         ? (mobileSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width))
                         : null
                       const colWidthPct = 100 / mobileColumnCount
-                      const startCol = itemSlot && rack
-                        ? Math.round(parseFloat(getSlotStyle(itemSlot, rack.width, facing).left) / colWidthPct)
-                        : colIndex
-                      const spanCols = itemSlot && rack
-                        ? Math.round(parseFloat(getSlotStyle(itemSlot, rack.width, facing).width) / colWidthPct)
-                        : 1
+                      const { startCol, spanCols } = itemSlot && rack
+                        ? (() => {
+                          const { left, width } = getSlotStyle(itemSlot, rack.width, facing)
+                          return computeMobileColumnRange(left, width, rack.width)
+                        })()
+                        : { startCol: colIndex, spanCols: 1 }
                       const isLeadCol = colIndex === startCol
 
                       const isSelectableEmpty = !item && selectedDeviceTemplate
@@ -832,7 +841,7 @@ export default function LayoutEditorPage() {
       <DeviceNotes
         key={notesItem?.id ?? 'none'}
         item={notesItem}
-        onSave={updateItemDetails}
+        onSave={handleSaveNotes}
         onClose={() => setNotesItem(null)}
       />
 

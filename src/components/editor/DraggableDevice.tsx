@@ -11,6 +11,7 @@ export interface DeviceDragItem {
   deviceId: string
   rackUnits: number
   isHalfRack: boolean
+  forceFullWidth: boolean
   depthMm: number
 }
 
@@ -20,6 +21,7 @@ export interface PlacedDeviceDragItem {
   deviceId: string
   rackUnits: number
   isHalfRack: boolean
+  forceFullWidth: boolean
   depthMm: number
 }
 
@@ -35,6 +37,7 @@ export default function DraggableDevice({ device }: DraggableDeviceProps) {
       deviceId: device.id,
       rackUnits: device.rack_units,
       isHalfRack: device.is_half_rack,
+      forceFullWidth: false,
       depthMm: device.depth_mm,
     },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
