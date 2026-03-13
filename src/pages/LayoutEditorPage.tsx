@@ -238,22 +238,28 @@ export default function LayoutEditorPage() {
   }
 
   const mobileItems = useMemo(() => items.filter((item) => item.facing === facing), [items, facing])
+  const oppositeFacingItems = useMemo(
+    () => items.filter((item) => item.facing !== facing),
+    [items, facing],
+  )
+  const showOppositePreview = mobileItems.length === 0 && oppositeFacingItems.length > 0
+  const mobileVisibleItems = showOppositePreview ? oppositeFacingItems : mobileItems
 
   const mobileSlotAssignments = useMemo(
-    () => rack ? buildSlotAssignments(mobileItems, rack.width) : new Map<string, ReturnType<typeof getItemSlot>>(),
-    [mobileItems, rack],
+    () => rack ? buildSlotAssignments(mobileVisibleItems, rack.width) : new Map<string, ReturnType<typeof getItemSlot>>(),
+    [mobileVisibleItems, rack],
   )
 
   const getDeviceAtU = useCallback((slotU: number, visualSlotIndex: number) => {
     if (!rack) return undefined
-    return mobileItems.find((item) => {
+    return mobileVisibleItems.find((item) => {
       if (slotU < item.start_u || slotU > getTopU(item)) return false
       const slot = mobileSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
       const { left, width } = getSlotStyle(slot, rack.width, facing)
       const { startCol, endCol } = computeMobileColumnRange(left, width, rack.width)
       return visualSlotIndex >= startCol && visualSlotIndex <= endCol
     })
-  }, [mobileItems, mobileSlotAssignments, rack, facing])
+  }, [mobileVisibleItems, mobileSlotAssignments, rack, facing])
 
   const handleMobileSlotClick = async (slotU: number, colIndex: number) => {
     if (!selectedDeviceTemplate || !rack) return
@@ -694,10 +700,12 @@ export default function LayoutEditorPage() {
                                   </div>
                                 )}
 
-                                <div className="absolute top-1 right-1 flex gap-1 text-[10px]">
-                                  <button onClick={(e) => { e.stopPropagation(); setNotesItem(item) }} className="bg-black/45 px-1.5 py-0.5 rounded">N</button>
-                                  <button onClick={(e) => { e.stopPropagation(); void removeItem(item.id) }} className="bg-black/45 px-1.5 py-0.5 rounded">✕</button>
-                                </div>
+                                {!showOppositePreview && (
+                                  <div className="absolute top-1 right-1 flex gap-1 text-[10px]">
+                                    <button onClick={(e) => { e.stopPropagation(); setNotesItem(item) }} className="bg-black/45 px-1.5 py-0.5 rounded">N</button>
+                                    <button onClick={(e) => { e.stopPropagation(); void removeItem(item.id) }} className="bg-black/45 px-1.5 py-0.5 rounded">✕</button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
