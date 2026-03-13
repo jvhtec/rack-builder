@@ -57,7 +57,7 @@ export default function ProjectManagerPage() {
       <PageHeader
         title="Project Manager"
         action={
-          <Button onClick={openCreateModal} disabled={racks.length === 0} className="w-full sm:w-auto">
+          <Button onClick={openCreateModal} disabled={racks.length === 0}>
             New Project
           </Button>
         }

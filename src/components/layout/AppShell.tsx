@@ -8,7 +8,7 @@ const navItems = [
 
 export default function AppShell() {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 overflow-x-hidden">
       <nav className="hidden md:flex md:w-56 bg-gray-900 text-white flex-col shrink-0">
         <div className="px-4 py-5 border-b border-gray-700">
           <h1 className="text-lg font-bold tracking-tight">Rack Builder</h1>
@@ -46,7 +46,7 @@ export default function AppShell() {
         </main>
 
         <nav className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-white border-t border-gray-200">
-          <ul className="grid grid-cols-3">
+          <ul className="grid" style={{ gridTemplateColumns: `repeat(${navItems.length}, 1fr)` }}>
             {navItems.map((item) => (
               <li key={item.to}>
                 <NavLink

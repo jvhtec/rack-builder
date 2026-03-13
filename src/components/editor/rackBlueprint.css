@@ -210,7 +210,7 @@
   transition: border-color 0.2s ease;
   box-sizing: border-box;
   -webkit-touch-callout: none;
-  touch-action: none;
+  touch-action: manipulation;
 }
 
 .rack-device:active {
@@ -219,6 +219,7 @@
 
 .rack-device--dragging {
   opacity: 0.5;
+  touch-action: none;
 }
 
 .rack-device-media {

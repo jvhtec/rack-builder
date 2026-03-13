@@ -21,8 +21,8 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
   if (!isOpen) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-x-hidden sm:items-center">
+      <div className="fixed inset-0 overflow-x-hidden bg-black/50" onClick={onClose} />
       <div className="relative bg-white shadow-xl w-full max-h-[95vh] overflow-auto rounded-t-xl sm:rounded-lg sm:max-w-lg sm:mx-4 sm:max-h-[90vh]">
         <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-4 py-4 border-b sm:px-6">
           <h2 className="text-lg font-semibold">{title}</h2>
