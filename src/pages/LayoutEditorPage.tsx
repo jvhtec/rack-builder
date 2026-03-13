@@ -734,7 +734,7 @@ export default function LayoutEditorPage() {
                                 width: `${visibleSpanCols * 100}%`,
                               }}
                             >
-                              <div className="relative w-full h-full rounded border border-indigo-300/70 overflow-hidden bg-slate-700">
+                              <div className="relative w-full h-full rounded border border-indigo-300/70 overflow-hidden bg-slate-700" style={{ WebkitTouchCallout: 'none', userSelect: 'none' }} onContextMenu={(e) => e.preventDefault()}>
                                 {(() => {
                                   const imagePath = facing === 'front'
                                     ? item.device.front_image_path
@@ -745,6 +745,8 @@ export default function LayoutEditorPage() {
                                       src={imageUrl}
                                       alt={item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
                                       className="w-full h-full object-fill"
+                                      draggable={false}
+                                      onContextMenu={(e) => e.preventDefault()}
                                     />
                                   ) : (
                                     <div className="w-full h-full bg-indigo-500/80" />
