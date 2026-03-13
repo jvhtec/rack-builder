@@ -82,11 +82,14 @@
   outline: 1px solid #000;
   outline-offset: 4px;
   background: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .layout-print-drawing-scale {
   width: max-content;
-  transform-origin: top left;
+  transform-origin: top center;
 }
 
 .layout-print-drawing-row {
