@@ -584,7 +584,7 @@ export default function LayoutEditorPage() {
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden">
-      <header className="flex items-center justify-between px-4 h-14 bg-slate-900 border-b border-slate-800 shrink-0 z-30">
+      <header className="flex items-center justify-between px-4 h-14 bg-slate-900 border-b border-slate-800 shrink-0 z-30" style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(3.5rem + env(safe-area-inset-top))' }}>
         <button onClick={() => navigate('/projects')} className="text-slate-300 text-sm font-semibold">
           ← Back
         </button>
@@ -679,7 +679,7 @@ export default function LayoutEditorPage() {
           </div>
         )}
 
-        <div className="flex justify-center p-5 pb-28 min-h-full">
+        <div className="flex justify-center p-5 min-h-full" style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}>
           <div className="relative w-full max-w-[360px]">
             <div className="bg-slate-900 rounded-t-xl border-x-[10px] border-t-[10px] border-slate-800 shadow-2xl">
               {slots.map((u) => (
@@ -784,7 +784,7 @@ export default function LayoutEditorPage() {
         </div>
       </main>
 
-      <footer className="h-16 bg-slate-900 border-t border-slate-800 flex items-center justify-around shrink-0 z-30">
+      <footer className="bg-slate-900 border-t border-slate-800 flex items-center justify-around shrink-0 z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom)', minHeight: 'calc(4rem + env(safe-area-inset-bottom))' }}>
         <button
           onClick={() => { setActiveTab('devices'); setIsSheetOpen(true) }}
           className={`flex flex-col items-center gap-1 ${selectedDeviceTemplate ? 'text-indigo-400' : 'text-slate-400'}`}

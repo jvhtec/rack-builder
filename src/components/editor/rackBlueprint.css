@@ -210,7 +210,9 @@
   transition: border-color 0.2s ease;
   box-sizing: border-box;
   -webkit-touch-callout: none;
-  touch-action: manipulation;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .rack-device:active {

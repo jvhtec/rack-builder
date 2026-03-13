@@ -51,6 +51,7 @@ export default function DraggableDevice({ device }: DraggableDeviceProps) {
       className={`border rounded-md p-3 bg-white cursor-grab active:cursor-grabbing transition-opacity shadow-sm ${
         isDragging ? 'opacity-40' : 'opacity-100'
       }`}
+      style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
       onContextMenu={(event) => event.preventDefault()}
     >
       {thumbUrl && (
