@@ -2,12 +2,20 @@ import { useMemo, type CSSProperties } from 'react'
 import type { DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { buildSlots, getSlotTopPx, overlaps } from '../editor/rackGeometry'
+import { getRackPanelAspect } from '../../lib/rackVisual'
 
-const PRINT_SLOT_HEIGHT_PX = 22
 const PRINT_RAIL_WIDTH_PX = 10
 const PRINT_SINGLE_WIDTH_PX = 420
 const PRINT_DUAL_WIDTH_PX = 690
-const PRINT_LABEL_OFFSET_PX = 44
+const PRINT_CASING_HEIGHT_PX = 16
+const PRINT_HEADER_HEIGHT_PX = 28
+
+function getPrintSlotHeight(rackWidth: 'single' | 'dual'): number {
+  const totalPx = rackWidth === 'dual' ? PRINT_DUAL_WIDTH_PX : PRINT_SINGLE_WIDTH_PX
+  const laneCount = rackWidth === 'dual' ? 2 : 1
+  const lanePx = totalPx / laneCount
+  return Math.round(lanePx / getRackPanelAspect(1))
+}
 
 interface LaneAssignments {
   laneByItemId: Map<string, number>
@@ -58,6 +66,8 @@ export default function RackPrintView({
   showDeviceDetails = true,
 }: RackPrintViewProps) {
   const laneCount = rack.width === 'dual' ? 2 : 1
+  const slotHeight = useMemo(() => getPrintSlotHeight(rack.width), [rack.width])
+  const labelOffsetPx = PRINT_CASING_HEIGHT_PX + PRINT_HEADER_HEIGHT_PX
   const visibleItems = useMemo(
     () => items,
     [items],
@@ -74,7 +84,7 @@ export default function RackPrintView({
   }, [laneCount, visibleItems])
 
   const rackStyle = {
-    '--print-slot-height': `${PRINT_SLOT_HEIGHT_PX}px`,
+    '--print-slot-height': `${slotHeight}px`,
     '--print-rail-width': `${PRINT_RAIL_WIDTH_PX}px`,
     width: `${rack.width === 'dual' ? PRINT_DUAL_WIDTH_PX : PRINT_SINGLE_WIDTH_PX}px`,
   } as CSSProperties
@@ -86,9 +96,9 @@ export default function RackPrintView({
       </div>
 
       <div className="print-rack-viewport">
-        <div className="print-rack-u-labels" style={{ paddingTop: `${PRINT_LABEL_OFFSET_PX}px` }}>
+        <div className="print-rack-u-labels" style={{ paddingTop: `${labelOffsetPx}px` }}>
           {slots.map((u) => (
-            <div key={`${facing}-label-${u}`} className="print-rack-u-label-row" style={{ height: `${PRINT_SLOT_HEIGHT_PX}px` }}>
+            <div key={`${facing}-label-${u}`} className="print-rack-u-label-row" style={{ height: `${slotHeight}px` }}>
               <span className="print-rack-u-label">{u}</span>
               <span className="print-rack-u-line" />
             </div>
@@ -111,17 +121,17 @@ export default function RackPrintView({
               <div
                 key={`${facing}-slot-${u}`}
                 className="print-rack-slot-row"
-                style={{ height: `${PRINT_SLOT_HEIGHT_PX}px` }}
+                style={{ height: `${slotHeight}px` }}
               />
             ))}
 
             <div className="print-rack-device-layer">
               {visibleItems.map((item, index) => {
-                const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, PRINT_SLOT_HEIGHT_PX)
+                const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
                 const laneIndex = laneAssignments.laneByItemId.get(item.id) ?? 0
                 const laneLeft = laneCount === 1 ? '0%' : `${laneIndex * 50}%`
                 const laneWidth = laneCount === 1 ? '100%' : '50%'
-                const height = item.device.rack_units * PRINT_SLOT_HEIGHT_PX
+                const height = item.device.rack_units * slotHeight
                 const imagePath = facing === 'front' ? item.device.front_image_path : item.device.rear_image_path
                 const imageUrl = getDeviceImageUrl(imagePath)
 
