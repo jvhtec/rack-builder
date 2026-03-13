@@ -1,0 +1,20 @@
+{
+  "name": "Rack Builder",
+  "short_name": "RackBuilder",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#2563eb",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "rack_builder.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "rack_builder.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
