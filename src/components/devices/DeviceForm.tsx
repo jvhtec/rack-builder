@@ -19,6 +19,7 @@ interface DeviceFormProps {
     depth_mm: number
     weight_kg: number
     power_w: number
+    is_half_rack: boolean
     category_id: string
     front_image_path?: string | null
     rear_image_path?: string | null
@@ -36,6 +37,7 @@ export default function DeviceForm({
   const [brand, setBrand] = useState(initialData?.brand ?? '')
   const [model, setModel] = useState(initialData?.model ?? '')
   const [rackUnits, setRackUnits] = useState(initialData?.rack_units ?? 1)
+  const [isHalfRack, setIsHalfRack] = useState(initialData?.is_half_rack ?? false)
   const [depthMm, setDepthMm] = useState(initialData?.depth_mm ?? 400)
   const [weightKg, setWeightKg] = useState(initialData?.weight_kg ?? 0)
   const [powerW, setPowerW] = useState(initialData?.power_w ?? 0)
@@ -103,6 +105,7 @@ export default function DeviceForm({
         depth_mm: depthMm,
         weight_kg: weightKg,
         power_w: powerW,
+        is_half_rack: isHalfRack,
         category_id: resolvedCategoryId,
         front_image_path: frontPath,
         rear_image_path: rearPath,
@@ -164,6 +167,19 @@ export default function DeviceForm({
           onBlur={() => setRackUnits(normalizedRackUnits)}
           required
         />
+
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={isHalfRack}
+            onChange={(e) => setIsHalfRack(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-sm font-medium text-gray-700">
+            Half-rack width device (~9.5&Prime; / half of 19&Prime;)
+          </span>
+        </label>
+
         <Input
           label="Depth (mm)"
           type="number"

@@ -69,6 +69,7 @@ export interface Database {
           depth_mm: number
           weight_kg: number
           power_w: number
+          is_half_rack: boolean
           category_id: string
           front_image_path: string | null
           rear_image_path: string | null
@@ -83,6 +84,7 @@ export interface Database {
           depth_mm: number
           weight_kg?: number
           power_w?: number
+          is_half_rack?: boolean
           category_id: string
           front_image_path?: string | null
           rear_image_path?: string | null
@@ -97,6 +99,7 @@ export interface Database {
           depth_mm?: number
           weight_kg?: number
           power_w?: number
+          is_half_rack?: boolean
           category_id?: string
           front_image_path?: string | null
           rear_image_path?: string | null
@@ -184,6 +187,8 @@ export interface Database {
           start_u: number
           facing: 'front' | 'rear'
           preferred_lane: number | null
+          preferred_sub_lane: number | null
+          force_full_width: boolean
           custom_name: string | null
           notes: string | null
         }
@@ -194,6 +199,8 @@ export interface Database {
           start_u: number
           facing?: 'front' | 'rear'
           preferred_lane?: number | null
+          preferred_sub_lane?: number | null
+          force_full_width?: boolean
           custom_name?: string | null
           notes?: string | null
         }
@@ -204,6 +211,8 @@ export interface Database {
           start_u?: number
           facing?: 'front' | 'rear'
           preferred_lane?: number | null
+          preferred_sub_lane?: number | null
+          force_full_width?: boolean
           custom_name?: string | null
           notes?: string | null
         }

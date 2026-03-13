@@ -7,8 +7,15 @@ import { useLayoutItems } from '../hooks/useLayoutItems'
 import { filterDevicesByCategory, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
 import { useLayouts } from '../hooks/useLayouts'
 import { useRacks } from '../hooks/useRacks'
-import { hasOverlap, isWithinBounds } from '../lib/overlap'
-import type { DeviceFacing, LayoutItemWithDevice, Project } from '../types'
+import { hasDepthConflict, isWithinBounds } from '../lib/overlap'
+import {
+  buildSlotAssignments,
+  canPlaceAtPosition,
+  getItemSlot,
+  getSlotStyle,
+  preferenceToSlot,
+} from '../lib/rackPositions'
+import type { DeviceFacing, LayoutItemWithDevice, Project, RackWidth } from '../types'
 import DevicePalette from '../components/editor/DevicePalette'
 import RackGrid from '../components/editor/RackGrid'
 import DeviceNotes from '../components/editor/DeviceNotes'
@@ -18,59 +25,36 @@ import ConfirmDialog from '../components/ui/ConfirmDialog'
 import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
 
-interface LaneAssignments {
-  laneByItemId: Map<string, number>
-  laneItems: [LayoutItemWithDevice[], LayoutItemWithDevice[]]
-}
-
 function getTopU(item: LayoutItemWithDevice): number {
   return item.start_u + item.device.rack_units - 1
 }
 
-function overlaps(aStart: number, aUnits: number, b: LayoutItemWithDevice): boolean {
-  const aTop = aStart + aUnits - 1
-  return aStart <= getTopU(b) && aTop >= b.start_u
-}
-
-function buildLaneAssignments(items: LayoutItemWithDevice[]): LaneAssignments {
-  const laneByItemId = new Map<string, number>()
-  const laneItems: [LayoutItemWithDevice[], LayoutItemWithDevice[]] = [[], []]
-  const ordered = [...items].sort((a, b) => {
-    if (a.start_u !== b.start_u) return a.start_u - b.start_u
-    return a.id.localeCompare(b.id)
-  })
-
-  for (const item of ordered) {
-    const preferredLane = item.preferred_lane === 0 || item.preferred_lane === 1 ? item.preferred_lane : null
-    if (preferredLane !== null) {
-      const preferredBlocked = laneItems[preferredLane]
-        .some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
-      if (!preferredBlocked) {
-        laneByItemId.set(item.id, preferredLane)
-        laneItems[preferredLane].push(item)
-        continue
-      }
-    }
-
-    const lane0Blocked = laneItems[0].some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
-    if (!lane0Blocked) {
-      laneByItemId.set(item.id, 0)
-      laneItems[0].push(item)
-      continue
-    }
-
-    const lane1Blocked = laneItems[1].some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
-    if (!lane1Blocked) {
-      laneByItemId.set(item.id, 1)
-      laneItems[1].push(item)
-      continue
-    }
-
-    laneByItemId.set(item.id, 0)
-    laneItems[0].push(item)
+/**
+ * Maps a visual mobile column index to the logical (preferredLane, preferredSubLane)
+ * pair, accounting for rear-view mirroring.
+ */
+function visualColToLanePreference(
+  colIndex: number,
+  rackWidth: RackWidth,
+  facing: DeviceFacing,
+  isHalfRack: boolean,
+): { preferredLane: 0 | 1 | undefined; preferredSubLane: 0 | 1 | undefined } {
+  const mirror = facing === 'rear'
+  if (rackWidth === 'single') {
+    if (!isHalfRack) return { preferredLane: undefined, preferredSubLane: undefined }
+    const logicalLane = (mirror ? 1 - colIndex : colIndex) as 0 | 1
+    return { preferredLane: logicalLane, preferredSubLane: undefined }
   }
-
-  return { laneByItemId, laneItems }
+  // Dual rack — 4 visual columns
+  const visualLane = colIndex >= 2 ? 1 : 0
+  const visualSub = colIndex % 2
+  if (!isHalfRack) {
+    const logicalLane = (mirror ? 1 - visualLane : visualLane) as 0 | 1
+    return { preferredLane: logicalLane, preferredSubLane: undefined }
+  }
+  const logicalLane = (mirror ? 1 - visualLane : visualLane) as 0 | 1
+  const logicalSub = (mirror ? 1 - visualSub : visualSub) as 0 | 1
+  return { preferredLane: logicalLane, preferredSubLane: logicalSub }
 }
 
 function useProject(projectId: string | undefined) {
@@ -211,78 +195,74 @@ export default function LayoutEditorPage() {
     setSelectedDeviceTemplate(null)
   }, [filteredDevices, selectedDeviceTemplate])
 
-  const desktopLanePreferenceByItemId = useMemo(() => (
-    new Map<string, 0 | 1>(
-      items
-        .filter((item) => item.preferred_lane === 0 || item.preferred_lane === 1)
-        .map((item) => [item.id, item.preferred_lane as 0 | 1]),
-    )
-  ), [items])
-
   const handleDropNew = async (
     deviceId: string,
     startU: number,
     rackUnits: number,
     preferredLane?: 0 | 1,
+    preferredSubLane?: 0 | 1,
   ) => {
     try {
-      await addItem(
-        deviceId,
-        startU,
-        facing,
-        rackUnits,
-        preferredLane,
-        rack?.width === 'dual',
-      )
+      const device = devices.find((d) => d.id === deviceId)
+      const allowOverlap = rack?.width === 'dual' || (device?.is_half_rack ?? false)
+      await addItem(deviceId, startU, facing, rackUnits, preferredLane, allowOverlap, preferredSubLane)
     } catch (err) {
       console.error('Drop failed:', err)
     }
   }
 
-  const handleDropMove = async (itemId: string, newStartU: number, preferredLane?: 0 | 1) => {
+  const handleDropMove = async (itemId: string, newStartU: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => {
     try {
-      await moveItem(itemId, newStartU, facing, preferredLane, rack?.width === 'dual')
+      const item = items.find((i) => i.id === itemId)
+      const allowOverlap = rack?.width === 'dual' || (item?.device.is_half_rack ?? false)
+      await moveItem(itemId, newStartU, facing, preferredLane, allowOverlap, preferredSubLane)
     } catch (err) {
       console.error('Move failed:', err)
     }
   }
 
   const mobileItems = useMemo(() => items.filter((item) => item.facing === facing), [items, facing])
-  const isDualRack = rack?.width === 'dual'
 
-  const laneAssignments = useMemo(() => {
-    if (!isDualRack) {
-      return {
-        laneByItemId: new Map<string, number>(mobileItems.map((item) => [item.id, 0])),
-        laneItems: [mobileItems, []] as [LayoutItemWithDevice[], LayoutItemWithDevice[]],
-      }
-    }
-    return buildLaneAssignments(mobileItems)
-  }, [isDualRack, mobileItems])
+  const mobileSlotAssignments = useMemo(
+    () => rack ? buildSlotAssignments(mobileItems, rack.width) : new Map<string, ReturnType<typeof getItemSlot>>(),
+    [mobileItems, rack],
+  )
 
-  const getDeviceAtU = useCallback((slotU: number, lane: number) => {
-    const source = laneAssignments.laneItems[lane]
-    return source.find((item) => slotU >= item.start_u && slotU <= getTopU(item))
-  }, [laneAssignments])
+  const getDeviceAtU = useCallback((slotU: number, visualSlotIndex: number) => {
+    if (!rack) return undefined
+    return mobileItems.find((item) => {
+      if (slotU < item.start_u || slotU > getTopU(item)) return false
+      const slot = mobileSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
+      const { left, width } = getSlotStyle(slot, rack.width, facing)
+      // Convert CSS percentage to a 0-3 index for the mobile grid columns
+      const leftPct = parseFloat(left)
+      const widthPct = parseFloat(width)
+      const totalColumns = rack.width === 'dual' ? 4 : 2
+      const colWidth = 100 / totalColumns
+      const startCol = Math.round(leftPct / colWidth)
+      const spanCols = Math.round(widthPct / colWidth)
+      const endCol = startCol + spanCols - 1
+      return visualSlotIndex >= startCol && visualSlotIndex <= endCol
+    })
+  }, [mobileItems, mobileSlotAssignments, rack, facing])
 
-  const canPlaceOnDualRack = useCallback((slotU: number, deviceUnits: number) => {
-    return laneAssignments.laneItems.some((laneItems) => (
-      !laneItems.some((item) => overlaps(slotU, deviceUnits, item))
-    ))
-  }, [laneAssignments])
-
-  const handleMobileSlotClick = async (slotU: number) => {
+  const handleMobileSlotClick = async (slotU: number, colIndex: number) => {
     if (!selectedDeviceTemplate || !rack) return
     const device = devices.find((entry) => entry.id === selectedDeviceTemplate)
     if (!device) return
 
     if (!isWithinBounds(slotU, device.rack_units, rack.rack_units)) return
+    if (hasDepthConflict(slotU, device.rack_units, facing, device.depth_mm, items, rack.depth_mm)) return
 
-    if (rack.width === 'single' && hasOverlap(slotU, device.rack_units, facing, items)) return
-    if (rack.width === 'dual' && !canPlaceOnDualRack(slotU, device.rack_units)) return
+    const { preferredLane, preferredSubLane } = visualColToLanePreference(
+      colIndex, rack.width, facing, device.is_half_rack,
+    )
+    const targetSlot = preferenceToSlot(rack.width, device.is_half_rack, preferredLane, preferredSubLane)
+    if (!canPlaceAtPosition(slotU, device.rack_units, targetSlot, mobileItems, rack.width)) return
 
     try {
-      await addItem(device.id, slotU, facing, device.rack_units, undefined, rack.width === 'dual')
+      const allowOverlap = rack.width === 'dual' || device.is_half_rack
+      await addItem(device.id, slotU, facing, device.rack_units, preferredLane, allowOverlap, preferredSubLane)
       setSelectedDeviceTemplate(null)
     } catch (err) {
       console.error('Tap placement failed:', err)
@@ -365,7 +345,26 @@ export default function LayoutEditorPage() {
   }
 
   const slots = Array.from({ length: rack.rack_units }, (_, i) => rack.rack_units - i)
-  const laneCount = rack.width === 'dual' ? 2 : 1
+  // Mobile uses a 2-column grid (single rack) or 4-column grid (dual rack) to show quarter slots
+  const mobileColumnCount = rack.width === 'dual' ? 4 : 2
+
+  const handleSaveNotes = async (
+    itemId: string,
+    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean }>,
+  ) => {
+    // When a half-rack device is being widened to full-column, verify it won't conflict
+    if (updates.force_full_width === true && rack) {
+      const item = items.find((i) => i.id === itemId)
+      if (item?.device.is_half_rack) {
+        const widenedSlot = getItemSlot({ ...item, force_full_width: true }, rack.width)
+        const sameFacing = items.filter((i) => i.id !== itemId && i.facing === item.facing)
+        if (!canPlaceAtPosition(item.start_u, item.device.rack_units, widenedSlot, sameFacing, rack.width)) {
+          throw new Error('Cannot span full width: another device occupies the adjacent half-rack slot at this position.')
+        }
+      }
+    }
+    return updateItemDetails(itemId, updates)
+  }
 
   const tabButtons = layouts.map((layoutEntry) => (
     <button
@@ -461,7 +460,6 @@ export default function LayoutEditorPage() {
                 items={items}
                 facing={facing}
                 showDeviceDetails={showDeviceNames}
-                lanePreferenceByItemId={desktopLanePreferenceByItemId}
                 onDropNew={handleDropNew}
                 onDropMove={handleDropMove}
                 onRemove={removeItem}
@@ -473,7 +471,7 @@ export default function LayoutEditorPage() {
           <DeviceNotes
             key={notesItem?.id ?? 'none'}
             item={notesItem}
-            onSave={updateItemDetails}
+            onSave={handleSaveNotes}
             onClose={() => setNotesItem(null)}
           />
         </div>
@@ -611,7 +609,6 @@ export default function LayoutEditorPage() {
               {slots.map((u) => (
                 <div
                   key={u}
-                  onClick={() => void handleMobileSlotClick(u)}
                   className="h-10 border-b border-slate-800/70 relative flex items-center transition-colors"
                 >
                   <div className="w-8 text-[10px] font-mono text-slate-500 flex items-center justify-center border-r border-slate-800 bg-slate-900/50 h-full">
@@ -619,26 +616,45 @@ export default function LayoutEditorPage() {
                   </div>
 
                   <div className="flex-1 h-full relative">
-                    {Array.from({ length: laneCount }, (_, laneIndex) => {
-                      const dataLaneIndex = laneCount === 2 && facing === 'rear' ? 1 - laneIndex : laneIndex
-                      const item = getDeviceAtU(u, dataLaneIndex)
+                    {Array.from({ length: mobileColumnCount }, (_, colIndex) => {
+                      const item = getDeviceAtU(u, colIndex)
                       const topU = item ? getTopU(item) : null
                       const isTop = item && topU === u
+
+                      // Compute which column this device's slot starts in (for multi-column spanning)
+                      const itemSlot = item && rack
+                        ? (mobileSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width))
+                        : null
+                      const colWidthPct = 100 / mobileColumnCount
+                      const startCol = itemSlot && rack
+                        ? Math.round(parseFloat(getSlotStyle(itemSlot, rack.width, facing).left) / colWidthPct)
+                        : colIndex
+                      const spanCols = itemSlot && rack
+                        ? Math.round(parseFloat(getSlotStyle(itemSlot, rack.width, facing).width) / colWidthPct)
+                        : 1
+                      const isLeadCol = colIndex === startCol
+
                       const isSelectableEmpty = !item && selectedDeviceTemplate
-                      const laneBaseClass = isSelectableEmpty ? 'bg-indigo-500/15 active:bg-indigo-500/30' : ''
-                      const laneWidth = laneCount === 1 ? '100%' : '50%'
-                      const laneLeft = `${laneIndex * 50}%`
+                      const colBaseClass = isSelectableEmpty ? 'bg-indigo-500/15 active:bg-indigo-500/30' : ''
+                      const colLeft = `${colIndex * colWidthPct}%`
+                      const colWidth = `${colWidthPct}%`
 
                       return (
                         <div
-                          key={`${u}-${laneIndex}`}
-                          className={`absolute top-0 h-full border-r border-slate-800/60 ${laneBaseClass}`}
-                          style={{ left: laneLeft, width: laneWidth }}
+                          key={`${u}-${colIndex}`}
+                          className={`absolute top-0 h-full border-r border-slate-800/60 ${colBaseClass}`}
+                          style={{ left: colLeft, width: colWidth }}
+                          onClick={isSelectableEmpty ? () => void handleMobileSlotClick(u, colIndex) : undefined}
                         >
-                          {isTop && item && (
+                          {isTop && item && isLeadCol && (
                             <div
-                              className="absolute inset-x-0 z-10 p-1"
-                              style={{ height: `${item.device.rack_units * 40 - 1}px`, top: '0px' }}
+                              className="absolute z-10 p-1"
+                              style={{
+                                height: `${item.device.rack_units * 40 - 1}px`,
+                                top: '0px',
+                                left: 0,
+                                width: `${spanCols * 100}%`,
+                              }}
                             >
                               <div className="relative w-full h-full rounded border border-indigo-300/70 overflow-hidden bg-slate-700">
                                 {(() => {
@@ -762,7 +778,7 @@ export default function LayoutEditorPage() {
                         <p className="text-[10px] text-indigo-200 truncate">{device.category?.name ?? 'Uncategorized'}</p>
                       </div>
                       <div className="bg-slate-950 px-2 py-1 rounded text-[10px] font-mono text-indigo-400 shrink-0">
-                        {device.rack_units}U
+                        {device.rack_units}U{device.is_half_rack ? ' ½' : ''}
                       </div>
                     </button>
                   ))}

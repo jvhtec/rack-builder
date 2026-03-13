@@ -6,53 +6,20 @@ import {
   buildSlots,
   getAutoSlotHeight,
   getSlotTopPx,
-  getTopU,
-  overlaps,
   RACK_DUAL_WIDTH,
   RACK_SINGLE_WIDTH,
   RACK_SLOT_HEIGHT_PX,
   RACK_RAIL_WIDTH_PX,
 } from './rackGeometry'
+import {
+  buildSlotAssignments,
+  canPlaceAtPosition,
+  getItemSlot,
+  getSlotStyle,
+  preferenceToSlot,
+} from '../../lib/rackPositions'
+import { hasDepthConflict } from '../../lib/overlap'
 import './rackBlueprint.css'
-
-interface LaneAssignments {
-  laneByItemId: Map<string, number>
-  laneItems: [LayoutItemWithDevice[], LayoutItemWithDevice[]]
-}
-
-function buildLaneAssignments(
-  items: LayoutItemWithDevice[],
-  lanePreferenceByItemId?: Map<string, 0 | 1>,
-): LaneAssignments {
-  const laneByItemId = new Map<string, number>()
-  const laneItems: [LayoutItemWithDevice[], LayoutItemWithDevice[]] = [[], []]
-  const ordered = [...items].sort((a, b) => {
-    if (a.start_u !== b.start_u) return a.start_u - b.start_u
-    return a.id.localeCompare(b.id)
-  })
-
-  for (const item of ordered) {
-    const preferredLane = lanePreferenceByItemId?.get(item.id)
-    const laneOrder: number[] = preferredLane === 1 ? [1, 0] : [0, 1]
-
-    for (const lane of laneOrder) {
-      const blocked = laneItems[lane].some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
-      if (!blocked) {
-        laneByItemId.set(item.id, lane)
-        laneItems[lane].push(item)
-        break
-      }
-    }
-
-    if (!laneByItemId.has(item.id)) {
-      // Overflow fallback: still render item.
-      laneByItemId.set(item.id, 0)
-      laneItems[0].push(item)
-    }
-  }
-
-  return { laneByItemId, laneItems }
-}
 
 interface RackGridProps {
   rack: Rack
@@ -60,8 +27,8 @@ interface RackGridProps {
   facing: DeviceFacing
   showDeviceDetails?: boolean
   lanePreferenceByItemId?: Map<string, 0 | 1>
-  onDropNew: (deviceId: string, startU: number, rackUnits: number, preferredLane?: 0 | 1) => void
-  onDropMove: (itemId: string, newStartU: number, preferredLane?: 0 | 1) => void
+  onDropNew: (deviceId: string, startU: number, rackUnits: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => void
+  onDropMove: (itemId: string, newStartU: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => void
   onRemove: (itemId: string) => void
   onEditNotes: (item: LayoutItemWithDevice) => void
 }
@@ -71,7 +38,6 @@ export default function RackGrid({
   items,
   facing,
   showDeviceDetails = true,
-  lanePreferenceByItemId,
   onDropNew,
   onDropMove,
   onRemove,
@@ -112,54 +78,39 @@ export default function RackGrid({
     '--rack-slot-height': `${slotHeight}px`,
     '--rack-rail-width': `${RACK_RAIL_WIDTH_PX}px`,
   } as CSSProperties
-  const laneAssignments = isDualRack
-    ? buildLaneAssignments(visibleItems, lanePreferenceByItemId)
-    : {
-        laneByItemId: new Map<string, number>(visibleItems.map((item) => [item.id, 0])),
-        laneItems: [visibleItems, []] as [LayoutItemWithDevice[], LayoutItemWithDevice[]],
-      }
+
+  const slotAssignments = buildSlotAssignments(visibleItems, rack.width)
   const oppositeItems = showOppositePreview ? [] : oppositeFacingItems
-  const oppositeLaneAssignments = isDualRack
-    ? buildLaneAssignments(oppositeItems, lanePreferenceByItemId)
-    : {
-        laneByItemId: new Map<string, number>(oppositeItems.map((item) => [item.id, 0])),
-        laneItems: [oppositeItems, []] as [LayoutItemWithDevice[], LayoutItemWithDevice[]],
-      }
+  const oppositeSlotAssignments = buildSlotAssignments(oppositeItems, rack.width)
+
   const ghostItems = oppositeItems.filter((ghostItem) => {
-    const ghostLane = oppositeLaneAssignments.laneByItemId.get(ghostItem.id) ?? 0
-    const top = getTopU(ghostItem)
+    const ghostSlot = oppositeSlotAssignments.get(ghostItem.id) ?? getItemSlot(ghostItem, rack.width)
+    const ghostTop = ghostItem.start_u + ghostItem.device.rack_units - 1
     return !visibleItems.some((activeItem) => {
-      const activeLane = laneAssignments.laneByItemId.get(activeItem.id) ?? 0
-      if (activeLane !== ghostLane) return false
-      return ghostItem.start_u <= getTopU(activeItem) && top >= activeItem.start_u
+      const activeSlot = slotAssignments.get(activeItem.id) ?? getItemSlot(activeItem, rack.width)
+      // Check horizontal conflict
+      const { left: gLeft, width: gWidth } = getSlotStyle(ghostSlot, rack.width)
+      const { left: aLeft, width: aWidth } = getSlotStyle(activeSlot, rack.width)
+      if (gLeft !== aLeft || gWidth !== aWidth) return false
+      const activeTop = activeItem.start_u + activeItem.device.rack_units - 1
+      return ghostItem.start_u <= activeTop && ghostTop >= activeItem.start_u
     })
   })
 
   const canPlaceAtSlot = (
     slotU: number,
     rackUnits: number,
+    isHalfRack: boolean,
+    depthMm: number,
     excludeItemId?: string,
     preferredLane?: 0 | 1,
+    preferredSubLane?: 0 | 1,
   ): boolean => {
-    if (!isDualRack) {
-      const droppedTop = slotU + rackUnits - 1
-      return !filteredItems
-        .filter((item) => item.id !== excludeItemId)
-        .some((item) => slotU <= getTopU(item) && droppedTop >= item.start_u)
-    }
-
-    const baseItems = excludeItemId
-      ? filteredItems.filter((item) => item.id !== excludeItemId)
-      : filteredItems
-    const basePreferences = excludeItemId
-      ? new Map(
-          [...(lanePreferenceByItemId?.entries() ?? [])]
-            .filter(([itemId]) => itemId !== excludeItemId),
-        )
-      : lanePreferenceByItemId
-    const { laneItems } = buildLaneAssignments(baseItems, basePreferences)
-    const targetLanes: number[] = typeof preferredLane === 'number' ? [preferredLane] : [0, 1]
-    return targetLanes.some((lane) => !laneItems[lane].some((existing) => overlaps(slotU, rackUnits, existing)))
+    const targetSlot = preferenceToSlot(rack.width, isHalfRack, preferredLane, preferredSubLane)
+    if (!canPlaceAtPosition(slotU, rackUnits, targetSlot, filteredItems, rack.width, excludeItemId)) return false
+    // Depth-aware front/rear conflict check using all items (not just filteredItems)
+    if (hasDepthConflict(slotU, rackUnits, facing, depthMm, items, rack.depth_mm, excludeItemId)) return false
+    return true
   }
 
   const slots = buildSlots(rack.rack_units)
@@ -207,10 +158,8 @@ export default function RackGrid({
             <div className="rack-device-layer">
               {ghostItems.map((item) => {
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
-                const laneIndex = oppositeLaneAssignments.laneByItemId.get(item.id) ?? 0
-                const visualLaneIndex = laneCount === 2 && facing === 'rear' ? 1 - laneIndex : laneIndex
-                const laneLeft = laneCount === 1 ? '0%' : `${visualLaneIndex * 50}%`
-                const laneWidth = laneCount === 1 ? '100%' : '50%'
+                const slot = oppositeSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
+                const { left: laneLeft, width: laneWidth } = getSlotStyle(slot, rack.width, facing)
 
                 return (
                   <div
@@ -235,10 +184,8 @@ export default function RackGrid({
 
               {visibleItems.map((item) => {
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
-                const laneIndex = laneAssignments.laneByItemId.get(item.id) ?? 0
-                const visualLaneIndex = laneCount === 2 && facing === 'rear' ? 1 - laneIndex : laneIndex
-                const laneLeft = laneCount === 1 ? '0%' : `${visualLaneIndex * 50}%`
-                const laneWidth = laneCount === 1 ? '100%' : '50%'
+                const slot = slotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
+                const { left: laneLeft, width: laneWidth } = getSlotStyle(slot, rack.width, facing)
 
                 return (
                   <div
