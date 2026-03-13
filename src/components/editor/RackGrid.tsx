@@ -101,12 +101,13 @@ export default function RackGrid({
     slotU: number,
     rackUnits: number,
     isHalfRack: boolean,
+    forceFullWidth: boolean,
     depthMm: number,
     excludeItemId?: string,
     preferredLane?: 0 | 1,
     preferredSubLane?: 0 | 1,
   ): boolean => {
-    const targetSlot = preferenceToSlot(rack.width, isHalfRack, preferredLane, preferredSubLane)
+    const targetSlot = preferenceToSlot(rack.width, isHalfRack && !forceFullWidth, preferredLane, preferredSubLane)
     if (!canPlaceAtPosition(slotU, rackUnits, targetSlot, filteredItems, rack.width, excludeItemId)) return false
     // Depth-aware front/rear conflict check using all items (not just filteredItems)
     if (hasDepthConflict(slotU, rackUnits, facing, depthMm, items, rack.depth_mm, excludeItemId)) return false
