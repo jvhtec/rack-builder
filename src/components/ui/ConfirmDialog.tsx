@@ -30,7 +30,7 @@ export default function ConfirmDialog({
           variant="danger"
           className="w-full sm:w-auto"
           onClick={() => {
-            trigger('error', { intensity: 0.7 })
+            trigger('error')
             onConfirm()
             onClose()
           }}

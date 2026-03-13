@@ -314,10 +314,10 @@ export default function LayoutEditorPage() {
       const allowOverlap = rack.width === 'dual' || device.is_half_rack
       await addItem(device.id, slotU, facing, device.rack_units, preferredLane, allowOverlap, preferredSubLane)
       setSelectedDeviceTemplate(null)
-      haptic('success', { intensity: 0.8 })
+      haptic('success')
     } catch (err) {
       console.error('Tap placement failed:', err)
-      haptic('error', { intensity: 0.5 })
+      haptic('error')
     }
   }
 
@@ -340,10 +340,10 @@ export default function LayoutEditorPage() {
       const allowOverlap = rack.width === 'dual' || item.device.is_half_rack
       await moveItem(selectedItemToMove, slotU, facing, preferredLane, allowOverlap, preferredSubLane)
       setSelectedItemToMove(null)
-      haptic('success', { intensity: 0.8 })
+      haptic('success')
     } catch (err) {
       console.error('Tap move failed:', err)
-      haptic('error', { intensity: 0.5 })
+      haptic('error')
     }
   }
 
@@ -757,7 +757,7 @@ export default function LayoutEditorPage() {
                               } else {
                                 setSelectedItemToMove(item.id)
                                 setSelectedDeviceTemplate(null)
-                                haptic('nudge', { intensity: 0.6 })
+                                haptic('nudge')
                               }
                             }
                           : undefined
@@ -817,7 +817,7 @@ export default function LayoutEditorPage() {
                                 {!showOppositePreview && (
                                   <div className="absolute top-1 right-1 flex gap-1 text-[10px]">
                                     <button onClick={(e) => { e.stopPropagation(); setNotesItem(item) }} className="bg-black/45 px-1.5 py-0.5 rounded">N</button>
-                                    <button onClick={(e) => { e.stopPropagation(); haptic('nudge', { intensity: 0.4 }); void removeItem(item.id) }} className="bg-black/45 px-1.5 py-0.5 rounded">✕</button>
+                                    <button onClick={(e) => { e.stopPropagation(); haptic('nudge'); void removeItem(item.id) }} className="bg-black/45 px-1.5 py-0.5 rounded">✕</button>
                                   </div>
                                 )}
                               </div>
@@ -896,7 +896,7 @@ export default function LayoutEditorPage() {
                       onClick={() => {
                         setSelectedDeviceTemplate(device.id)
                         setIsSheetOpen(false)
-                        haptic('nudge', { intensity: 0.6 })
+                        haptic('nudge')
                       }}
                       className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${
                         selectedDeviceTemplate === device.id
