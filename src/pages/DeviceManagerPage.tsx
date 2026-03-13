@@ -85,10 +85,10 @@ export default function DeviceManagerPage() {
     <div>
       <PageHeader
         title="Device Manager"
-        action={<Button onClick={() => setFormOpen(true)}>Add Device</Button>}
+        action={<Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">Add Device</Button>}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
         <Select
           label="Category"
           value={selectedCategoryId}

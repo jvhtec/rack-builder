@@ -57,7 +57,7 @@ export default function ProjectManagerPage() {
       <PageHeader
         title="Project Manager"
         action={
-          <Button onClick={openCreateModal} disabled={racks.length === 0}>
+          <Button onClick={openCreateModal} disabled={racks.length === 0} className="w-full sm:w-auto">
             New Project
           </Button>
         }
@@ -72,32 +72,52 @@ export default function ProjectManagerPage() {
       {projects.length === 0 ? (
         <p className="text-gray-500 text-sm">No projects yet. Create one to get started.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-gray-500">
-                <th className="pb-2 font-medium">Name</th>
-                <th className="pb-2 font-medium">Layouts</th>
-                <th className="pb-2 font-medium">Created</th>
-                <th className="pb-2 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((project) => (
-                <tr key={project.id} className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="py-3 font-medium text-gray-900">{project.name}</td>
-                  <td className="py-3">{project.layout_count}</td>
-                  <td className="py-3 text-gray-500">{new Date(project.created_at).toLocaleDateString()}</td>
-                  <td className="py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button onClick={() => navigate(`/editor/project/${project.id}`)}>Open Editor</Button>
-                      <Button variant="danger" onClick={() => setDeletingProject(project)}>Delete</Button>
-                    </div>
-                  </td>
+        <div>
+          <div className="space-y-3 md:hidden">
+            {projects.map((project) => (
+              <article key={project.id} className="rounded-lg border bg-white p-4">
+                <div className="font-medium text-gray-900">{project.name}</div>
+                <div className="mt-2 text-sm text-gray-600">{project.layout_count} layout(s)</div>
+                <div className="mt-1 text-xs text-gray-500">{new Date(project.created_at).toLocaleDateString()}</div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button className="w-full" onClick={() => navigate(`/editor/project/${project.id}`)}>
+                    Open
+                  </Button>
+                  <Button variant="danger" className="w-full" onClick={() => setDeletingProject(project)}>
+                    Delete
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-gray-500">
+                  <th className="pb-2 font-medium">Name</th>
+                  <th className="pb-2 font-medium">Layouts</th>
+                  <th className="pb-2 font-medium">Created</th>
+                  <th className="pb-2 font-medium text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {projects.map((project) => (
+                  <tr key={project.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="py-3 font-medium text-gray-900">{project.name}</td>
+                    <td className="py-3">{project.layout_count}</td>
+                    <td className="py-3 text-gray-500">{new Date(project.created_at).toLocaleDateString()}</td>
+                    <td className="py-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button onClick={() => navigate(`/editor/project/${project.id}`)}>Open Editor</Button>
+                        <Button variant="danger" onClick={() => setDeletingProject(project)}>Delete</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -122,11 +142,11 @@ export default function ProjectManagerPage() {
             options={racks.map((rack) => ({ value: rack.id, label: `${rack.name} (${rack.rack_units}U)` }))}
           />
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setFormOpen(false)}>
+          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+            <Button variant="secondary" type="button" onClick={() => setFormOpen(false)} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || !projectName || !initialLayoutName || !rackId}>
+            <Button type="submit" disabled={saving || !projectName || !initialLayoutName || !rackId} className="w-full sm:w-auto">
               {saving ? 'Creating...' : 'Create Project'}
             </Button>
           </div>

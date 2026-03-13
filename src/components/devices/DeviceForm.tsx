@@ -215,7 +215,7 @@ export default function DeviceForm({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Front Image</label>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <input
               type="file"
               accept="image/*"
@@ -231,7 +231,7 @@ export default function DeviceForm({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Rear Image</label>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <input
               type="file"
               accept="image/*"
@@ -245,11 +245,11 @@ export default function DeviceForm({
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <Button variant="secondary" type="button" onClick={onCancel}>
+        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+          <Button variant="secondary" type="button" onClick={onCancel} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button type="submit" disabled={saving || uploading || !brand || !model || !isCategoryValid}>
+          <Button type="submit" disabled={saving || uploading || !brand || !model || !isCategoryValid} className="w-full sm:w-auto">
             {saving ? 'Saving...' : initialData ? 'Update' : 'Create'}
           </Button>
         </div>

@@ -34,11 +34,11 @@ export default function LayoutForm({ racks, onSubmit, onCancel }: LayoutFormProp
         onChange={(e) => setRackId(e.target.value)}
         options={racks.map((r) => ({ value: r.id, label: `${r.name} (${r.rack_units}U)` }))}
       />
-      <div className="flex justify-end gap-3 pt-2">
-        <Button variant="secondary" type="button" onClick={onCancel}>
+      <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+        <Button variant="secondary" type="button" onClick={onCancel} className="w-full sm:w-auto">
           Cancel
         </Button>
-        <Button type="submit" disabled={saving || !name || !rackId}>
+        <Button type="submit" disabled={saving || !name || !rackId} className="w-full sm:w-auto">
           {saving ? 'Creating...' : 'Create Layout'}
         </Button>
       </div>
