@@ -131,6 +131,7 @@ export default function LayoutEditorPage() {
   const [selectedDeviceTemplate, setSelectedDeviceTemplate] = useState<string | null>(null)
   const [showDeviceNames, setShowDeviceNames] = useState(true)
   const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768)
+  const [mobileDualLane, setMobileDualLane] = useState<0 | 1>(0)
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
 
   const [createLayoutOpen, setCreateLayoutOpen] = useState(false)
@@ -184,6 +185,12 @@ export default function LayoutEditorPage() {
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
+
+  useEffect(() => {
+    if (rack?.width !== 'dual') {
+      setMobileDualLane(0)
+    }
+  }, [rack?.width])
 
   useEffect(() => {
     if (layouts.length === 0) return
@@ -354,8 +361,9 @@ export default function LayoutEditorPage() {
   }
 
   const slots = Array.from({ length: rack.rack_units }, (_, i) => rack.rack_units - i)
-  // Mobile uses a 2-column grid (single rack) or 4-column grid (dual rack) to show quarter slots
-  const mobileColumnCount = rack.width === 'dual' ? 4 : 2
+  const mobileColumnCount = 2
+  const isDualRack = rack.width === 'dual'
+  const mobileLaneOffset = isDualRack ? mobileDualLane * mobileColumnCount : 0
 
   const handleSaveNotes = async (
     itemId: string,
@@ -612,6 +620,34 @@ export default function LayoutEditorPage() {
           </div>
         )}
 
+        {isDualRack && (
+          <div className="px-5 pt-3 pb-1">
+            <div className="max-w-[360px] mx-auto flex items-center justify-between gap-2 text-xs">
+              <button
+                onClick={() => setMobileDualLane(0)}
+                className={`px-3 py-1.5 rounded-lg border transition ${
+                  mobileDualLane === 0
+                    ? 'border-indigo-400 bg-indigo-500/20 text-indigo-100'
+                    : 'border-slate-700 bg-slate-900 text-slate-300'
+                }`}
+              >
+                Left half
+              </button>
+              <span className="text-slate-400 uppercase tracking-wide">Dual rack view</span>
+              <button
+                onClick={() => setMobileDualLane(1)}
+                className={`px-3 py-1.5 rounded-lg border transition ${
+                  mobileDualLane === 1
+                    ? 'border-indigo-400 bg-indigo-500/20 text-indigo-100'
+                    : 'border-slate-700 bg-slate-900 text-slate-300'
+                }`}
+              >
+                Right half
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-center p-5 pb-28 min-h-full">
           <div className="relative w-full max-w-[360px]">
             <div className="bg-slate-900 rounded-t-xl border-x-[10px] border-t-[10px] border-slate-800 shadow-2xl">
@@ -626,7 +662,8 @@ export default function LayoutEditorPage() {
 
                   <div className="flex-1 h-full relative">
                     {Array.from({ length: mobileColumnCount }, (_, colIndex) => {
-                      const item = getDeviceAtU(u, colIndex)
+                      const visualColIndex = mobileLaneOffset + colIndex
+                      const item = getDeviceAtU(u, visualColIndex)
                       const topU = item ? getTopU(item) : null
                       const isTop = item && topU === u
 
@@ -640,8 +677,9 @@ export default function LayoutEditorPage() {
                           const { left, width } = getSlotStyle(itemSlot, rack.width, facing)
                           return computeMobileColumnRange(left, width, rack.width)
                         })()
-                        : { startCol: colIndex, spanCols: 1 }
-                      const isLeadCol = colIndex === startCol
+                        : { startCol: visualColIndex, spanCols: 1 }
+                      const isLeadCol = visualColIndex === startCol
+                      const visibleSpanCols = Math.max(0, Math.min(spanCols, mobileColumnCount - colIndex))
 
                       const isSelectableEmpty = !item && selectedDeviceTemplate
                       const colBaseClass = isSelectableEmpty ? 'bg-indigo-500/15 active:bg-indigo-500/30' : ''
@@ -653,16 +691,16 @@ export default function LayoutEditorPage() {
                           key={`${u}-${colIndex}`}
                           className={`absolute top-0 h-full border-r border-slate-800/60 ${colBaseClass}`}
                           style={{ left: colLeft, width: colWidth }}
-                          onClick={isSelectableEmpty ? () => void handleMobileSlotClick(u, colIndex) : undefined}
+                          onClick={isSelectableEmpty ? () => void handleMobileSlotClick(u, visualColIndex) : undefined}
                         >
-                          {isTop && item && isLeadCol && (
+                          {isTop && item && isLeadCol && visibleSpanCols > 0 && (
                             <div
                               className="absolute z-10 p-1"
                               style={{
                                 height: `${item.device.rack_units * 40 - 1}px`,
                                 top: '0px',
                                 left: 0,
-                                width: `${spanCols * 100}%`,
+                                width: `${visibleSpanCols * 100}%`,
                               }}
                             >
                               <div className="relative w-full h-full rounded border border-indigo-300/70 overflow-hidden bg-slate-700">
