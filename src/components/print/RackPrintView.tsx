@@ -38,6 +38,17 @@ function buildLaneAssignments(items: LayoutItemWithDevice[]): LaneAssignments {
   })
 
   for (const item of ordered) {
+    const preferredLane = item.preferred_lane === 0 || item.preferred_lane === 1 ? item.preferred_lane : null
+    if (preferredLane !== null) {
+      const preferredBlocked = laneItems[preferredLane]
+        .some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
+      if (!preferredBlocked) {
+        laneByItemId.set(item.id, preferredLane)
+        laneItems[preferredLane].push(item)
+        continue
+      }
+    }
+
     const lane0Blocked = laneItems[0].some((existing) => overlaps(item.start_u, item.device.rack_units, existing))
     if (!lane0Blocked) {
       laneByItemId.set(item.id, 0)
@@ -69,8 +80,8 @@ export default function RackPrintView({
   const slotHeight = useMemo(() => getPrintSlotHeight(rack.width), [rack.width])
   const labelOffsetPx = PRINT_CASING_HEIGHT_PX + PRINT_HEADER_HEIGHT_PX
   const visibleItems = useMemo(
-    () => items,
-    [items],
+    () => items.filter((item) => item.facing === facing),
+    [facing, items],
   )
   const slots = useMemo(() => buildSlots(rack.rack_units), [rack.rack_units])
   const laneAssignments = useMemo(() => {
