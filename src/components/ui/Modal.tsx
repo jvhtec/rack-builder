@@ -1,6 +1,5 @@
 import { type ReactNode, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useHaptics } from '../../lib/haptics'
 
 interface ModalProps {
   isOpen: boolean
@@ -10,12 +9,6 @@ interface ModalProps {
 }
 
 export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
-  const { trigger } = useHaptics()
-
-  useEffect(() => {
-    if (isOpen) trigger('light')
-  }, [isOpen, trigger])
-
   useEffect(() => {
     if (!isOpen) return
     const handleKey = (e: KeyboardEvent) => {

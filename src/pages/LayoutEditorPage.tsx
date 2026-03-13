@@ -310,14 +310,13 @@ export default function LayoutEditorPage() {
     const targetSlot = preferenceToSlot(rack.width, device.is_half_rack, preferredLane, preferredSubLane)
     if (!canPlaceAtPosition(slotU, device.rack_units, targetSlot, mobileItems, rack.width)) return
 
+    haptic('success')
     try {
       const allowOverlap = rack.width === 'dual' || device.is_half_rack
       await addItem(device.id, slotU, facing, device.rack_units, preferredLane, allowOverlap, preferredSubLane)
       setSelectedDeviceTemplate(null)
-      haptic('success')
     } catch (err) {
       console.error('Tap placement failed:', err)
-      haptic('error')
     }
   }
 
@@ -336,14 +335,13 @@ export default function LayoutEditorPage() {
     const otherItems = mobileItems.filter((i) => i.id !== selectedItemToMove)
     if (!canPlaceAtPosition(slotU, item.device.rack_units, targetSlot, otherItems, rack.width)) return
 
+    haptic('success')
     try {
       const allowOverlap = rack.width === 'dual' || item.device.is_half_rack
       await moveItem(selectedItemToMove, slotU, facing, preferredLane, allowOverlap, preferredSubLane)
       setSelectedItemToMove(null)
-      haptic('success')
     } catch (err) {
       console.error('Tap move failed:', err)
-      haptic('error')
     }
   }
 
