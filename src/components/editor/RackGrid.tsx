@@ -208,7 +208,8 @@ export default function RackGrid({
               {ghostItems.map((item) => {
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
                 const laneIndex = oppositeLaneAssignments.laneByItemId.get(item.id) ?? 0
-                const laneLeft = laneCount === 1 ? '0%' : `${laneIndex * 50}%`
+                const visualLaneIndex = laneCount === 2 && facing === 'rear' ? 1 - laneIndex : laneIndex
+                const laneLeft = laneCount === 1 ? '0%' : `${visualLaneIndex * 50}%`
                 const laneWidth = laneCount === 1 ? '100%' : '50%'
 
                 return (
@@ -235,7 +236,8 @@ export default function RackGrid({
               {visibleItems.map((item) => {
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
                 const laneIndex = laneAssignments.laneByItemId.get(item.id) ?? 0
-                const laneLeft = laneCount === 1 ? '0%' : `${laneIndex * 50}%`
+                const visualLaneIndex = laneCount === 2 && facing === 'rear' ? 1 - laneIndex : laneIndex
+                const laneLeft = laneCount === 1 ? '0%' : `${visualLaneIndex * 50}%`
                 const laneWidth = laneCount === 1 ? '100%' : '50%'
 
                 return (
