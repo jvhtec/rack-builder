@@ -51,8 +51,11 @@ export default function RackSlot({
     const laneAreaLeft = bounds.left + RACK_RAIL_WIDTH_PX
     const laneAreaWidth = bounds.width - RACK_RAIL_WIDTH_PX * 2
     if (laneAreaWidth <= 0) return 0
-    return point.x >= laneAreaLeft + laneAreaWidth / 2 ? 1 : 0
-  }, [laneCount])
+
+    const visualLane = point.x >= laneAreaLeft + laneAreaWidth / 2 ? 1 : 0
+    if (facing === 'rear') return (1 - visualLane) as 0 | 1
+    return visualLane
+  }, [facing, laneCount])
 
   const [{ isOver, canDrop }, dropRef] = useDrop<
     DeviceDragItem | PlacedDeviceDragItem,

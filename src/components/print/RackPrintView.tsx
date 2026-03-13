@@ -141,7 +141,8 @@ export default function RackPrintView({
                 const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
                 const laneIndex = laneAssignments.laneByItemId.get(item.id) ?? 0
-                const laneLeft = laneCount === 1 ? '0%' : `${laneIndex * 50}%`
+                const visualLaneIndex = laneCount === 2 && facing === 'rear' ? 1 - laneIndex : laneIndex
+                const laneLeft = laneCount === 1 ? '0%' : `${visualLaneIndex * 50}%`
                 const laneWidth = laneCount === 1 ? '100%' : '50%'
                 const height = item.device.rack_units * slotHeight
                 const preferredImagePath = facing === 'front' ? item.device.front_image_path : item.device.rear_image_path
