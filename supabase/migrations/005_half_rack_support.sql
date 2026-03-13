@@ -10,3 +10,8 @@ add column preferred_sub_lane integer null check (preferred_sub_lane in (0, 1));
 -- Force a half-rack device to render at full column width (placed with shelf or custom ears)
 alter table layout_items
 add column force_full_width boolean not null default false;
+
+-- Rollback:
+-- alter table layout_items drop column force_full_width;
+-- alter table layout_items drop column preferred_sub_lane;
+-- alter table devices drop column is_half_rack;
