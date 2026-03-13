@@ -742,12 +742,25 @@ export default function LayoutEditorPage() {
                       const colLeft = `${colIndex * colWidthPct}%`
                       const colWidth = `${colWidthPct}%`
 
+                      const handleColClick = isSelectableEmpty
+                        ? () => void (selectedItemToMove ? handleMobileMoveToSlot(u, visualColIndex) : handleMobileSlotClick(u, visualColIndex))
+                        : item && !showOppositePreview
+                          ? () => {
+                              if (selectedItemToMove === item.id) {
+                                setSelectedItemToMove(null)
+                              } else {
+                                setSelectedItemToMove(item.id)
+                                setSelectedDeviceTemplate(null)
+                              }
+                            }
+                          : undefined
+
                       return (
                         <div
                           key={`${u}-${colIndex}`}
                           className={`absolute top-0 h-full border-r border-slate-800/60 ${colBaseClass}`}
                           style={{ left: colLeft, width: colWidth }}
-                          onClick={isSelectableEmpty ? () => void (selectedItemToMove ? handleMobileMoveToSlot(u, visualColIndex) : handleMobileSlotClick(u, visualColIndex)) : undefined}
+                          onClick={handleColClick}
                         >
                           {isTop && item && isLeadCol && visibleSpanCols > 0 && (
                             <div
@@ -757,15 +770,6 @@ export default function LayoutEditorPage() {
                                 top: '0px',
                                 left: 0,
                                 width: `${visibleSpanCols * 100}%`,
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (selectedItemToMove === item.id) {
-                                  setSelectedItemToMove(null)
-                                } else {
-                                  setSelectedItemToMove(item.id)
-                                  setSelectedDeviceTemplate(null)
-                                }
                               }}
                             >
                               <div
