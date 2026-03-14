@@ -5,7 +5,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
 import { supabase } from '../lib/supabase'
 import { useLayoutItems } from '../hooks/useLayoutItems'
-import { filterDevicesByCategory, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
+import { ALL_BRAND, filterDevicesByBrand, filterDevicesByCategory, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
 import { useLayouts } from '../hooks/useLayouts'
 import { useRacks } from '../hooks/useRacks'
 import { hasDepthConflict, isWithinBounds } from '../lib/overlap'
@@ -137,6 +137,7 @@ export default function LayoutEditorPage() {
   )
   const [mobileDualLane, setMobileDualLane] = useState<0 | 1>(0)
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
+  const [selectedBrand, setSelectedBrand] = useState(ALL_BRAND)
   const [selectedItemToMove, setSelectedItemToMove] = useState<string | null>(null)
 
   const [createLayoutOpen, setCreateLayoutOpen] = useState(false)
@@ -233,9 +234,14 @@ export default function LayoutEditorPage() {
     setSearchParams(next)
   }, [searchParams, setSearchParams])
 
+  const brands = useMemo(
+    () => [...new Set(devices.map((d) => d.brand))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+    [devices],
+  )
+
   const filteredDevices = useMemo(
-    () => filterDevicesByCategory(devices, selectedCategoryId),
-    [devices, selectedCategoryId],
+    () => filterDevicesByBrand(filterDevicesByCategory(devices, selectedCategoryId), selectedBrand),
+    [devices, selectedCategoryId, selectedBrand],
   )
 
   useEffect(() => {
@@ -462,6 +468,9 @@ export default function LayoutEditorPage() {
             categories={categories}
             selectedCategoryId={selectedCategoryId}
             onCategoryChange={setSelectedCategoryId}
+            brands={brands}
+            selectedBrand={selectedBrand}
+            onBrandChange={setSelectedBrand}
             loading={devicesLoading}
           />
 
@@ -875,6 +884,20 @@ export default function LayoutEditorPage() {
                     </select>
                   </div>
 
+                  <div>
+                    <label className="block text-xs uppercase text-slate-500 mb-1 font-bold">Brand</label>
+                    <select
+                      value={selectedBrand}
+                      onChange={(e) => setSelectedBrand(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm"
+                    >
+                      <option value={ALL_BRAND}>All brands</option>
+                      {brands.map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   {filteredDevices.map((device) => (
                     <button
                       key={device.id}
@@ -898,7 +921,7 @@ export default function LayoutEditorPage() {
                       </div>
                     </button>
                   ))}
-                  {filteredDevices.length === 0 && <p className="text-xs text-slate-400">No devices in this category.</p>}
+                  {filteredDevices.length === 0 && <p className="text-xs text-slate-400">No devices match your filters.</p>}
                 </div>
               ) : (
                 <div className="space-y-3">
