@@ -637,30 +637,11 @@ export default function LayoutEditorPage() {
               {layoutEntry.name}
             </button>
           ))}
-          <button
-            onClick={openCreateLayoutModal}
-            className="px-3 py-1 rounded-md text-xs whitespace-nowrap border bg-slate-800 border-slate-700 text-slate-200"
-          >
-            + Layout
-          </button>
-          <button
-            onClick={openRenameLayoutModal}
-            className="px-3 py-1 rounded-md text-xs whitespace-nowrap border bg-slate-800 border-slate-700 text-slate-200"
-          >
-            Rename
-          </button>
-          <button
-            onClick={() => setDeleteLayoutOpen(true)}
-            disabled={layouts.length <= 1}
-            className="px-3 py-1 rounded-md text-xs whitespace-nowrap border bg-red-600/70 border-red-400/50 text-white disabled:opacity-50"
-          >
-            Delete
-          </button>
         </div>
       </div>
 
       <main className="flex-1 overflow-y-auto relative bg-slate-950">
-        <div className="fixed top-28 right-4 z-20 flex flex-col gap-2">
+        <div className="fixed right-4 z-20 flex flex-col gap-2" style={{ top: 'calc(7rem + env(safe-area-inset-top))' }}>
           <button
             onClick={() => setFacing(facing === 'front' ? 'rear' : 'front')}
             className="w-12 h-12 rounded-full bg-indigo-600 shadow-xl flex items-center justify-center border border-indigo-400 text-xs font-bold uppercase"
@@ -670,7 +651,7 @@ export default function LayoutEditorPage() {
         </div>
 
         {(selectedDeviceTemplate || selectedItemToMove) && (
-          <div className="fixed top-28 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 px-4 py-2 rounded-full shadow-2xl border border-indigo-400 flex items-center gap-2">
+          <div className="fixed left-1/2 -translate-x-1/2 z-20 bg-indigo-600 px-4 py-2 rounded-full shadow-2xl border border-indigo-400 flex items-center gap-2" style={{ top: 'calc(7rem + env(safe-area-inset-top))' }}>
             <span className="text-xs font-bold">{selectedItemToMove ? 'Tap a slot to move' : 'Tap a slot to place'}</span>
             <button onClick={() => { setSelectedDeviceTemplate(null); setSelectedItemToMove(null) }} className="text-xs">✕</button>
           </div>
@@ -859,7 +840,10 @@ export default function LayoutEditorPage() {
         <div className="fixed inset-0 z-50 flex overflow-hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setIsSheetOpen(false)} />
           <div className="relative w-80 max-w-[85%] bg-slate-900 h-full shadow-2xl flex flex-col">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            <div
+              className="p-4 border-b border-slate-800 flex items-center justify-between"
+              style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
+            >
               <h2 className="font-bold text-sm uppercase tracking-widest text-slate-400">
                 {activeTab === 'devices' ? 'Add Equipment' : 'Rack Settings'}
               </h2>
@@ -910,6 +894,28 @@ export default function LayoutEditorPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <p className="text-xs text-slate-500 uppercase font-bold">Layouts</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setIsSheetOpen(false); openCreateLayoutModal() }}
+                      className="flex-1 py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
+                    >
+                      + New
+                    </button>
+                    <button
+                      onClick={() => { setIsSheetOpen(false); openRenameLayoutModal() }}
+                      className="flex-1 py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
+                    >
+                      Rename
+                    </button>
+                    <button
+                      onClick={() => { setIsSheetOpen(false); setDeleteLayoutOpen(true) }}
+                      disabled={layouts.length <= 1}
+                      className="flex-1 py-2 rounded-lg border text-sm border-red-700/60 bg-red-900/30 text-red-300 disabled:opacity-40"
+                    >
+                      Delete
+                    </button>
+                  </div>
                   <p className="text-xs text-slate-500 uppercase font-bold">Facing</p>
                   <div className="flex gap-2">
                     <button

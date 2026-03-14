@@ -35,17 +35,26 @@ export default function AppShell() {
       </nav>
 
       <div className="flex-1 flex min-h-screen flex-col">
-        <header className="md:hidden sticky top-0 z-20 bg-gray-900 text-white border-b border-gray-700 px-4 py-3">
+        <header
+          className="md:hidden sticky top-0 z-20 bg-gray-900 text-white border-b border-gray-700 px-4 py-3"
+          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+        >
           <h1 className="text-base font-semibold tracking-tight">Rack Builder</h1>
         </header>
 
-        <main className="flex-1 overflow-auto px-4 py-4 pb-24 md:p-6 md:pb-6">
+        <main
+          className="flex-1 overflow-auto px-4 py-4 pb-24 md:p-6 md:pb-6"
+          style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
+        >
           <div className="mx-auto w-full max-w-7xl">
             <Outlet />
           </div>
         </main>
 
-        <nav className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-white border-t border-gray-200">
+        <nav
+          className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-white border-t border-gray-200"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
           <ul className="grid" style={{ gridTemplateColumns: `repeat(${navItems.length}, 1fr)` }}>
             {navItems.map((item) => (
               <li key={item.to}>

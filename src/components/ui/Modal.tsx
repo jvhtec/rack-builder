@@ -33,7 +33,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
             &times;
           </button>
         </div>
-        <div className="px-4 py-4 sm:px-6">{children}</div>
+        <div className="px-4 py-4 sm:px-6" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>{children}</div>
       </div>
     </div>,
     document.body,
