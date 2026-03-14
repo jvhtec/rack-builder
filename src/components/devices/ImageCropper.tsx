@@ -112,7 +112,7 @@ export default function ImageCropper({
             ref={imgRef}
             src={imageSrc}
             alt="Crop preview"
-            className="max-w-full block max-h-[60vh] sm:max-h-[70vh]"
+            className="max-w-full block max-h-[55svh] sm:max-h-[70vh]"
             onLoad={(event) => {
               const target = event.currentTarget
               setCrop(getCenteredAspectCrop(target.width, target.height, aspect))
