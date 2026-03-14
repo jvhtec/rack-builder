@@ -60,6 +60,17 @@
   box-shadow: 0 20px 35px rgba(14, 26, 46, 0.16);
 }
 
+
+.layout-print-stage--project {
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.layout-print-stage--project .layout-print-sheet {
+  flex-shrink: 0;
+}
+
 .layout-print-sheet,
 .layout-print-sheet * {
   -webkit-print-color-adjust: exact;
@@ -347,6 +358,136 @@
   display: none;
 }
 
+
+.layout-print-page-break {
+  /* stylelint-disable-next-line property-no-deprecated */
+  page-break-after: always;
+  break-after: page;
+}
+
+.layout-print-page-break:last-child {
+  /* stylelint-disable-next-line property-no-deprecated */
+  page-break-after: auto;
+  break-after: auto;
+}
+
+.project-print-cover {
+  flex: 1;
+  border: 2px solid #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 12mm;
+}
+
+
+.project-print-cover--full-height {
+  height: 100%;
+}
+
+.project-print-cover-logo {
+  width: 220px;
+  max-width: 60%;
+  height: auto;
+}
+
+.project-print-cover-kicker {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #4b5563;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.project-print-cover-title {
+  margin: 0;
+  font-size: 38px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.project-print-cover-owner,
+.project-print-cover-generated {
+  margin: 0;
+  font-size: 14px;
+  color: #1f2937;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.project-print-index-wrap {
+  flex: 1;
+  border: 2px solid #000;
+  padding: 4.5mm;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.project-print-index-title {
+  margin: 0 0 2.5mm;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.project-print-index-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.project-print-index-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 8.4px;
+  line-height: 1.2;
+}
+
+.project-print-index-col-num {
+  width: 5%;
+}
+
+.project-print-index-col-layout,
+.project-print-index-col-rack,
+.project-print-index-col-spec {
+  width: 21%;
+}
+
+.project-print-index-col-power,
+.project-print-index-col-weight {
+  width: 13%;
+}
+
+.project-print-index-col-page {
+  width: 6%;
+}
+
+.project-print-index-table th,
+.project-print-index-table td {
+  border: 1px solid #222;
+  padding: 1.4mm 1.1mm;
+  text-align: left;
+  vertical-align: top;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-print-index-table th {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 8px;
+}
+
+
 .print-cartouche {
   border: 2px solid #000;
   background: #fff;
@@ -431,6 +572,27 @@
     padding: 0;
     overflow: visible;
     background: #fff;
+  }
+
+
+  .layout-print-stage--project {
+    display: block;
+    padding: 0;
+  }
+
+  .layout-print-stage--project .layout-print-sheet {
+    margin-bottom: 0;
+    overflow: visible;
+  }
+
+  .layout-print-page-break {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .layout-print-page-break:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 
   .layout-print-sheet {

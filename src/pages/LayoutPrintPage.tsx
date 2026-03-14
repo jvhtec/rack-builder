@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import RackPrintView from '../components/print/RackPrintView'
-import PrintCartouche from '../components/print/PrintCartouche'
 import Button from '../components/ui/Button'
+import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
 import type { Layout, LayoutItemWithDevice, Project, Rack } from '../types'
 import { supabase } from '../lib/supabase'
 import { getDeviceImageUrl } from '../hooks/useDevices'
@@ -266,15 +265,10 @@ export default function LayoutPrintPage() {
     <div className="layout-print-page">
       <header className="layout-print-toolbar">
         <div className="layout-print-toolbar-actions">
-          <Button
-            variant="secondary"
-            onClick={() => navigate(`/editor/project/${projectId}?layout=${layoutId}`)}
-          >
+          <Button variant="secondary" onClick={() => navigate(`/editor/project/${projectId}?layout=${layoutId}`)}>
             Back
           </Button>
-          <Button onClick={() => window.print()}>
-            Print
-          </Button>
+          <Button onClick={() => window.print()}>Print</Button>
         </div>
         <p className="layout-print-toolbar-meta">
           {layout.name} | {rack.name} | {rackTotals.weightKg.toFixed(2)} kg | {rackTotals.powerW} W | {imagesReady ? 'Ready' : 'Loading images'}
@@ -282,41 +276,21 @@ export default function LayoutPrintPage() {
       </header>
 
       <main className="layout-print-stage">
-        <section className="layout-print-sheet" aria-label="A3 drawing sheet">
-          <div className="layout-print-sheet-inner">
-            <div ref={drawingFrameRef} className="layout-print-drawing-frame">
-              <div
-                className="layout-print-drawing-scale"
-                style={{ transform: `scale(${scale})` }}
-              >
-                <div ref={drawingContentRef} className="layout-print-drawing-row">
-                  <RackPrintView
-                    rack={rack}
-                    items={items}
-                    facing="front"
-                    showDeviceDetails
-                  />
-                  <RackPrintView
-                    rack={rack}
-                    items={items}
-                    facing="rear"
-                    showDeviceDetails
-                  />
-                </div>
-              </div>
-            </div>
-
-            <PrintCartouche
-              layout={layout}
-              rack={rack}
-              scaleLabel={scaleLabel}
-              generatedAt={generatedAt}
-              totalWeightKg={rackTotals.weightKg}
-              totalPowerW={rackTotals.powerW}
-              projectOwner={project?.owner}
-            />
-          </div>
-        </section>
+        <LayoutPrintSheet
+          layout={layout}
+          rack={rack}
+          items={items}
+          generatedAt={generatedAt}
+          projectOwner={project?.owner}
+          totalWeightKg={rackTotals.weightKg}
+          totalPowerW={rackTotals.powerW}
+          scaleLabel={scaleLabel}
+          pageNumber={1}
+          pageCount={1}
+          scale={scale}
+          drawingFrameRef={drawingFrameRef}
+          drawingContentRef={drawingContentRef}
+        />
       </main>
     </div>
   )

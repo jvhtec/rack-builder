@@ -1,63 +1,64 @@
-import { useMemo } from 'react'
-import type { Layout, Rack } from '../../types'
 import logoUrl from '../../assets/sector-pro-logo.png'
 
+interface PrintCartoucheField {
+  label: string
+  value: string
+}
+
 interface PrintCartoucheProps {
-  layout: Layout
-  rack: Rack
-  scaleLabel: string
-  generatedAt: Date
-  totalWeightKg: number
-  totalPowerW: number
-  projectOwner?: string | null
+  title: string
+  jobName: string
+  pageNumber: number
+  pageCount: number
+  extraFields?: PrintCartoucheField[]
+  logoSrc?: string
+  logoAlt?: string
+}
+
+function normalizeFields(fields: PrintCartoucheField[]): PrintCartoucheField[] {
+  const normalized = fields
+    .filter((field) => field.label.trim().length > 0 || field.value.trim().length > 0)
+    .slice(0, 8)
+
+  while (normalized.length < 8) {
+    normalized.push({ label: '', value: '' })
+  }
+
+  return normalized
 }
 
 export default function PrintCartouche({
-  layout,
-  rack,
-  scaleLabel,
-  generatedAt,
-  totalWeightKg,
-  totalPowerW,
-  projectOwner,
+  title,
+  jobName,
+  pageNumber,
+  pageCount,
+  extraFields = [],
+  logoSrc = logoUrl,
+  logoAlt = 'Sector Pro',
 }: PrintCartoucheProps) {
-  const generatedAtLabel = useMemo(
-    () => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(generatedAt),
-    [generatedAt],
-  )
+  const bodyFields = normalizeFields([
+    { label: 'Title', value: title },
+    { label: 'Job Name', value: jobName },
+    ...extraFields,
+  ])
 
-  const generatedValue = projectOwner ? `${projectOwner} — ${generatedAtLabel}` : generatedAtLabel
-
-  const rackSpecLabel = `${rack.rack_units}U | ${rack.width} | ${rack.depth_mm}mm`
-
-  const fields: Array<{ label: string; value: string; isLogo?: boolean }> = [
-    { label: 'Title', value: 'Rack Layout Drawing' },
-    { label: 'Job Name', value: layout.name },
-    { label: 'Rack', value: rack.name },
-    { label: 'Rack Spec', value: rackSpecLabel },
-    { label: 'Total Weight', value: `${totalWeightKg.toFixed(2)} kg` },
-    { label: 'Total Power', value: `${totalPowerW} W` },
-    { label: 'Scale', value: scaleLabel },
-    { label: 'Generated', value: generatedValue },
-    { label: '', value: '', isLogo: true },
-    { label: 'Page', value: '1 / 1' },
-  ]
+  const pageLabel = `${pageNumber} / ${pageCount}`
 
   return (
     <section className="print-cartouche" aria-label="Drawing cartouche">
-      {fields.map((field, i) => (
-        <div key={field.label || `cell-${i}`} className={`print-cartouche-cell${field.isLogo ? ' print-cartouche-logo' : ''}`}>
-          {!field.isLogo && (
-            <>
-              <p className="print-cartouche-label">{field.label}</p>
-              <p className="print-cartouche-value" title={field.value}>{field.value}</p>
-            </>
-          )}
-          {field.isLogo && (
-            <img src={logoUrl} alt="Sector Pro" className="print-cartouche-logo-image" />
-          )}
+      {bodyFields.map((field, i) => (
+        <div key={`${field.label}-${i}`} className="print-cartouche-cell">
+          {field.label && <p className="print-cartouche-label">{field.label}</p>}
+          {field.value && <p className="print-cartouche-value" title={field.value}>{field.value}</p>}
         </div>
       ))}
+      <div className="print-cartouche-cell print-cartouche-logo">
+        <img src={logoSrc} alt={logoAlt} className="print-cartouche-logo-image" />
+      </div>
+      <div className="print-cartouche-cell">
+        <p className="print-cartouche-label">Page</p>
+        <p className="print-cartouche-value" title={pageLabel}>{pageLabel}</p>
+      </div>
     </section>
   )
 }
