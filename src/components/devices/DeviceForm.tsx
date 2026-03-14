@@ -6,7 +6,7 @@ import Modal from '../ui/Modal'
 import ImageCropper from './ImageCropper'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import type { Device, DeviceCategory } from '../../types'
-import { getRackPanelAspect, normalizeRackUnits } from '../../lib/rackVisual'
+import { getRackPanelAspect, normalizeRackUnits, RACK_PANEL_WIDTH_UNITS, RACK_HALF_PANEL_WIDTH_UNITS } from '../../lib/rackVisual'
 
 interface DeviceFormProps {
   initialData?: Device
@@ -51,8 +51,9 @@ export default function DeviceForm({
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [cropSide, setCropSide] = useState<'front' | 'rear'>('front')
   const normalizedRackUnits = normalizeRackUnits(rackUnits)
-  const cropAspect = getRackPanelAspect(normalizedRackUnits)
-  const cropOutputWidth = 1900
+  const cropAspect = getRackPanelAspect(normalizedRackUnits, isHalfRack)
+  const CROP_PX_PER_INCH = 100
+  const cropOutputWidth = (isHalfRack ? RACK_HALF_PANEL_WIDTH_UNITS : RACK_PANEL_WIDTH_UNITS) * CROP_PX_PER_INCH
   const cropOutputHeight = Math.round(cropOutputWidth / cropAspect)
 
   const { uploadImage, uploading } = useImageUpload()
@@ -283,7 +284,7 @@ export default function DeviceForm({
       >
         {cropSrc && (
           <ImageCropper
-            key={`${cropSide}-${normalizedRackUnits}`}
+            key={`${cropSide}-${normalizedRackUnits}-${isHalfRack}`}
             imageSrc={cropSrc}
             aspect={cropAspect}
             outputWidth={cropOutputWidth}
