@@ -1,7 +1,7 @@
 /** Standard 19-inch rack panel width in inches */
 export const RACK_PANEL_WIDTH_UNITS = 19
-/** Half-rack panel width in inches (~9.5″) */
-export const RACK_HALF_PANEL_WIDTH_UNITS = 9.5
+/** Half-rack panel width in inches (half of standard 19″) */
+export const RACK_HALF_PANEL_WIDTH_UNITS = RACK_PANEL_WIDTH_UNITS / 2
 /** Standard rack unit height in inches (EIA-310 / IEC 60297) */
 export const RACK_VISUAL_U_HEIGHT_UNITS = 1.75
 
