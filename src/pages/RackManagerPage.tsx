@@ -7,8 +7,10 @@ import ConfirmDialog from '../components/ui/ConfirmDialog'
 import RackList from '../components/racks/RackList'
 import RackForm from '../components/racks/RackForm'
 import type { Rack, RackWidth } from '../types'
+import { useHaptics } from '../hooks/useHaptics'
 
 export default function RackManagerPage() {
+  const { haptic } = useHaptics()
   const { racks, loading, createRack, updateRack, deleteRack } = useRacks()
   const [formOpen, setFormOpen] = useState(false)
   const [editingRack, setEditingRack] = useState<Rack | undefined>()
@@ -20,13 +22,18 @@ export default function RackManagerPage() {
     depth_mm: number
     width: RackWidth
   }) => {
-    if (editingRack) {
-      await updateRack(editingRack.id, data)
-    } else {
-      await createRack(data)
+    try {
+      if (editingRack) {
+        await updateRack(editingRack.id, data)
+      } else {
+        await createRack(data)
+      }
+      haptic('success')
+      setFormOpen(false)
+      setEditingRack(undefined)
+    } catch {
+      haptic('error')
     }
-    setFormOpen(false)
-    setEditingRack(undefined)
   }
 
   const handleEdit = (rack: Rack) => {
@@ -47,7 +54,7 @@ export default function RackManagerPage() {
     <div>
       <PageHeader
         title="Rack Manager"
-        action={<Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">Add Rack</Button>}
+        action={<Button onClick={() => { haptic('nudge'); setFormOpen(true) }} className="w-full sm:w-auto">Add Rack</Button>}
       />
       <RackList racks={racks} onEdit={handleEdit} onDelete={setDeletingRack} />
 
@@ -66,7 +73,7 @@ export default function RackManagerPage() {
       <ConfirmDialog
         isOpen={!!deletingRack}
         onClose={() => setDeletingRack(undefined)}
-        onConfirm={() => deletingRack && deleteRack(deletingRack.id)}
+        onConfirm={() => { if (deletingRack) { haptic('buzz'); void deleteRack(deletingRack.id) } }}
         title="Delete Rack"
         message={`Are you sure you want to delete "${deletingRack?.name}"? This will also delete all layouts using this rack.`}
       />

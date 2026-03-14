@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useHaptics } from '../../hooks/useHaptics'
 
 const navItems = [
   { to: '/', label: 'Devices' },
@@ -7,6 +8,7 @@ const navItems = [
 ]
 
 export default function AppShell() {
+  const { haptic } = useHaptics()
   return (
     <div className="flex min-h-screen bg-gray-50 overflow-x-hidden">
       <nav className="hidden md:flex md:w-56 bg-gray-900 text-white flex-col shrink-0">
@@ -19,6 +21,7 @@ export default function AppShell() {
               <NavLink
                 to={item.to}
                 end
+                onClick={() => haptic('nudge')}
                 className={({ isActive }) =>
                   `block px-4 py-2.5 text-sm transition-colors ${
                     isActive
@@ -52,6 +55,7 @@ export default function AppShell() {
                 <NavLink
                   to={item.to}
                   end
+                  onClick={() => haptic('nudge')}
                   className={({ isActive }) =>
                     `flex min-h-14 items-center justify-center px-2 text-xs font-medium transition-colors ${
                       isActive ? 'text-blue-700 bg-blue-50' : 'text-gray-600 hover:bg-gray-100'

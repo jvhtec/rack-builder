@@ -9,11 +9,13 @@ import Modal from '../components/ui/Modal'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
 import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
+import { useHaptics } from '../hooks/useHaptics'
 
 export default function ProjectManagerPage() {
   const { projects, loading: projectsLoading, createProjectWithInitialLayout, deleteProject } = useProjects()
   const { racks, loading: racksLoading } = useRacks()
   const navigate = useNavigate()
+  const { haptic } = useHaptics()
 
   const [formOpen, setFormOpen] = useState(false)
   const [deletingProject, setDeletingProject] = useState<ProjectSummary | undefined>()
@@ -41,8 +43,11 @@ export default function ProjectManagerPage() {
         rack_id: rackId,
       })
 
+      haptic('success')
       setFormOpen(false)
       navigate(`/editor/project/${result.project.id}?layout=${result.layout_id}`)
+    } catch {
+      haptic('error')
     } finally {
       setSaving(false)
     }
@@ -57,7 +62,7 @@ export default function ProjectManagerPage() {
       <PageHeader
         title="Project Manager"
         action={
-          <Button onClick={openCreateModal} disabled={racks.length === 0}>
+          <Button onClick={() => { haptic('nudge'); openCreateModal() }} disabled={racks.length === 0}>
             New Project
           </Button>
         }
@@ -84,8 +89,8 @@ export default function ProjectManagerPage() {
                   <dd className="text-right">{new Date(project.created_at).toLocaleDateString()}</dd>
                 </dl>
                 <div className="mt-3 grid grid-cols-1 gap-2">
-                  <Button onClick={() => navigate(`/editor/project/${project.id}`)}>Open Editor</Button>
-                  <Button variant="danger" onClick={() => setDeletingProject(project)}>Delete</Button>
+                  <Button onClick={() => { haptic('nudge'); navigate(`/editor/project/${project.id}`) }}>Open Editor</Button>
+                  <Button variant="danger" onClick={() => { haptic('buzz'); setDeletingProject(project) }}>Delete</Button>
                 </div>
               </article>
             ))}
@@ -109,8 +114,8 @@ export default function ProjectManagerPage() {
                     <td className="py-3 text-gray-500">{new Date(project.created_at).toLocaleDateString()}</td>
                     <td className="py-3 text-right">
                       <div className="flex justify-end gap-2">
-                        <Button onClick={() => navigate(`/editor/project/${project.id}`)}>Open Editor</Button>
-                        <Button variant="danger" onClick={() => setDeletingProject(project)}>Delete</Button>
+                        <Button onClick={() => { haptic('nudge'); navigate(`/editor/project/${project.id}`) }}>Open Editor</Button>
+                        <Button variant="danger" onClick={() => { haptic('buzz'); setDeletingProject(project) }}>Delete</Button>
                       </div>
                     </td>
                   </tr>
@@ -156,7 +161,7 @@ export default function ProjectManagerPage() {
       <ConfirmDialog
         isOpen={!!deletingProject}
         onClose={() => setDeletingProject(undefined)}
-        onConfirm={() => deletingProject && deleteProject(deletingProject.id)}
+        onConfirm={() => { if (deletingProject) { haptic('buzz'); void deleteProject(deletingProject.id) } }}
         title="Delete Project"
         message={`Are you sure you want to delete "${deletingProject?.name}"? All layouts and placed devices in this project will be removed.`}
       />

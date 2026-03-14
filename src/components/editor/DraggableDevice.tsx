@@ -2,6 +2,7 @@ import type { LegacyRef } from 'react'
 import { useDrag } from 'react-dnd'
 import type { Device } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
+import { useHaptics } from '../../hooks/useHaptics'
 
 export const DEVICE_TYPE = 'DEVICE'
 export const PLACED_DEVICE_TYPE = 'PLACED_DEVICE'
@@ -30,15 +31,19 @@ interface DraggableDeviceProps {
 }
 
 export default function DraggableDevice({ device }: DraggableDeviceProps) {
+  const { haptic } = useHaptics()
   const [{ isDragging }, dragRef] = useDrag<DeviceDragItem, unknown, { isDragging: boolean }>({
     type: DEVICE_TYPE,
-    item: {
-      type: DEVICE_TYPE,
-      deviceId: device.id,
-      rackUnits: device.rack_units,
-      isHalfRack: device.is_half_rack,
-      forceFullWidth: false,
-      depthMm: device.depth_mm,
+    item: () => {
+      haptic('nudge')
+      return {
+        type: DEVICE_TYPE,
+        deviceId: device.id,
+        rackUnits: device.rack_units,
+        isHalfRack: device.is_half_rack,
+        forceFullWidth: false,
+        depthMm: device.depth_mm,
+      }
     },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   })
