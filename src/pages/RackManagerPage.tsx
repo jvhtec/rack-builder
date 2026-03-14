@@ -49,7 +49,7 @@ export default function RackManagerPage() {
         title="Rack Manager"
         action={<Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">Add Rack</Button>}
       />
-      <div className="mb-4 text-sm text-gray-600">
+      <div className="mb-4 text-gray-700">
         Total: {racks.length} rack{racks.length !== 1 ? 's' : ''}
       </div>
       <RackList racks={racks} onEdit={handleEdit} onDelete={setDeletingRack} />
