@@ -36,8 +36,12 @@ export default function PrintCartouche({
         ctx.drawImage(img, 0, 0)
         const dataUrl = canvas.toDataURL('image/png')
         setLogoSrc(dataUrl)
-        logoLoadedRef.current = true
       }
+      logoLoadedRef.current = true
+    }
+    img.onerror = () => {
+      console.error('PrintCartouche: failed to load logo', logoPath)
+      logoLoadedRef.current = true
     }
     img.src = logoPath
   }, [])
