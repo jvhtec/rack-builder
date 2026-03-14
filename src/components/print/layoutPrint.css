@@ -60,6 +60,17 @@
   box-shadow: 0 20px 35px rgba(14, 26, 46, 0.16);
 }
 
+
+.layout-print-stage--project {
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.layout-print-stage--project .layout-print-sheet {
+  flex-shrink: 0;
+}
+
 .layout-print-sheet,
 .layout-print-sheet * {
   -webkit-print-color-adjust: exact;
@@ -347,6 +358,98 @@
   display: none;
 }
 
+
+.layout-print-page-break {
+  break-after: page;
+  page-break-after: always;
+}
+
+.layout-print-page-break:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.project-print-cover {
+  flex: 1;
+  border: 2px solid #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 12mm;
+}
+
+.project-print-cover-logo {
+  width: 220px;
+  max-width: 60%;
+  height: auto;
+}
+
+.project-print-cover-kicker {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #4b5563;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.project-print-cover-title {
+  margin: 0;
+  font-size: 38px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.project-print-cover-owner,
+.project-print-cover-generated {
+  margin: 0;
+  font-size: 14px;
+  color: #1f2937;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.project-print-index-wrap {
+  flex: 1;
+  border: 2px solid #000;
+  padding: 6mm;
+  overflow: visible;
+}
+
+.project-print-index-title {
+  margin: 0 0 4mm;
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.project-print-index-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 10px;
+}
+
+.project-print-index-table th,
+.project-print-index-table td {
+  border: 1px solid #222;
+  padding: 2mm 1.6mm;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.project-print-index-table th {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 9px;
+}
+
+
 .print-cartouche {
   border: 2px solid #000;
   background: #fff;
@@ -431,6 +534,27 @@
     padding: 0;
     overflow: visible;
     background: #fff;
+  }
+
+
+  .layout-print-stage--project {
+    display: block;
+    padding: 0;
+  }
+
+  .layout-print-stage--project .layout-print-sheet {
+    margin-bottom: 0;
+    overflow: visible;
+  }
+
+  .layout-print-page-break {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .layout-print-page-break:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 
   .layout-print-sheet {

@@ -5,6 +5,7 @@ import RackManagerPage from './pages/RackManagerPage'
 import ProjectManagerPage from './pages/ProjectManagerPage'
 import LayoutEditorPage from './pages/LayoutEditorPage'
 import LayoutPrintPage from './pages/LayoutPrintPage'
+import ProjectPrintPage from './pages/ProjectPrintPage'
 import LegacyLayoutEditorRedirectPage from './pages/LegacyLayoutEditorRedirectPage'
 import LegacyLayoutPrintRedirectPage from './pages/LegacyLayoutPrintRedirectPage'
 
@@ -19,6 +20,8 @@ export default function App() {
           <Route path="/layouts" element={<Navigate to="/projects" replace />} />
         </Route>
         <Route path="/editor/project/:projectId" element={<LayoutEditorPage />} />
+        <Route path="/editor/project/:projectId/print" element={<ProjectPrintPage />} />
+        <Route path="/editor/project/:projectId/print/all" element={<ProjectPrintPage />} />
         <Route path="/editor/project/:projectId/print/:layoutId" element={<LayoutPrintPage />} />
         <Route path="/editor/:layoutId" element={<LegacyLayoutEditorRedirectPage />} />
         <Route path="/editor/:layoutId/print" element={<LegacyLayoutPrintRedirectPage />} />
