@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import type { Layout, Rack } from '../../types'
+import logoUrl from '../../assets/sector-pro-logo.png'
 
 interface PrintCartoucheProps {
   layout: Layout
@@ -20,32 +21,6 @@ export default function PrintCartouche({
   totalPowerW,
   projectOwner,
 }: PrintCartoucheProps) {
-  const logoPath = '/sector%20pro%20logo.png'
-  const [logoSrc, setLogoSrc] = useState<string>(logoPath)
-  const logoLoadedRef = useRef(false)
-
-  useEffect(() => {
-    if (logoLoadedRef.current) return
-    const img = new Image()
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = img.naturalWidth
-      canvas.height = img.naturalHeight
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        ctx.drawImage(img, 0, 0)
-        const dataUrl = canvas.toDataURL('image/png')
-        setLogoSrc(dataUrl)
-      }
-      logoLoadedRef.current = true
-    }
-    img.onerror = () => {
-      console.error('PrintCartouche: failed to load logo', logoPath)
-      logoLoadedRef.current = true
-    }
-    img.src = logoPath
-  }, [])
-
   const generatedAtLabel = useMemo(
     () => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(generatedAt),
     [generatedAt],
@@ -79,7 +54,7 @@ export default function PrintCartouche({
             </>
           )}
           {field.isLogo && (
-            <img src={logoSrc} alt="Sector Pro" className="print-cartouche-logo-image" />
+            <img src={logoUrl} alt="Sector Pro" className="print-cartouche-logo-image" />
           )}
         </div>
       ))}
