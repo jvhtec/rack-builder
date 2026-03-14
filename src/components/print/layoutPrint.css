@@ -381,6 +381,11 @@
   padding: 12mm;
 }
 
+
+.project-print-cover--full-height {
+  height: 100%;
+}
+
 .project-print-cover-logo {
   width: 220px;
   max-width: 60%;

@@ -292,7 +292,7 @@ export default function ProjectPrintPage() {
       </header>
 
       <main className="layout-print-stage layout-print-stage--project">
-        <ProjectPrintCover project={project} generatedAt={generatedAt} pageNumber={1} pageCount={pageCount} />
+        <ProjectPrintCover project={project} generatedAt={generatedAt} />
         <ProjectPrintIndex
           projectName={project.name}
           rows={indexRows}
@@ -312,6 +312,7 @@ export default function ProjectPrintPage() {
             totalWeightKg={model.totalWeightKg}
             totalPowerW={model.totalPowerW}
             scaleLabel="Fit (auto)"
+            useAutoFitScale
             pageNumber={index + 3}
             pageCount={pageCount}
             sheetClassName={index === layoutModels.length - 1 ? '' : 'layout-print-page-break'}
