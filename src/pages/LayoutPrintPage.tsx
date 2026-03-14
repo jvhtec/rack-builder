@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import RackPrintView from '../components/print/RackPrintView'
 import PrintCartouche from '../components/print/PrintCartouche'
 import Button from '../components/ui/Button'
-import type { Layout, LayoutItemWithDevice, Rack } from '../types'
+import type { Layout, LayoutItemWithDevice, Project, Rack } from '../types'
 import { supabase } from '../lib/supabase'
 import { getDeviceImageUrl } from '../hooks/useDevices'
 import '../components/print/layoutPrint.css'
@@ -38,6 +38,7 @@ export default function LayoutPrintPage() {
 
   const [layout, setLayout] = useState<Layout | null>(null)
   const [rack, setRack] = useState<Rack | null>(null)
+  const [project, setProject] = useState<Project | null>(null)
   const [items, setItems] = useState<LayoutItemWithDevice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -99,6 +100,13 @@ export default function LayoutPrintPage() {
 
     const typedLayout = layoutData as Layout
     setLayout(typedLayout)
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', projectId)
+      .single()
+    setProject((projectData as Project) ?? null)
 
     const { data: rackData, error: rackError } = await supabase
       .from('racks')
@@ -305,6 +313,7 @@ export default function LayoutPrintPage() {
               generatedAt={generatedAt}
               totalWeightKg={rackTotals.weightKg}
               totalPowerW={rackTotals.powerW}
+              projectOwner={project?.owner}
             />
           </div>
         </section>

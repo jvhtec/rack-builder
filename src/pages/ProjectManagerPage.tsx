@@ -18,12 +18,14 @@ export default function ProjectManagerPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [deletingProject, setDeletingProject] = useState<ProjectSummary | undefined>()
   const [projectName, setProjectName] = useState('')
+  const [projectOwner, setProjectOwner] = useState('')
   const [initialLayoutName, setInitialLayoutName] = useState('Main Layout')
   const [rackId, setRackId] = useState('')
   const [saving, setSaving] = useState(false)
 
   const openCreateModal = () => {
     setProjectName('')
+    setProjectOwner('')
     setInitialLayoutName('Main Layout')
     setRackId(racks[0]?.id ?? '')
     setFormOpen(true)
@@ -37,6 +39,7 @@ export default function ProjectManagerPage() {
     try {
       const result = await createProjectWithInitialLayout({
         project_name: projectName,
+        project_owner: projectOwner || undefined,
         initial_layout_name: initialLayoutName,
         rack_id: rackId,
       })
@@ -128,6 +131,12 @@ export default function ProjectManagerPage() {
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
             required
+          />
+          <Input
+            label="Project Owner"
+            value={projectOwner}
+            onChange={(e) => setProjectOwner(e.target.value)}
+            placeholder="e.g. John Smith"
           />
           <Input
             label="Initial Layout Name"
