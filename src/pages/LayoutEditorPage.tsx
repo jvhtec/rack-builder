@@ -637,25 +637,6 @@ export default function LayoutEditorPage() {
               {layoutEntry.name}
             </button>
           ))}
-          <button
-            onClick={openCreateLayoutModal}
-            className="px-3 py-1 rounded-md text-xs whitespace-nowrap border bg-slate-800 border-slate-700 text-slate-200"
-          >
-            + Layout
-          </button>
-          <button
-            onClick={openRenameLayoutModal}
-            className="px-3 py-1 rounded-md text-xs whitespace-nowrap border bg-slate-800 border-slate-700 text-slate-200"
-          >
-            Rename
-          </button>
-          <button
-            onClick={() => setDeleteLayoutOpen(true)}
-            disabled={layouts.length <= 1}
-            className="px-3 py-1 rounded-md text-xs whitespace-nowrap border bg-red-600/70 border-red-400/50 text-white disabled:opacity-50"
-          >
-            Delete
-          </button>
         </div>
       </div>
 
@@ -913,6 +894,28 @@ export default function LayoutEditorPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <p className="text-xs text-slate-500 uppercase font-bold">Layouts</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setIsSheetOpen(false); openCreateLayoutModal() }}
+                      className="flex-1 py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
+                    >
+                      + New
+                    </button>
+                    <button
+                      onClick={() => { setIsSheetOpen(false); openRenameLayoutModal() }}
+                      className="flex-1 py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
+                    >
+                      Rename
+                    </button>
+                    <button
+                      onClick={() => { setIsSheetOpen(false); setDeleteLayoutOpen(true) }}
+                      disabled={layouts.length <= 1}
+                      className="flex-1 py-2 rounded-lg border text-sm border-red-700/60 bg-red-900/30 text-red-300 disabled:opacity-40"
+                    >
+                      Delete
+                    </button>
+                  </div>
                   <p className="text-xs text-slate-500 uppercase font-bold">Facing</p>
                   <div className="flex gap-2">
                     <button
