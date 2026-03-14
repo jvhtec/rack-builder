@@ -4,6 +4,7 @@ import { PLACED_DEVICE_TYPE, type PlacedDeviceDragItem } from './DraggableDevice
 import type { DeviceFacing, LayoutItemWithDevice } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { RACK_SLOT_HEIGHT_PX } from './rackGeometry'
+import { useHaptics } from '../../hooks/useHaptics'
 
 const SLOT_HEIGHT = RACK_SLOT_HEIGHT_PX
 
@@ -27,17 +28,21 @@ export default function PlacedDevice({
   onEditNotes,
 }: PlacedDeviceProps) {
   const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
+  const { haptic } = useHaptics()
   const [{ isDragging }, dragRef] = useDrag<PlacedDeviceDragItem, unknown, { isDragging: boolean }>({
     type: PLACED_DEVICE_TYPE,
     canDrag: interactive,
-    item: {
-      type: PLACED_DEVICE_TYPE,
-      itemId: item.id,
-      deviceId: item.device_id,
-      rackUnits: item.device.rack_units,
-      isHalfRack: item.device.is_half_rack,
-      forceFullWidth: item.force_full_width,
-      depthMm: item.device.depth_mm,
+    item: () => {
+      haptic('nudge')
+      return {
+        type: PLACED_DEVICE_TYPE,
+        itemId: item.id,
+        deviceId: item.device_id,
+        rackUnits: item.device.rack_units,
+        isHalfRack: item.device.is_half_rack,
+        forceFullWidth: item.force_full_width,
+        depthMm: item.device.depth_mm,
+      }
     },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   })
@@ -84,14 +89,14 @@ export default function PlacedDevice({
       {interactive && (
         <div className="rack-device-actions">
           <button
-            onClick={(e) => { e.stopPropagation(); onEditNotes(item) }}
+            onClick={(e) => { e.stopPropagation(); haptic('nudge'); onEditNotes(item) }}
             className="rack-device-action"
             title="Notes"
           >
             N
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); onRemove(item.id) }}
+            onClick={(e) => { e.stopPropagation(); haptic('buzz'); onRemove(item.id) }}
             className="rack-device-action"
             title="Remove"
           >

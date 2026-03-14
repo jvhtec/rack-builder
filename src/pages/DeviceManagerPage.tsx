@@ -8,8 +8,10 @@ import Select from '../components/ui/Select'
 import DeviceList from '../components/devices/DeviceList'
 import DeviceForm from '../components/devices/DeviceForm'
 import type { Device } from '../types'
+import { useHaptics } from '../hooks/useHaptics'
 
 export default function DeviceManagerPage() {
+  const { haptic } = useHaptics()
   const { devices, categories, loading, createDevice, updateDevice, deleteDevice, refetch } = useDevices()
   const [formOpen, setFormOpen] = useState(false)
   const [editingDevice, setEditingDevice] = useState<Device | undefined>()
@@ -52,13 +54,18 @@ export default function DeviceManagerPage() {
     front_image_path?: string | null
     rear_image_path?: string | null
   }) => {
-    if (editingDevice) {
-      await updateDevice(editingDevice.id, data)
-    } else {
-      await createDevice(data)
+    try {
+      if (editingDevice) {
+        await updateDevice(editingDevice.id, data)
+      } else {
+        await createDevice(data)
+      }
+      haptic('success')
+      setFormOpen(false)
+      setEditingDevice(undefined)
+    } catch {
+      haptic('error')
     }
-    setFormOpen(false)
-    setEditingDevice(undefined)
   }
 
   const handleEdit = (device: Device) => {
@@ -85,7 +92,7 @@ export default function DeviceManagerPage() {
     <div>
       <PageHeader
         title="Device Manager"
-        action={<Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">Add Device</Button>}
+        action={<Button onClick={() => { haptic('nudge'); setFormOpen(true) }} className="w-full sm:w-auto">Add Device</Button>}
       />
 
       <div className="grid grid-cols-1 gap-3 mb-4 md:grid-cols-3">
@@ -143,7 +150,7 @@ export default function DeviceManagerPage() {
       <ConfirmDialog
         isOpen={!!deletingDevice}
         onClose={() => setDeletingDevice(undefined)}
-        onConfirm={() => deletingDevice && deleteDevice(deletingDevice.id)}
+        onConfirm={() => { if (deletingDevice) { haptic('buzz'); void deleteDevice(deletingDevice.id) } }}
         title="Delete Device"
         message={`Are you sure you want to delete "${deletingDevice?.brand} ${deletingDevice?.model}"?`}
       />

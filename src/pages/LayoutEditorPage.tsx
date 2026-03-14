@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useHaptics } from '../hooks/useHaptics'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
@@ -124,6 +125,7 @@ export default function LayoutEditorPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { haptic } = useHaptics()
 
   const [facing, setFacing] = useState<DeviceFacing>('front')
   const [notesItem, setNotesItem] = useState<LayoutItemWithDevice | null>(null)
@@ -255,7 +257,9 @@ export default function LayoutEditorPage() {
       const device = devices.find((d) => d.id === deviceId)
       const allowOverlap = rack?.width === 'dual' || (device?.is_half_rack ?? false)
       await addItem(deviceId, startU, facing, rackUnits, preferredLane, allowOverlap, preferredSubLane)
+      haptic('success')
     } catch (err) {
+      haptic('error')
       console.error('Drop failed:', err)
     }
   }
@@ -265,7 +269,9 @@ export default function LayoutEditorPage() {
       const item = items.find((i) => i.id === itemId)
       const allowOverlap = rack?.width === 'dual' || (item?.device.is_half_rack ?? false)
       await moveItem(itemId, newStartU, facing, preferredLane, allowOverlap, preferredSubLane)
+      haptic('success')
     } catch (err) {
+      haptic('error')
       console.error('Move failed:', err)
     }
   }
@@ -311,8 +317,10 @@ export default function LayoutEditorPage() {
     try {
       const allowOverlap = rack.width === 'dual' || device.is_half_rack
       await addItem(device.id, slotU, facing, device.rack_units, preferredLane, allowOverlap, preferredSubLane)
+      haptic('success')
       setSelectedDeviceTemplate(null)
     } catch (err) {
+      haptic('error')
       console.error('Tap placement failed:', err)
     }
   }
@@ -335,8 +343,10 @@ export default function LayoutEditorPage() {
     try {
       const allowOverlap = rack.width === 'dual' || item.device.is_half_rack
       await moveItem(selectedItemToMove, slotU, facing, preferredLane, allowOverlap, preferredSubLane)
+      haptic('success')
       setSelectedItemToMove(null)
     } catch (err) {
+      haptic('error')
       console.error('Tap move failed:', err)
     }
   }
@@ -364,9 +374,12 @@ export default function LayoutEditorPage() {
         rack_id: layoutRackDraft,
       })
       if (created) {
+        haptic('success')
         setCreateLayoutOpen(false)
         setActiveLayout(created.id)
       }
+    } catch {
+      haptic('error')
     } finally {
       setLayoutSaving(false)
     }
@@ -378,7 +391,10 @@ export default function LayoutEditorPage() {
     setLayoutSaving(true)
     try {
       await updateLayout(activeLayout.id, { name: layoutNameDraft })
+      haptic('success')
       setRenameLayoutOpen(false)
+    } catch {
+      haptic('error')
     } finally {
       setLayoutSaving(false)
     }
@@ -389,6 +405,7 @@ export default function LayoutEditorPage() {
 
     const fallbackLayout = layouts.find((entry) => entry.id !== activeLayout.id)
 
+    haptic('buzz')
     setLayoutSaving(true)
     try {
       await deleteLayout(activeLayout.id)
@@ -432,17 +449,19 @@ export default function LayoutEditorPage() {
         const widenedSlot = getItemSlot({ ...item, force_full_width: true }, rack.width)
         const sameFacing = items.filter((i) => i.id !== itemId && i.facing === item.facing)
         if (!canPlaceAtPosition(item.start_u, item.device.rack_units, widenedSlot, sameFacing, rack.width)) {
+          haptic('error')
           throw new Error('Cannot span full width: another device occupies the adjacent half-rack slot at this position.')
         }
       }
     }
-    return updateItemDetails(itemId, updates)
+    await updateItemDetails(itemId, updates)
+    haptic('success')
   }
 
   const tabButtons = layouts.map((layoutEntry) => (
     <button
       key={layoutEntry.id}
-      onClick={() => setActiveLayout(layoutEntry.id)}
+      onClick={() => { haptic('nudge'); setActiveLayout(layoutEntry.id) }}
       className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap border ${
         layoutEntry.id === activeLayout.id
           ? 'bg-blue-600 text-white border-blue-600'
@@ -469,7 +488,7 @@ export default function LayoutEditorPage() {
             <div className="bg-white border-b px-6 py-3 shrink-0">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
-                  <Button variant="secondary" onClick={() => navigate('/projects')}>
+                  <Button variant="secondary" onClick={() => { haptic('nudge'); navigate('/projects') }}>
                     &larr; Back
                   </Button>
                   <div className="min-w-0">
@@ -482,25 +501,25 @@ export default function LayoutEditorPage() {
                 <div className="flex items-center gap-2">
                   <Button
                     variant="secondary"
-                    onClick={() => navigate(`/editor/project/${project.id}/print/${activeLayout.id}`)}
+                    onClick={() => { haptic('nudge'); navigate(`/editor/project/${project.id}/print/${activeLayout.id}`) }}
                   >
                     Print A3 / PDF
                   </Button>
                   <Button
                     variant={facing === 'front' ? 'primary' : 'secondary'}
-                    onClick={() => setFacing('front')}
+                    onClick={() => { haptic('nudge'); setFacing('front') }}
                   >
                     Front
                   </Button>
                   <Button
                     variant={facing === 'rear' ? 'primary' : 'secondary'}
-                    onClick={() => setFacing('rear')}
+                    onClick={() => { haptic('nudge'); setFacing('rear') }}
                   >
                     Rear
                   </Button>
                   <Button
                     variant={showDeviceNames ? 'primary' : 'secondary'}
-                    onClick={() => setShowDeviceNames((prev) => !prev)}
+                    onClick={() => { haptic('nudge'); setShowDeviceNames((prev) => !prev) }}
                   >
                     Labels {showDeviceNames ? 'On' : 'Off'}
                   </Button>
@@ -509,16 +528,16 @@ export default function LayoutEditorPage() {
 
               <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
                 {tabButtons}
-                <Button variant="secondary" className="whitespace-nowrap" onClick={openCreateLayoutModal}>
+                <Button variant="secondary" className="whitespace-nowrap" onClick={() => { haptic('nudge'); openCreateLayoutModal() }}>
                   + Layout
                 </Button>
-                <Button variant="secondary" className="whitespace-nowrap" onClick={openRenameLayoutModal}>
+                <Button variant="secondary" className="whitespace-nowrap" onClick={() => { haptic('nudge'); openRenameLayoutModal() }}>
                   Rename
                 </Button>
                 <Button
                   variant="danger"
                   className="whitespace-nowrap"
-                  onClick={() => setDeleteLayoutOpen(true)}
+                  onClick={() => { haptic('buzz'); setDeleteLayoutOpen(true) }}
                   disabled={layouts.length <= 1}
                   title={layouts.length <= 1 ? 'A project must contain at least one layout' : undefined}
                 >
@@ -610,14 +629,14 @@ export default function LayoutEditorPage() {
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden">
       <header className="flex items-center justify-between px-4 h-14 bg-slate-900 border-b border-slate-800 shrink-0 z-30" style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(3.5rem + env(safe-area-inset-top))' }}>
-        <button onClick={() => navigate('/projects')} className="text-slate-300 text-sm font-semibold">
+        <button onClick={() => { haptic('nudge'); navigate('/projects') }} className="text-slate-300 text-sm font-semibold">
           ← Back
         </button>
         <div className="flex flex-col items-center min-w-0 px-2">
           <h1 className="text-sm font-bold truncate max-w-[180px]">{project.name}</h1>
           <span className="text-[10px] text-slate-500 uppercase tracking-widest truncate">{activeLayout.name}</span>
         </div>
-        <button onClick={() => setIsSheetOpen(true)} className="text-indigo-400 text-sm font-semibold">
+        <button onClick={() => { haptic('nudge'); setIsSheetOpen(true) }} className="text-indigo-400 text-sm font-semibold">
           Menu
         </button>
       </header>
@@ -627,7 +646,7 @@ export default function LayoutEditorPage() {
           {layouts.map((layoutEntry) => (
             <button
               key={layoutEntry.id}
-              onClick={() => setActiveLayout(layoutEntry.id)}
+              onClick={() => { haptic('nudge'); setActiveLayout(layoutEntry.id) }}
               className={`px-3 py-1 rounded-md text-xs whitespace-nowrap border ${
                 layoutEntry.id === activeLayout.id
                   ? 'bg-indigo-600 border-indigo-400 text-white'
@@ -638,19 +657,19 @@ export default function LayoutEditorPage() {
             </button>
           ))}
           <button
-            onClick={openCreateLayoutModal}
+            onClick={() => { haptic('nudge'); openCreateLayoutModal() }}
             className="px-3 py-1 rounded-md text-xs whitespace-nowrap border bg-slate-800 border-slate-700 text-slate-200"
           >
             + Layout
           </button>
           <button
-            onClick={openRenameLayoutModal}
+            onClick={() => { haptic('nudge'); openRenameLayoutModal() }}
             className="px-3 py-1 rounded-md text-xs whitespace-nowrap border bg-slate-800 border-slate-700 text-slate-200"
           >
             Rename
           </button>
           <button
-            onClick={() => setDeleteLayoutOpen(true)}
+            onClick={() => { haptic('buzz'); setDeleteLayoutOpen(true) }}
             disabled={layouts.length <= 1}
             className="px-3 py-1 rounded-md text-xs whitespace-nowrap border bg-red-600/70 border-red-400/50 text-white disabled:opacity-50"
           >
@@ -662,7 +681,7 @@ export default function LayoutEditorPage() {
       <main className="flex-1 overflow-y-auto relative bg-slate-950">
         <div className="fixed top-28 right-4 z-20 flex flex-col gap-2">
           <button
-            onClick={() => setFacing(facing === 'front' ? 'rear' : 'front')}
+            onClick={() => { haptic('nudge'); setFacing(facing === 'front' ? 'rear' : 'front') }}
             className="w-12 h-12 rounded-full bg-indigo-600 shadow-xl flex items-center justify-center border border-indigo-400 text-xs font-bold uppercase"
           >
             {facing === 'front' ? 'F' : 'R'}
@@ -672,7 +691,7 @@ export default function LayoutEditorPage() {
         {(selectedDeviceTemplate || selectedItemToMove) && (
           <div className="fixed top-28 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 px-4 py-2 rounded-full shadow-2xl border border-indigo-400 flex items-center gap-2">
             <span className="text-xs font-bold">{selectedItemToMove ? 'Tap a slot to move' : 'Tap a slot to place'}</span>
-            <button onClick={() => { setSelectedDeviceTemplate(null); setSelectedItemToMove(null) }} className="text-xs">✕</button>
+            <button onClick={() => { haptic('nudge'); setSelectedDeviceTemplate(null); setSelectedItemToMove(null) }} className="text-xs">✕</button>
           </div>
         )}
 
@@ -680,7 +699,7 @@ export default function LayoutEditorPage() {
           <div className="px-5 pt-3 pb-1">
             <div className="max-w-[360px] mx-auto flex items-center justify-between gap-2 text-xs">
               <button
-                onClick={() => setMobileDualLane(0)}
+                onClick={() => { haptic('nudge'); setMobileDualLane(0) }}
                 className={`px-3 py-1.5 rounded-lg border transition ${
                   mobileDualLane === 0
                     ? 'border-indigo-400 bg-indigo-500/20 text-indigo-100'
@@ -691,7 +710,7 @@ export default function LayoutEditorPage() {
               </button>
               <span className="text-slate-400 uppercase tracking-wide">Dual rack view</span>
               <button
-                onClick={() => setMobileDualLane(1)}
+                onClick={() => { haptic('nudge'); setMobileDualLane(1) }}
                 className={`px-3 py-1.5 rounded-lg border transition ${
                   mobileDualLane === 1
                     ? 'border-indigo-400 bg-indigo-500/20 text-indigo-100'
@@ -746,6 +765,7 @@ export default function LayoutEditorPage() {
                         ? () => void (selectedItemToMove ? handleMobileMoveToSlot(u, visualColIndex) : handleMobileSlotClick(u, visualColIndex))
                         : item && !showOppositePreview
                           ? () => {
+                              haptic('nudge')
                               if (selectedItemToMove === item.id) {
                                 setSelectedItemToMove(null)
                               } else {
@@ -809,8 +829,8 @@ export default function LayoutEditorPage() {
 
                                 {!showOppositePreview && (
                                   <div className="absolute top-1 right-1 flex gap-1 text-[10px]">
-                                    <button onClick={(e) => { e.stopPropagation(); setNotesItem(item) }} className="bg-black/45 px-1.5 py-0.5 rounded">N</button>
-                                    <button onClick={(e) => { e.stopPropagation(); void removeItem(item.id) }} className="bg-black/45 px-1.5 py-0.5 rounded">✕</button>
+                                    <button onClick={(e) => { e.stopPropagation(); haptic('nudge'); setNotesItem(item) }} className="bg-black/45 px-1.5 py-0.5 rounded">N</button>
+                                    <button onClick={(e) => { e.stopPropagation(); haptic('buzz'); void removeItem(item.id) }} className="bg-black/45 px-1.5 py-0.5 rounded">✕</button>
                                   </div>
                                 )}
                               </div>
@@ -830,7 +850,7 @@ export default function LayoutEditorPage() {
 
       <footer className="bg-slate-900 border-t border-slate-800 flex items-center justify-around shrink-0 z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom)', minHeight: 'calc(4rem + env(safe-area-inset-bottom))' }}>
         <button
-          onClick={() => { setActiveTab('devices'); setIsSheetOpen(true) }}
+          onClick={() => { haptic('nudge'); setActiveTab('devices'); setIsSheetOpen(true) }}
           className={`flex flex-col items-center gap-1 ${selectedDeviceTemplate ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <span className="text-lg">▦</span>
@@ -839,7 +859,7 @@ export default function LayoutEditorPage() {
 
         <div className="relative -top-6">
           <button
-            onClick={() => { setActiveTab('devices'); setIsSheetOpen(true) }}
+            onClick={() => { haptic('nudge'); setActiveTab('devices'); setIsSheetOpen(true) }}
             className="w-14 h-14 bg-indigo-600 rounded-full shadow-xl shadow-indigo-600/30 flex items-center justify-center border-4 border-slate-950 text-2xl"
           >
             +
@@ -847,7 +867,7 @@ export default function LayoutEditorPage() {
         </div>
 
         <button
-          onClick={() => { setActiveTab('rack'); setIsSheetOpen(true) }}
+          onClick={() => { haptic('nudge'); setActiveTab('rack'); setIsSheetOpen(true) }}
           className="flex flex-col items-center gap-1 text-slate-400"
         >
           <span className="text-lg">⚙</span>
@@ -857,13 +877,13 @@ export default function LayoutEditorPage() {
 
       {isSheetOpen && (
         <div className="fixed inset-0 z-50 flex overflow-hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setIsSheetOpen(false)} />
+          <div className="absolute inset-0 bg-black/60" onClick={() => { haptic('nudge'); setIsSheetOpen(false) }} />
           <div className="relative w-80 max-w-[85%] bg-slate-900 h-full shadow-2xl flex flex-col">
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
               <h2 className="font-bold text-sm uppercase tracking-widest text-slate-400">
                 {activeTab === 'devices' ? 'Add Equipment' : 'Rack Settings'}
               </h2>
-              <button onClick={() => setIsSheetOpen(false)} className="p-2 text-slate-300">✕</button>
+              <button onClick={() => { haptic('nudge'); setIsSheetOpen(false) }} className="p-2 text-slate-300">✕</button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
@@ -887,6 +907,7 @@ export default function LayoutEditorPage() {
                     <button
                       key={device.id}
                       onClick={() => {
+                        haptic('nudge')
                         setSelectedDeviceTemplate(device.id)
                         setIsSheetOpen(false)
                       }}
@@ -913,7 +934,7 @@ export default function LayoutEditorPage() {
                   <p className="text-xs text-slate-500 uppercase font-bold">Facing</p>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setFacing('front')}
+                      onClick={() => { haptic('nudge'); setFacing('front') }}
                       className={`flex-1 py-2 rounded-lg border text-sm ${
                         facing === 'front' ? 'border-indigo-400 bg-indigo-500/20' : 'border-slate-700 bg-slate-800'
                       }`}
@@ -921,7 +942,7 @@ export default function LayoutEditorPage() {
                       Front
                     </button>
                     <button
-                      onClick={() => setFacing('rear')}
+                      onClick={() => { haptic('nudge'); setFacing('rear') }}
                       className={`flex-1 py-2 rounded-lg border text-sm ${
                         facing === 'rear' ? 'border-indigo-400 bg-indigo-500/20' : 'border-slate-700 bg-slate-800'
                       }`}
@@ -930,7 +951,7 @@ export default function LayoutEditorPage() {
                     </button>
                   </div>
                   <button
-                    onClick={() => setShowDeviceNames((prev) => !prev)}
+                    onClick={() => { haptic('nudge'); setShowDeviceNames((prev) => !prev) }}
                     className={`w-full py-2 rounded-lg border text-sm ${
                       showDeviceNames ? 'border-indigo-400 bg-indigo-500/20' : 'border-slate-700 bg-slate-800'
                     }`}
@@ -938,7 +959,7 @@ export default function LayoutEditorPage() {
                     Device names: {showDeviceNames ? 'On' : 'Off'}
                   </button>
                   <button
-                    onClick={() => navigate(`/editor/project/${project.id}/print/${activeLayout.id}`)}
+                    onClick={() => { haptic('nudge'); navigate(`/editor/project/${project.id}/print/${activeLayout.id}`) }}
                     className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
                   >
                     Print A3 / PDF
