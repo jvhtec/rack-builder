@@ -100,7 +100,7 @@ export default function ImageCropper({
 
   return (
     <div className="space-y-4">
-      <div className="max-h-96 overflow-auto">
+      <div className="overflow-hidden">
         <ReactCrop
           crop={crop}
           aspect={aspect}
@@ -112,7 +112,7 @@ export default function ImageCropper({
             ref={imgRef}
             src={imageSrc}
             alt="Crop preview"
-            className="max-w-full"
+            className="max-w-full block max-h-[55svh] sm:max-h-[70vh]"
             onLoad={(event) => {
               const target = event.currentTarget
               setCrop(getCenteredAspectCrop(target.width, target.height, aspect))
@@ -120,12 +120,12 @@ export default function ImageCropper({
           />
         </ReactCrop>
       </div>
-      <div className="flex justify-end gap-3">
-        <Button variant="secondary" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button onClick={handleConfirm} disabled={!completedCrop}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+        <Button onClick={handleConfirm} disabled={!completedCrop} className="w-full sm:w-auto">
           Confirm Crop
+        </Button>
+        <Button variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
+          Cancel
         </Button>
       </div>
     </div>
