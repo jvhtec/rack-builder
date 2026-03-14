@@ -69,8 +69,10 @@ export function filterDevicesByCategory(devices: Device[], categoryId: string): 
   return devices.filter((device) => device.category_id === categoryId)
 }
 
+export const ALL_BRAND = '__all__'
+
 export function filterDevicesByBrand(devices: Device[], brand: string): Device[] {
-  if (brand === 'all') return devices
+  if (brand === ALL_BRAND) return devices
   return devices.filter((device) => device.brand === brand)
 }
 

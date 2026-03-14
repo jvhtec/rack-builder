@@ -1,3 +1,4 @@
+import { ALL_BRAND } from '../../hooks/useDevices'
 import type { Device, DeviceCategory } from '../../types'
 import Select from '../ui/Select'
 import DraggableDevice from './DraggableDevice'
@@ -43,7 +44,7 @@ export default function DevicePalette({
           value={selectedBrand}
           onChange={(e) => onBrandChange(e.target.value)}
           options={[
-            { value: 'all', label: 'All brands' },
+            { value: ALL_BRAND, label: 'All brands' },
             ...brands.map((b) => ({ value: b, label: b })),
           ]}
         />
@@ -51,7 +52,7 @@ export default function DevicePalette({
       <div className="flex-1 overflow-auto p-3 space-y-3">
         {loading && <p className="text-sm text-gray-400 p-2">Loading...</p>}
         {!loading && devices.length === 0 && (
-          <p className="text-sm text-gray-400 p-2">No devices in this category.</p>
+          <p className="text-sm text-gray-400 p-2">No devices match the current filters.</p>
         )}
         {devices.map((device) => (
           <DraggableDevice key={device.id} device={device} />

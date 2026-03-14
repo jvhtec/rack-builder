@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { ensureCategoryByName, filterDevicesByBrand, filterDevicesByCategory, sortDevices, useDevices } from '../hooks/useDevices'
+import { useEffect, useMemo, useState } from 'react'
+import { ALL_BRAND, ensureCategoryByName, filterDevicesByBrand, filterDevicesByCategory, sortDevices, useDevices } from '../hooks/useDevices'
 import PageHeader from '../components/layout/PageHeader'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -15,7 +15,7 @@ export default function DeviceManagerPage() {
   const [editingDevice, setEditingDevice] = useState<Device | undefined>()
   const [deletingDevice, setDeletingDevice] = useState<Device | undefined>()
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
-  const [selectedBrand, setSelectedBrand] = useState('all')
+  const [selectedBrand, setSelectedBrand] = useState(ALL_BRAND)
   const [sortField, setSortField] = useState<
     'default' | 'brand' | 'model' | 'rack_units' | 'depth_mm' | 'weight_kg' | 'power_w'
   >('default')
@@ -25,6 +25,12 @@ export default function DeviceManagerPage() {
     () => [...new Set(devices.map((d) => d.brand))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
     [devices],
   )
+
+  useEffect(() => {
+    if (selectedBrand !== ALL_BRAND && !brands.includes(selectedBrand)) {
+      setSelectedBrand(ALL_BRAND)
+    }
+  }, [brands, selectedBrand])
 
   const filteredDevices = useMemo(
     () => filterDevicesByBrand(filterDevicesByCategory(devices, selectedCategoryId), selectedBrand),
@@ -113,7 +119,7 @@ export default function DeviceManagerPage() {
           value={selectedBrand}
           onChange={(e) => setSelectedBrand(e.target.value)}
           options={[
-            { value: 'all', label: 'All brands' },
+            { value: ALL_BRAND, label: 'All brands' },
             ...brands.map((b) => ({ value: b, label: b })),
           ]}
         />

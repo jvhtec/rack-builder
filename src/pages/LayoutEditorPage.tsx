@@ -5,7 +5,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
 import { supabase } from '../lib/supabase'
 import { useLayoutItems } from '../hooks/useLayoutItems'
-import { filterDevicesByBrand, filterDevicesByCategory, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
+import { ALL_BRAND, filterDevicesByBrand, filterDevicesByCategory, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
 import { useLayouts } from '../hooks/useLayouts'
 import { useRacks } from '../hooks/useRacks'
 import { hasDepthConflict, isWithinBounds } from '../lib/overlap'
@@ -137,7 +137,7 @@ export default function LayoutEditorPage() {
   )
   const [mobileDualLane, setMobileDualLane] = useState<0 | 1>(0)
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
-  const [selectedBrand, setSelectedBrand] = useState('all')
+  const [selectedBrand, setSelectedBrand] = useState(ALL_BRAND)
   const [selectedItemToMove, setSelectedItemToMove] = useState<string | null>(null)
 
   const [createLayoutOpen, setCreateLayoutOpen] = useState(false)
@@ -891,7 +891,7 @@ export default function LayoutEditorPage() {
                       onChange={(e) => setSelectedBrand(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm"
                     >
-                      <option value="all">All brands</option>
+                      <option value={ALL_BRAND}>All brands</option>
                       {brands.map((b) => (
                         <option key={b} value={b}>{b}</option>
                       ))}
@@ -921,7 +921,7 @@ export default function LayoutEditorPage() {
                       </div>
                     </button>
                   ))}
-                  {filteredDevices.length === 0 && <p className="text-xs text-slate-400">No devices in this category.</p>}
+                  {filteredDevices.length === 0 && <p className="text-xs text-slate-400">No devices match your filters.</p>}
                 </div>
               ) : (
                 <div className="space-y-3">
