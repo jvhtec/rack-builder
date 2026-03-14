@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import Select from '../ui/Select'
@@ -56,6 +56,9 @@ export default function DeviceForm({
   const cropOutputHeight = Math.round(cropOutputWidth / cropAspect)
 
   const { uploadImage, uploading } = useImageUpload()
+
+  const frontInputRef = useRef<HTMLInputElement>(null)
+  const rearInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (categoryId) return
@@ -215,32 +218,50 @@ export default function DeviceForm({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Front Image</label>
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <div className="flex items-center gap-3">
             <input
+              ref={frontInputRef}
               type="file"
               accept="image/*"
+              className="sr-only"
               onChange={(e) => {
                 const file = e.target.files?.[0]
                 if (file) handleFileSelect('front', file)
+                e.target.value = ''
               }}
-              className="text-sm"
             />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => frontInputRef.current?.click()}
+            >
+              {frontPath ? 'Replace image' : 'Choose image'}
+            </Button>
             {frontPath && <span className="text-xs text-green-600">Uploaded</span>}
           </div>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Rear Image</label>
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <div className="flex items-center gap-3">
             <input
+              ref={rearInputRef}
               type="file"
               accept="image/*"
+              className="sr-only"
               onChange={(e) => {
                 const file = e.target.files?.[0]
                 if (file) handleFileSelect('rear', file)
+                e.target.value = ''
               }}
-              className="text-sm"
             />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => rearInputRef.current?.click()}
+            >
+              {rearPath ? 'Replace image' : 'Choose image'}
+            </Button>
             {rearPath && <span className="text-xs text-green-600">Uploaded</span>}
           </div>
         </div>
