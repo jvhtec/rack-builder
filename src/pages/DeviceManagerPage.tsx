@@ -88,6 +88,10 @@ export default function DeviceManagerPage() {
         action={<Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">Add Device</Button>}
       />
 
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {sortedDevices.length} of {devices.length} device{devices.length !== 1 ? 's' : ''}
+      </div>
+
       <div className="grid grid-cols-1 gap-3 mb-4 md:grid-cols-3">
         <Select
           label="Category"
