@@ -120,12 +120,12 @@ export default function ImageCropper({
           />
         </ReactCrop>
       </div>
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-        <Button variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
-          Cancel
-        </Button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
         <Button onClick={handleConfirm} disabled={!completedCrop} className="w-full sm:w-auto">
           Confirm Crop
+        </Button>
+        <Button variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
+          Cancel
         </Button>
       </div>
     </div>
