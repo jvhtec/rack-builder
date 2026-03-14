@@ -11,17 +11,41 @@ import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
 
 export default function ProjectManagerPage() {
-  const { projects, loading: projectsLoading, createProjectWithInitialLayout, deleteProject } = useProjects()
+  const { projects, loading: projectsLoading, createProjectWithInitialLayout, updateProject, deleteProject } = useProjects()
   const { racks, loading: racksLoading } = useRacks()
   const navigate = useNavigate()
 
   const [formOpen, setFormOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<ProjectSummary | undefined>()
   const [deletingProject, setDeletingProject] = useState<ProjectSummary | undefined>()
   const [projectName, setProjectName] = useState('')
   const [projectOwner, setProjectOwner] = useState('')
   const [initialLayoutName, setInitialLayoutName] = useState('Main Layout')
   const [rackId, setRackId] = useState('')
+  const [editName, setEditName] = useState('')
+  const [editOwner, setEditOwner] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const openEditModal = (project: ProjectSummary) => {
+    setEditName(project.name)
+    setEditOwner(project.owner ?? '')
+    setEditingProject(project)
+  }
+
+  const handleEditSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!editingProject || !editName) return
+    setSaving(true)
+    try {
+      await updateProject(editingProject.id, {
+        name: editName,
+        owner: editOwner || null,
+      })
+      setEditingProject(undefined)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const openCreateModal = () => {
     setProjectName('')
@@ -88,6 +112,7 @@ export default function ProjectManagerPage() {
                 </dl>
                 <div className="mt-3 grid grid-cols-1 gap-2">
                   <Button onClick={() => navigate(`/editor/project/${project.id}`)}>Open Editor</Button>
+                  <Button variant="secondary" onClick={() => openEditModal(project)}>Edit</Button>
                   <Button variant="danger" onClick={() => setDeletingProject(project)}>Delete</Button>
                 </div>
               </article>
@@ -99,6 +124,7 @@ export default function ProjectManagerPage() {
               <thead>
                 <tr className="border-b text-left text-gray-500">
                   <th className="pb-2 font-medium">Name</th>
+                  <th className="pb-2 font-medium">Owner</th>
                   <th className="pb-2 font-medium">Layouts</th>
                   <th className="pb-2 font-medium">Created</th>
                   <th className="pb-2 font-medium text-right">Actions</th>
@@ -108,11 +134,13 @@ export default function ProjectManagerPage() {
                 {projects.map((project) => (
                   <tr key={project.id} className="border-b last:border-0 hover:bg-gray-50">
                     <td className="py-3 font-medium text-gray-900">{project.name}</td>
+                    <td className="py-3 text-gray-500">{project.owner ?? '—'}</td>
                     <td className="py-3">{project.layout_count}</td>
                     <td className="py-3 text-gray-500">{new Date(project.created_at).toLocaleDateString()}</td>
                     <td className="py-3 text-right">
                       <div className="flex justify-end gap-2">
                         <Button onClick={() => navigate(`/editor/project/${project.id}`)}>Open Editor</Button>
+                        <Button variant="secondary" onClick={() => openEditModal(project)}>Edit</Button>
                         <Button variant="danger" onClick={() => setDeletingProject(project)}>Delete</Button>
                       </div>
                     </td>
@@ -157,6 +185,31 @@ export default function ProjectManagerPage() {
             </Button>
             <Button type="submit" disabled={saving || !projectName || !initialLayoutName || !rackId} className="w-full sm:w-auto">
               {saving ? 'Creating...' : 'Create Project'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={!!editingProject} onClose={() => setEditingProject(undefined)} title="Edit Project">
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          <Input
+            label="Project Name"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            required
+          />
+          <Input
+            label="Project Owner"
+            value={editOwner}
+            onChange={(e) => setEditOwner(e.target.value)}
+            placeholder="e.g. John Smith"
+          />
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
+            <Button variant="secondary" type="button" onClick={() => setEditingProject(undefined)} className="w-full sm:w-auto">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving || !editName} className="w-full sm:w-auto">
+              {saving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </form>
