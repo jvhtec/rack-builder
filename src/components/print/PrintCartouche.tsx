@@ -50,7 +50,7 @@ export default function PrintCartouche({
           {!field.isLogo && (
             <>
               <p className="print-cartouche-label">{field.label}</p>
-              <p className="print-cartouche-value" title={field.value}>{field.value}</p>
+              <p className="print-cartouche-value">{field.value}</p>
             </>
           )}
           {field.isLogo && (
