@@ -24,24 +24,28 @@ export default function ProjectManagerPage() {
   const [rackId, setRackId] = useState('')
   const [editName, setEditName] = useState('')
   const [editOwner, setEditOwner] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const openEditModal = (project: ProjectSummary) => {
     setEditName(project.name)
     setEditOwner(project.owner ?? '')
+    setEditError(null)
     setEditingProject(project)
   }
 
   const handleEditSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!editingProject || !editName) return
+    const name = editName.trim()
+    const owner = editOwner.trim() || null
+    if (!editingProject || !name) return
     setSaving(true)
     try {
-      await updateProject(editingProject.id, {
-        name: editName,
-        owner: editOwner || null,
-      })
+      await updateProject(editingProject.id, { name, owner })
       setEditingProject(undefined)
+    } catch (err) {
+      console.error('Failed to update project:', err)
+      setEditError(err instanceof Error ? err.message : 'Failed to save changes. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -57,14 +61,17 @@ export default function ProjectManagerPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!projectName || !initialLayoutName || !rackId) return
+    const trimmedName = projectName.trim()
+    const trimmedOwner = projectOwner.trim() || undefined
+    const trimmedLayoutName = initialLayoutName.trim()
+    if (!trimmedName || !trimmedLayoutName || !rackId) return
 
     setSaving(true)
     try {
       const result = await createProjectWithInitialLayout({
-        project_name: projectName,
-        project_owner: projectOwner || undefined,
-        initial_layout_name: initialLayoutName,
+        project_name: trimmedName,
+        project_owner: trimmedOwner,
+        initial_layout_name: trimmedLayoutName,
         rack_id: rackId,
       })
 
@@ -105,6 +112,8 @@ export default function ProjectManagerPage() {
               <article key={project.id} className="rounded-lg border bg-white p-4 shadow-sm">
                 <h2 className="text-sm font-semibold text-gray-900">{project.name}</h2>
                 <dl className="mt-2 grid grid-cols-2 gap-y-1 text-xs text-gray-600">
+                  <dt>Owner</dt>
+                  <dd className="text-right">{project.owner ?? '—'}</dd>
                   <dt>Layouts</dt>
                   <dd className="text-right">{project.layout_count}</dd>
                   <dt>Created</dt>
@@ -204,11 +213,12 @@ export default function ProjectManagerPage() {
             onChange={(e) => setEditOwner(e.target.value)}
             placeholder="e.g. John Smith"
           />
+          {editError && <p className="text-sm text-red-600">{editError}</p>}
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button variant="secondary" type="button" onClick={() => setEditingProject(undefined)} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || !editName} className="w-full sm:w-auto">
+            <Button type="submit" disabled={saving || !editName.trim()} className="w-full sm:w-auto">
               {saving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
