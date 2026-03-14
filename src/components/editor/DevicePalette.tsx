@@ -7,6 +7,9 @@ interface DevicePaletteProps {
   categories: DeviceCategory[]
   selectedCategoryId: string
   onCategoryChange: (value: string) => void
+  brands: string[]
+  selectedBrand: string
+  onBrandChange: (value: string) => void
   loading: boolean
 }
 
@@ -15,6 +18,9 @@ export default function DevicePalette({
   categories,
   selectedCategoryId,
   onCategoryChange,
+  brands,
+  selectedBrand,
+  onBrandChange,
   loading,
 }: DevicePaletteProps) {
   return (
@@ -22,7 +28,7 @@ export default function DevicePalette({
       <div className="px-4 py-4 border-b font-semibold text-base text-gray-700">
         Device Library
       </div>
-      <div className="p-3 border-b">
+      <div className="p-3 border-b space-y-2">
         <Select
           label="Category"
           value={selectedCategoryId}
@@ -30,6 +36,15 @@ export default function DevicePalette({
           options={[
             { value: 'all', label: 'All categories' },
             ...categories.map((category) => ({ value: category.id, label: category.name })),
+          ]}
+        />
+        <Select
+          label="Brand"
+          value={selectedBrand}
+          onChange={(e) => onBrandChange(e.target.value)}
+          options={[
+            { value: 'all', label: 'All brands' },
+            ...brands.map((b) => ({ value: b, label: b })),
           ]}
         />
       </div>

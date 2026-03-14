@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ensureCategoryByName, filterDevicesByCategory, sortDevices, useDevices } from '../hooks/useDevices'
+import { ensureCategoryByName, filterDevicesByBrand, filterDevicesByCategory, sortDevices, useDevices } from '../hooks/useDevices'
 import PageHeader from '../components/layout/PageHeader'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -15,14 +15,20 @@ export default function DeviceManagerPage() {
   const [editingDevice, setEditingDevice] = useState<Device | undefined>()
   const [deletingDevice, setDeletingDevice] = useState<Device | undefined>()
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
+  const [selectedBrand, setSelectedBrand] = useState('all')
   const [sortField, setSortField] = useState<
     'default' | 'brand' | 'model' | 'rack_units' | 'depth_mm' | 'weight_kg' | 'power_w'
   >('default')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
+  const brands = useMemo(
+    () => [...new Set(devices.map((d) => d.brand))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+    [devices],
+  )
+
   const filteredDevices = useMemo(
-    () => filterDevicesByCategory(devices, selectedCategoryId),
-    [devices, selectedCategoryId],
+    () => filterDevicesByBrand(filterDevicesByCategory(devices, selectedCategoryId), selectedBrand),
+    [devices, selectedCategoryId, selectedBrand],
   )
 
   const sortedDevices = useMemo(() => {
@@ -92,7 +98,7 @@ export default function DeviceManagerPage() {
         Showing {sortedDevices.length} of {devices.length} device{devices.length !== 1 ? 's' : ''}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 mb-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 mb-4 md:grid-cols-4">
         <Select
           label="Category"
           value={selectedCategoryId}
@@ -100,6 +106,15 @@ export default function DeviceManagerPage() {
           options={[
             { value: 'all', label: 'All categories' },
             ...categories.map((category) => ({ value: category.id, label: category.name })),
+          ]}
+        />
+        <Select
+          label="Brand"
+          value={selectedBrand}
+          onChange={(e) => setSelectedBrand(e.target.value)}
+          options={[
+            { value: 'all', label: 'All brands' },
+            ...brands.map((b) => ({ value: b, label: b })),
           ]}
         />
         <Select
