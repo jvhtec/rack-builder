@@ -51,8 +51,8 @@ export default function DeviceForm({
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [cropSide, setCropSide] = useState<'front' | 'rear'>('front')
   const normalizedRackUnits = normalizeRackUnits(rackUnits)
-  const cropAspect = getRackPanelAspect(normalizedRackUnits)
-  const cropOutputWidth = 1900
+  const cropAspect = getRackPanelAspect(normalizedRackUnits, isHalfRack)
+  const cropOutputWidth = isHalfRack ? 950 : 1900
   const cropOutputHeight = Math.round(cropOutputWidth / cropAspect)
 
   const { uploadImage, uploading } = useImageUpload()
@@ -283,7 +283,7 @@ export default function DeviceForm({
       >
         {cropSrc && (
           <ImageCropper
-            key={`${cropSide}-${normalizedRackUnits}`}
+            key={`${cropSide}-${normalizedRackUnits}-${isHalfRack}`}
             imageSrc={cropSrc}
             aspect={cropAspect}
             outputWidth={cropOutputWidth}
