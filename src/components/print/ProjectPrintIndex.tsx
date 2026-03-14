@@ -34,7 +34,17 @@ export default function ProjectPrintIndex({
       <div className="layout-print-sheet-inner">
         <div className="project-print-index-wrap">
           <h2 className="project-print-index-title">Layout Index</h2>
+          <div className="project-print-index-table-wrap">
           <table className="project-print-index-table">
+            <colgroup>
+              <col className="project-print-index-col-num" />
+              <col className="project-print-index-col-layout" />
+              <col className="project-print-index-col-rack" />
+              <col className="project-print-index-col-spec" />
+              <col className="project-print-index-col-power" />
+              <col className="project-print-index-col-weight" />
+              <col className="project-print-index-col-page" />
+            </colgroup>
             <thead>
               <tr>
                 <th>#</th>
@@ -60,6 +70,7 @@ export default function ProjectPrintIndex({
               ))}
             </tbody>
           </table>
+        </div>
         </div>
 
         <PrintCartouche

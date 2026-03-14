@@ -419,16 +419,25 @@
 .project-print-index-wrap {
   flex: 1;
   border: 2px solid #000;
-  padding: 6mm;
-  overflow: visible;
+  padding: 4.5mm;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .project-print-index-title {
-  margin: 0 0 4mm;
-  font-size: 18px;
+  margin: 0 0 2.5mm;
+  font-size: 16px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.project-print-index-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .project-print-index-table {
@@ -436,22 +445,44 @@
   border-collapse: collapse;
   table-layout: fixed;
   font-family: 'IBM Plex Mono', 'Consolas', monospace;
-  font-size: 10px;
+  font-size: 8.4px;
+  line-height: 1.2;
+}
+
+.project-print-index-col-num {
+  width: 5%;
+}
+
+.project-print-index-col-layout,
+.project-print-index-col-rack,
+.project-print-index-col-spec {
+  width: 21%;
+}
+
+.project-print-index-col-power,
+.project-print-index-col-weight {
+  width: 13%;
+}
+
+.project-print-index-col-page {
+  width: 6%;
 }
 
 .project-print-index-table th,
 .project-print-index-table td {
   border: 1px solid #222;
-  padding: 2mm 1.6mm;
+  padding: 1.4mm 1.1mm;
   text-align: left;
   vertical-align: top;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .project-print-index-table th {
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 9px;
+  letter-spacing: 0.04em;
+  font-size: 8px;
 }
 
 
