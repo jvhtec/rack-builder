@@ -25,6 +25,7 @@ export function useProjects() {
       const mapped: ProjectSummary[] = rows.map((row) => ({
         id: row.id,
         name: row.name,
+        owner: row.owner ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at,
         layout_count: row.layouts?.length ?? 0,
@@ -47,12 +48,13 @@ export function useProjects() {
 
   const createProjectWithInitialLayout = async (payload: {
     project_name: string
+    project_owner?: string
     initial_layout_name: string
     rack_id: string
   }) => {
     const { data: projectData, error: projectErr } = await supabase
       .from('projects')
-      .insert({ name: payload.project_name })
+      .insert({ name: payload.project_name, owner: payload.project_owner ?? null })
       .select()
       .single()
 
@@ -83,7 +85,7 @@ export function useProjects() {
     }
   }
 
-  const updateProject = async (id: string, updates: Partial<{ name: string }>) => {
+  const updateProject = async (id: string, updates: Partial<{ name: string; owner: string | null }>) => {
     const { error: err } = await supabase
       .from('projects')
       .update({ ...updates, updated_at: new Date().toISOString() })

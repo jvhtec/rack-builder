@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { Layout, Rack } from '../../types'
+import logoUrl from '../../assets/sector-pro-logo.png'
 
 interface PrintCartoucheProps {
   layout: Layout
@@ -8,6 +9,7 @@ interface PrintCartoucheProps {
   generatedAt: Date
   totalWeightKg: number
   totalPowerW: number
+  projectOwner?: string | null
 }
 
 export default function PrintCartouche({
@@ -17,12 +19,14 @@ export default function PrintCartouche({
   generatedAt,
   totalWeightKg,
   totalPowerW,
+  projectOwner,
 }: PrintCartoucheProps) {
-  const logoSrc = '/sector%20pro%20logo.png'
   const generatedAtLabel = useMemo(
     () => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(generatedAt),
     [generatedAt],
   )
+
+  const generatedValue = projectOwner ? `${projectOwner} — ${generatedAtLabel}` : generatedAtLabel
 
   const rackSpecLabel = `${rack.rack_units}U | ${rack.width} | ${rack.depth_mm}mm`
 
@@ -34,7 +38,7 @@ export default function PrintCartouche({
     { label: 'Total Weight', value: `${totalWeightKg.toFixed(2)} kg` },
     { label: 'Total Power', value: `${totalPowerW} W` },
     { label: 'Scale', value: scaleLabel },
-    { label: 'Generated', value: `JVH — ${generatedAtLabel}` },
+    { label: 'Generated', value: generatedValue },
     { label: '', value: '', isLogo: true },
     { label: 'Page', value: '1 / 1' },
   ]
@@ -50,7 +54,7 @@ export default function PrintCartouche({
             </>
           )}
           {field.isLogo && (
-            <img src={logoSrc} alt="Sector Pro" className="print-cartouche-logo-image" />
+            <img src={logoUrl} alt="Sector Pro" className="print-cartouche-logo-image" />
           )}
         </div>
       ))}

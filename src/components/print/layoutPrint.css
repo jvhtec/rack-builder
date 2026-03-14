@@ -348,15 +348,15 @@
 }
 
 .print-cartouche {
-  min-height: 36mm;
   border: 2px solid #000;
   background: #fff;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(2, auto);
 }
 
 .print-cartouche-cell {
-  padding: 3px 6px;
+  padding: 2px 5px;
   border-right: 1px solid #333;
   border-bottom: 1px solid #333;
 }

@@ -38,6 +38,7 @@ export interface Device {
 export interface Project {
   id: string
   name: string
+  owner: string | null
   created_at: string
   updated_at: string
 }
