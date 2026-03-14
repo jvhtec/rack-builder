@@ -360,13 +360,15 @@
 
 
 .layout-print-page-break {
-  break-after: page;
+  /* stylelint-disable-next-line property-no-deprecated */
   page-break-after: always;
+  break-after: page;
 }
 
 .layout-print-page-break:last-child {
-  break-after: auto;
+  /* stylelint-disable-next-line property-no-deprecated */
   page-break-after: auto;
+  break-after: auto;
 }
 
 .project-print-cover {
