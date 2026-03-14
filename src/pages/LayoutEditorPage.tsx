@@ -487,6 +487,14 @@ export default function LayoutEditorPage() {
                     Print A3 / PDF
                   </Button>
                   <Button
+                    variant="secondary"
+                    onClick={() => navigate(`/editor/project/${project.id}/print/all`)}
+                    disabled={layouts.length <= 1}
+                    title={layouts.length <= 1 ? 'Add more layouts to print the full project' : undefined}
+                  >
+                    Print Full Project
+                  </Button>
+                  <Button
                     variant={facing === 'front' ? 'primary' : 'secondary'}
                     onClick={() => setFacing('front')}
                   >
@@ -948,6 +956,14 @@ export default function LayoutEditorPage() {
                     className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
                   >
                     Print A3 / PDF
+                  </button>
+                  <button
+                    onClick={() => navigate(`/editor/project/${project.id}/print/all`)}
+                    disabled={layouts.length <= 1}
+                    className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800 disabled:opacity-40"
+                    title={layouts.length <= 1 ? 'Add more layouts to print the full project' : undefined}
+                  >
+                    Print Full Project
                   </button>
                   <p className="text-xs text-slate-500">Rack: {rack.name} ({rack.rack_units}U, {rack.width})</p>
                   <p className="text-xs text-slate-500">Total load: {rackTotals.weightKg.toFixed(2)} kg</p>
