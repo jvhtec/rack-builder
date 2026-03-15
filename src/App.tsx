@@ -9,6 +9,7 @@ import ProjectPrintPage from './pages/ProjectPrintPage'
 import LegacyLayoutEditorRedirectPage from './pages/LegacyLayoutEditorRedirectPage'
 import LegacyLayoutPrintRedirectPage from './pages/LegacyLayoutPrintRedirectPage'
 import PanelLayoutManagerPage from './pages/PanelLayoutManagerPage'
+import PanelLayoutsOverviewPage from './pages/PanelLayoutsOverviewPage'
 import PanelLayoutEditorPage from './pages/PanelLayoutEditorPage'
 import PanelLayoutPrintPage from './pages/PanelLayoutPrintPage'
 
@@ -20,10 +21,11 @@ export default function App() {
           <Route path="/" element={<DeviceManagerPage />} />
           <Route path="/racks" element={<RackManagerPage />} />
           <Route path="/projects" element={<ProjectManagerPage />} />
+          <Route path="/panels" element={<PanelLayoutsOverviewPage />} />
           <Route path="/layouts" element={<Navigate to="/projects" replace />} />
+          <Route path="/editor/project/:projectId/panels" element={<PanelLayoutManagerPage />} />
         </Route>
         <Route path="/editor/project/:projectId" element={<LayoutEditorPage />} />
-        <Route path="/editor/project/:projectId/panels" element={<PanelLayoutManagerPage />} />
         <Route path="/editor/project/:projectId/panels/:panelLayoutId" element={<PanelLayoutEditorPage />} />
         <Route path="/editor/project/:projectId/panels/:panelLayoutId/print" element={<PanelLayoutPrintPage />} />
         <Route path="/editor/project/:projectId/print" element={<ProjectPrintPage />} />
