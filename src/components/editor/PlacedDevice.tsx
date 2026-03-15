@@ -1,9 +1,11 @@
 import type { LegacyRef } from 'react'
 import { useDrag } from 'react-dnd'
 import { PLACED_DEVICE_TYPE, type PlacedDeviceDragItem } from './DraggableDevice'
-import type { DeviceFacing, LayoutItemWithDevice } from '../../types'
+import type { ConnectorDefinition, DeviceFacing, LayoutItemWithDevice } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { RACK_SLOT_HEIGHT_PX } from './rackGeometry'
+import PanelLayoutCanvas from '../panels/PanelLayoutCanvas'
+import { resolveVisibleImageSide, selectFacingImagePath } from '../../lib/rackViewModel'
 
 const SLOT_HEIGHT = RACK_SLOT_HEIGHT_PX
 
@@ -13,6 +15,7 @@ interface PlacedDeviceProps {
   slotHeight?: number
   showDeviceDetails?: boolean
   interactive?: boolean
+  connectorById?: Map<string, ConnectorDefinition>
   onRemove: (itemId: string) => void
   onEditNotes: (item: LayoutItemWithDevice) => void
 }
@@ -23,6 +26,7 @@ export default function PlacedDevice({
   slotHeight = SLOT_HEIGHT,
   showDeviceDetails = true,
   interactive = true,
+  connectorById,
   onRemove,
   onEditNotes,
 }: PlacedDeviceProps) {
@@ -33,7 +37,7 @@ export default function PlacedDevice({
     item: {
       type: PLACED_DEVICE_TYPE,
       itemId: item.id,
-      deviceId: item.device_id,
+      deviceId: item.device_id ?? item.device.id,
       rackUnits: item.device.rack_units,
       isHalfRack: item.device.is_half_rack,
       forceFullWidth: item.force_full_width,
@@ -42,23 +46,43 @@ export default function PlacedDevice({
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   })
 
-  const imageUrl = getDeviceImageUrl(
-    facing === 'front' ? item.device.front_image_path : item.device.rear_image_path,
-  )
+  const panelLayout = item.asset_kind === 'panel_layout' ? item.panel_layout ?? null : null
+  const hasPanelPreview = !!panelLayout && !!connectorById
+  const imagePath = selectFacingImagePath(item, facing)
+  const visibleSide = resolveVisibleImageSide(item.facing, facing)
+  const imageUrl = getDeviceImageUrl(imagePath)
   const imageSrc = imageUrl ?? undefined
-  const hasImage = imageSrc !== undefined
+  const hasRawImage = imageSrc !== undefined
+  const hasVisual = hasPanelPreview || hasRawImage
 
   const height = item.device.rack_units * slotHeight
 
   return (
     <div
       ref={dragRef as unknown as LegacyRef<HTMLDivElement>}
-      className={`rack-device ${hasImage ? 'rack-device--has-image' : ''} ${isDragging ? 'rack-device--dragging' : ''}`}
-      style={{ height: `${height}px`, cursor: interactive ? undefined : 'default' }}
+      className={`rack-device ${hasRawImage ? 'rack-device--has-image' : ''} ${isDragging ? 'rack-device--dragging' : ''}`}
+      style={{
+        height: `${height}px`,
+        cursor: interactive ? undefined : 'default',
+        pointerEvents: interactive ? undefined : 'none',
+      }}
       onContextMenu={(event) => event.preventDefault()}
     >
       <div className="rack-device-media">
-        {hasImage ? (
+        {hasPanelPreview ? (
+          <PanelLayoutCanvas
+            connectorById={connectorById}
+            heightRu={panelLayout.height_ru}
+            rows={panelLayout.rows ?? []}
+            ports={panelLayout.ports ?? []}
+            facing={visibleSide}
+            hasLacingBar={panelLayout.has_lacing_bar}
+            showGuides={false}
+            interactive={false}
+            showScaleMarker={false}
+            className="h-full w-full border-0 bg-transparent p-0 shadow-none"
+          />
+        ) : hasRawImage ? (
           <img
             src={imageSrc}
             alt={label}
@@ -69,7 +93,7 @@ export default function PlacedDevice({
         )}
       </div>
 
-      {!hasImage && (
+      {!hasVisual && (
         <>
           <div className="rack-device-wire" />
           <span className="rack-device-screw lt" />

@@ -8,8 +8,8 @@ interface ProjectPrintCoverProps {
 
 export default function ProjectPrintCover({ project, generatedAt }: ProjectPrintCoverProps) {
   const generatedAtLabel = new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'full',
-    timeStyle: 'medium',
+    dateStyle: 'long',
+    timeStyle: 'short',
   }).format(generatedAt)
 
   return (

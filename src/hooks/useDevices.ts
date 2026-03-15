@@ -256,8 +256,15 @@ export function useDevices() {
   }
 }
 
-export function getDeviceImageUrl(path: string | null): string | null {
+export function getDeviceImageUrl(path: string | null, bucket = 'device-images'): string | null {
   if (!path) return null
-  const { data } = supabase.storage.from('device-images').getPublicUrl(path)
+  if (path.startsWith('data:')) return path
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  if (path.startsWith('/')) {
+    const base = import.meta.env.BASE_URL || '/'
+    const normalizedPath = path.slice(1)
+    return `${base}${normalizedPath}`
+  }
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path)
   return data.publicUrl
 }

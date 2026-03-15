@@ -16,7 +16,12 @@ export function useRacks() {
     if (err) {
       setError(err.message)
     } else {
-      setRacks((data as Rack[]) ?? [])
+      const mapped = ((data as Rack[]) ?? []).map((rack) => ({
+        ...rack,
+        rack_units: Number(rack.rack_units),
+        depth_mm: Number(rack.depth_mm),
+      }))
+      setRacks(mapped)
       setError(null)
     }
     setLoading(false)

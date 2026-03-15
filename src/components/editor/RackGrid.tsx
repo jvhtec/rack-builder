@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import type { DeviceFacing, Rack, LayoutItemWithDevice } from '../../types'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import type { ConnectorDefinition, DeviceFacing, Rack, LayoutItemWithDevice } from '../../types'
 import RackSlot from './RackSlot'
 import PlacedDevice from './PlacedDevice'
 import {
@@ -12,18 +12,20 @@ import {
   RACK_RAIL_WIDTH_PX,
 } from './rackGeometry'
 import {
-  buildSlotAssignments,
-  canPlaceAtPosition,
+  findPositionConflict,
   getItemSlot,
   getSlotStyle,
+  type ItemSlot,
   preferenceToSlot,
 } from '../../lib/rackPositions'
-import { hasDepthConflict } from '../../lib/overlap'
+import { findDepthConflict, isWithinBounds } from '../../lib/overlap'
+import { buildRackFaceViewModel } from '../../lib/rackViewModel'
 import './rackBlueprint.css'
 
 interface RackGridProps {
   rack: Rack
   items: LayoutItemWithDevice[]
+  connectorById: Map<string, ConnectorDefinition>
   facing: DeviceFacing
   showDeviceDetails?: boolean
   lanePreferenceByItemId?: Map<string, 0 | 1>
@@ -31,22 +33,47 @@ interface RackGridProps {
   onDropMove: (itemId: string, newStartU: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => void
   onRemove: (itemId: string) => void
   onEditNotes: (item: LayoutItemWithDevice) => void
+  onPlacementHint?: (message: string | null) => void
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : null
+}
+
+function describeSlot(slot: ItemSlot, rackWidth: Rack['width']): string {
+  if (rackWidth === 'single') {
+    if (slot.outer === null) return 'full width'
+    return slot.outer === 0 ? 'left half' : 'right half'
+  }
+  if (slot.inner === null) return slot.outer === 0 ? 'left bay' : 'right bay'
+  const bayLabel = slot.outer === 0 ? 'left bay' : 'right bay'
+  const halfLabel = slot.inner === 0 ? 'left half' : 'right half'
+  return `${bayLabel} / ${halfLabel}`
 }
 
 export default function RackGrid({
   rack,
   items,
+  connectorById,
   facing,
   showDeviceDetails = true,
   onDropNew,
   onDropMove,
   onRemove,
   onEditNotes,
+  onPlacementHint,
 }: RackGridProps) {
-  const filteredItems = items.filter((item) => item.facing === facing)
+  const {
+    activeItems,
+    activeSlotByItemId: slotAssignments,
+    ghostItems: oppositePreviewItems,
+    ghostSlotByItemId: oppositeSlotAssignments,
+  } = useMemo(
+    () => buildRackFaceViewModel(items, facing, rack.width),
+    [facing, items, rack.width],
+  )
   const oppositeFacingItems = items.filter((item) => item.facing !== facing)
-  const showOppositePreview = filteredItems.length === 0 && oppositeFacingItems.length > 0
-  const visibleItems = showOppositePreview ? oppositeFacingItems : filteredItems
   const isDualRack = rack.width === 'dual'
   const laneCount = isDualRack ? 2 : 1
   const rackRef = useRef<HTMLDivElement | null>(null)
@@ -79,23 +106,63 @@ export default function RackGrid({
     '--rack-rail-width': `${RACK_RAIL_WIDTH_PX}px`,
   } as CSSProperties
 
-  const slotAssignments = buildSlotAssignments(visibleItems, rack.width)
-  const oppositeItems = showOppositePreview ? [] : oppositeFacingItems
-  const oppositeSlotAssignments = buildSlotAssignments(oppositeItems, rack.width)
+  const oppositeDepthSlotAssignments = new Map(
+    oppositeFacingItems.map((item) => [item.id, getItemSlot(item, rack.width)]),
+  )
 
-  const ghostItems = oppositeItems.filter((ghostItem) => {
-    const ghostSlot = oppositeSlotAssignments.get(ghostItem.id) ?? getItemSlot(ghostItem, rack.width)
-    const ghostTop = ghostItem.start_u + ghostItem.device.rack_units - 1
-    return !visibleItems.some((activeItem) => {
-      const activeSlot = slotAssignments.get(activeItem.id) ?? getItemSlot(activeItem, rack.width)
-      // Check horizontal conflict
-      const { left: gLeft, width: gWidth } = getSlotStyle(ghostSlot, rack.width)
-      const { left: aLeft, width: aWidth } = getSlotStyle(activeSlot, rack.width)
-      if (gLeft !== aLeft || gWidth !== aWidth) return false
-      const activeTop = activeItem.start_u + activeItem.device.rack_units - 1
-      return ghostItem.start_u <= activeTop && ghostTop >= activeItem.start_u
-    })
-  })
+  const getPlacementIssue = (
+    slotU: number,
+    rackUnits: number,
+    isHalfRack: boolean,
+    forceFullWidth: boolean,
+    depthMm: number,
+    excludeItemId?: string,
+    preferredLane?: 0 | 1,
+    preferredSubLane?: 0 | 1,
+  ): string | null => {
+    const targetSlot = preferenceToSlot(rack.width, isHalfRack && !forceFullWidth, preferredLane, preferredSubLane)
+    const normalizedSlotU = toFiniteNumber(slotU)
+    const normalizedRackUnits = toFiniteNumber(rackUnits)
+    if (
+      normalizedSlotU === null
+      || normalizedRackUnits === null
+      || !isWithinBounds(normalizedSlotU, normalizedRackUnits, rack.rack_units)
+    ) {
+      return `Out of rack bounds: U${slotU} with ${rackUnits}U in a ${rack.rack_units}U rack.`
+    }
+
+    const overlap = findPositionConflict(
+      normalizedSlotU,
+      normalizedRackUnits,
+      targetSlot,
+      activeItems,
+      rack.width,
+      excludeItemId,
+    )
+    if (overlap) {
+      const endU = overlap.startU + overlap.rackUnits - 1
+      const conflictEndU = overlap.conflictingStartU + overlap.conflictingRackUnits - 1
+      return `Same-side overlap in ${describeSlot(targetSlot, rack.width)}: U${overlap.startU}-U${endU} conflicts with ${overlap.conflictingItemName} at U${overlap.conflictingStartU}-U${conflictEndU}.`
+    }
+
+    const depthConflict = findDepthConflict(
+      normalizedSlotU,
+      normalizedRackUnits,
+      facing,
+      depthMm,
+      items,
+      rack.depth_mm,
+      excludeItemId,
+      targetSlot,
+      rack.width,
+      oppositeDepthSlotAssignments,
+    )
+    if (depthConflict) {
+      return `Depth conflict: ${depthConflict.currentDepthMm}mm + ${depthConflict.oppositeDepthMm}mm = ${depthConflict.combinedDepthMm}mm exceeds rack depth ${depthConflict.rackDepthMm}mm (${depthConflict.conflictingItemName}).`
+    }
+
+    return null
+  }
 
   const canPlaceAtSlot = (
     slotU: number,
@@ -107,11 +174,16 @@ export default function RackGrid({
     preferredLane?: 0 | 1,
     preferredSubLane?: 0 | 1,
   ): boolean => {
-    const targetSlot = preferenceToSlot(rack.width, isHalfRack && !forceFullWidth, preferredLane, preferredSubLane)
-    if (!canPlaceAtPosition(slotU, rackUnits, targetSlot, filteredItems, rack.width, excludeItemId)) return false
-    // Depth-aware front/rear conflict check using all items (not just filteredItems)
-    if (hasDepthConflict(slotU, rackUnits, facing, depthMm, items, rack.depth_mm, excludeItemId)) return false
-    return true
+    return getPlacementIssue(
+      slotU,
+      rackUnits,
+      isHalfRack,
+      forceFullWidth,
+      depthMm,
+      excludeItemId,
+      preferredLane,
+      preferredSubLane,
+    ) === null
   }
 
   const slots = buildSlots(rack.rack_units)
@@ -147,43 +219,49 @@ export default function RackGrid({
                 slotU={u}
                 totalRackUnits={rack.rack_units}
                 facing={facing}
-                items={visibleItems}
+                items={activeItems}
                 laneCount={laneCount}
                 slotHeight={slotHeight}
                 canPlaceAtSlot={canPlaceAtSlot}
+                getPlacementIssue={getPlacementIssue}
+                onPlacementHint={onPlacementHint}
                 onDropNew={onDropNew}
                 onDropMove={onDropMove}
               />
             ))}
 
             <div className="rack-device-layer">
-              {ghostItems.map((item) => {
+              {oppositePreviewItems.map((item) => {
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
                 const slot = oppositeSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
                 const { left: laneLeft, width: laneWidth } = getSlotStyle(slot, rack.width, facing)
 
                 return (
                   <div
-                    key={`ghost-${item.id}`}
-                    className="rack-ghost-wrap"
+                    key={`opposite-${item.id}`}
+                    className="rack-opposite-preview-wrap"
                     style={{
                       zIndex: 5,
                       top: `${topPx}px`,
                       left: laneLeft,
                       width: laneWidth,
-                      height: `${item.device.rack_units * slotHeight}px`,
                     }}
                   >
-                    <div className="rack-ghost-outline">
-                      {showDeviceDetails && (
-                        <div className="rack-ghost-label">{item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}</div>
-                      )}
-                    </div>
+                    <PlacedDevice
+                      item={item}
+                      facing={facing}
+                      slotHeight={slotHeight}
+                      showDeviceDetails={showDeviceDetails}
+                      interactive={false}
+                      connectorById={connectorById}
+                      onRemove={onRemove}
+                      onEditNotes={onEditNotes}
+                    />
                   </div>
                 )
               })}
 
-              {visibleItems.map((item) => {
+              {activeItems.map((item) => {
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
                 const slot = slotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
                 const { left: laneLeft, width: laneWidth } = getSlotStyle(slot, rack.width, facing)
@@ -204,7 +282,8 @@ export default function RackGrid({
                       facing={facing}
                       slotHeight={slotHeight}
                       showDeviceDetails={showDeviceDetails}
-                      interactive={!showOppositePreview}
+                      interactive
+                      connectorById={connectorById}
                       onRemove={onRemove}
                       onEditNotes={onEditNotes}
                     />

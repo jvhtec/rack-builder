@@ -4,13 +4,17 @@ import { supabase } from '../lib/supabase'
 export function useImageUpload() {
   const [uploading, setUploading] = useState(false)
 
-  const uploadImage = async (blob: Blob, side: 'front' | 'rear'): Promise<string> => {
+  const uploadImage = async (
+    blob: Blob,
+    sideOrFolder: 'front' | 'rear' | string,
+    options?: { bucket?: string },
+  ): Promise<string> => {
     setUploading(true)
     try {
       const uuid = crypto.randomUUID()
-      const path = `${side}/${uuid}.jpg`
+      const path = `${sideOrFolder}/${uuid}.jpg`
       const { error } = await supabase.storage
-        .from('device-images')
+        .from(options?.bucket ?? 'device-images')
         .upload(path, blob, { contentType: 'image/jpeg' })
       if (error) throw error
       return path

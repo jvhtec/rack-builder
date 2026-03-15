@@ -91,6 +91,7 @@ export default function ImageCropper({
   const [crop, setCrop] = useState<Crop>()
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>()
   const imgRef = useRef<HTMLImageElement>(null)
+  const crossOrigin = imageSrc.startsWith('blob:') || imageSrc.startsWith('data:') ? undefined : 'anonymous'
 
   const handleConfirm = useCallback(async () => {
     if (!imgRef.current || !completedCrop) return
@@ -111,6 +112,7 @@ export default function ImageCropper({
           <img
             ref={imgRef}
             src={imageSrc}
+            crossOrigin={crossOrigin}
             alt="Crop preview"
             className="max-w-full block max-h-[55svh] sm:max-h-[70vh]"
             onLoad={(event) => {

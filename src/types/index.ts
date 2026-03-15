@@ -1,5 +1,7 @@
 export type RackWidth = 'single' | 'dual'
 export type DeviceFacing = 'front' | 'rear'
+export type ConnectorMounting = 'front' | 'rear' | 'both'
+export type ConnectorCategory = 'audio' | 'data' | 'power' | 'multipin' | 'other'
 
 export interface Rack {
   id: string
@@ -35,6 +37,63 @@ export interface Device {
   updated_at: string
 }
 
+export interface ConnectorDefinition {
+  id: string
+  name: string
+  category: ConnectorCategory
+  image_path: string
+  is_d_size: boolean
+  grid_width: number
+  grid_height: number
+  mounting: ConnectorMounting
+  notes: string
+  weight_kg: number
+}
+
+export interface Connector extends ConnectorDefinition {
+  created_at: string
+  updated_at: string
+}
+
+export interface PanelLayoutRow {
+  id: string
+  panel_layout_id: string
+  row_index: number
+  hole_count: 4 | 6 | 8 | 12 | 16
+  active_column_map: number[]
+  created_at: string
+  updated_at: string
+}
+
+export interface PanelLayoutPort {
+  id: string
+  panel_layout_id: string
+  connector_id: string
+  row_index: number
+  hole_index: number
+  span_w: number
+  span_h: number
+  label: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PanelLayout {
+  id: string
+  project_id: string
+  name: string
+  height_ru: number
+  depth_mm: number
+  facing: DeviceFacing
+  has_lacing_bar: boolean
+  notes: string | null
+  weight_kg: number
+  created_at: string
+  updated_at: string
+  rows?: PanelLayoutRow[]
+  ports?: PanelLayoutPort[]
+}
+
 export interface Project {
   id: string
   name: string
@@ -59,7 +118,9 @@ export interface Layout {
 export interface LayoutItem {
   id: string
   layout_id: string
-  device_id: string
+  device_id: string | null
+  panel_layout_id: string | null
+  asset_kind: 'device' | 'panel_layout'
   start_u: number
   facing: DeviceFacing
   preferred_lane: 0 | 1 | null
@@ -71,4 +132,5 @@ export interface LayoutItem {
 
 export interface LayoutItemWithDevice extends LayoutItem {
   device: Device
+  panel_layout?: PanelLayout | null
 }
