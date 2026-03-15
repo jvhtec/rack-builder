@@ -280,7 +280,7 @@ export default function ProjectPrintPage() {
             if (layoutModels.length > 0) {
               navigate(`/editor/project/${projectId}?layout=${layoutModels[0].layout.id}`)
             } else if (panelModels.length > 0) {
-              navigate(`/editor/project/${projectId}?panel=${panelModels[0].id}`)
+              navigate(`/editor/project/${projectId}`)
             } else {
               navigate(`/editor/project/${projectId}`)
             }

@@ -340,10 +340,18 @@ export function autoDistributeRow(
     }
   }
 
-  // Any remaining ports that didn't fit (shouldn't happen if totalSpanWidth <= availableHoles)
-  while (portIdx < sorted.length) {
-    result.push(sorted[portIdx])
-    portIdx++
+  // Any remaining ports that didn't fit into free segments: place sequentially
+  // after the last distributed port so they don't retain stale hole_index values
+  if (portIdx < sorted.length) {
+    let nextHole = result.length > 0
+      ? Math.max(...result.map((p) => p.hole_index + p.span_w))
+      : 0
+    while (portIdx < sorted.length) {
+      const port = sorted[portIdx]
+      result.push({ ...port, hole_index: Math.min(nextHole, holeCount - port.span_w) })
+      nextHole += port.span_w
+      portIdx++
+    }
   }
 
   return result
