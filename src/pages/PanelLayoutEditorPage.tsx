@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type LegacyRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { DndProvider } from 'react-dnd'
+import { HTML5Backend } from 'react-dnd-html5-backend'
+import { TouchBackend } from 'react-dnd-touch-backend'
+import { useDrag } from 'react-dnd'
 import { groupedConnectors, CONNECTOR_BY_ID } from '../lib/connectorCatalog'
 import {
-  canPlacePort,
-  getActiveColumns,
+  autoDistributeAllRows,
   isMountingAllowed,
+  rowHasCapacity,
   summarizeRowCapacities,
+  getActiveColumns,
 } from '../lib/panelGrid'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
-import type { DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../types'
+import type { ConnectorDefinition, DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../types'
 import PanelLayoutCanvas from '../components/panels/PanelLayoutCanvas'
+import { CONNECTOR_ITEM_TYPE, type ConnectorDragItem } from '../components/panels/panelDndTypes'
 
 const DRAFT_STORAGE_PREFIX = 'panel-layout-draft'
 const AUTO_HOLE_COUNT = 16
@@ -41,7 +47,7 @@ function normalizeRowsToAutoGrid(
       id: existing?.id ?? `auto-row-${rowIndex}`,
       panel_layout_id: panelId,
       row_index: rowIndex,
-      hole_count: AUTO_HOLE_COUNT,
+      hole_count: AUTO_HOLE_COUNT as 4 | 6 | 8 | 12 | 16,
       active_column_map: getActiveColumns(AUTO_HOLE_COUNT),
       created_at: existing?.created_at ?? createdAt,
       updated_at: existing?.updated_at ?? updatedAt,
@@ -119,7 +125,62 @@ const CATEGORY_DOT: Record<string, string> = {
   other: '#6b7280',
 }
 
-export default function PanelLayoutEditorPage() {
+// ─── DraggableConnectorButton ────────────────────────────────────────────────
+
+function DraggableConnectorButton({
+  connector,
+  selected,
+  allowed,
+  onSelect,
+}: {
+  connector: ConnectorDefinition
+  selected: boolean
+  allowed: boolean
+  onSelect: () => void
+}) {
+  const [{ isDragging }, dragRef] = useDrag<ConnectorDragItem, unknown, { isDragging: boolean }>({
+    type: CONNECTOR_ITEM_TYPE,
+    item: {
+      type: CONNECTOR_ITEM_TYPE,
+      connectorId: connector.id,
+      gridWidth: connector.grid_width,
+      gridHeight: connector.grid_height,
+    },
+    canDrag: allowed,
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+  })
+
+  return (
+    <button
+      ref={dragRef as unknown as LegacyRef<HTMLButtonElement>}
+      type="button"
+      onClick={onSelect}
+      className={`w-full rounded-lg border px-3 py-2 text-left transition select-none ${
+        selected
+          ? 'border-amber-500/60 bg-amber-500/10 text-amber-100'
+          : allowed
+          ? 'border-slate-700/50 bg-slate-800/40 text-slate-300 hover:border-slate-600 hover:bg-slate-800'
+          : 'border-slate-800 bg-slate-900/30 text-slate-600'
+      }`}
+      style={{
+        opacity: isDragging ? 0.4 : 1,
+        touchAction: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+      }}
+    >
+      <p className="text-xs font-medium leading-tight">{connector.name}</p>
+      <p className="mt-0.5 text-[10px] text-slate-500">
+        {connector.grid_width}×{connector.grid_height} grid
+        {!allowed ? <span className="text-red-500/70"> · not allowed</span> : null}
+      </p>
+    </button>
+  )
+}
+
+// ─── Main Editor ─────────────────────────────────────────────────────────────
+
+function PanelLayoutEditorInner() {
   const { projectId, panelLayoutId } = useParams<{ projectId: string; panelLayoutId: string }>()
   const navigate = useNavigate()
   const {
@@ -256,111 +317,30 @@ export default function PanelLayoutEditorPage() {
     [rowCapacities],
   )
 
-  const findAdaptiveHoleIndex = (
+  /** Check if a row can accept a connector/port during drag hover. */
+  const canDropInRow = (
     rowIndex: number,
-    requestedHoleIndex: number,
-    spanW: number,
-    spanH: number,
-    existingPorts: PanelLayoutPort[],
-    movingPortId?: string,
-  ): number | null => {
-    const row = rows.find((entry) => entry.row_index === rowIndex)
-    if (!row) return null
-    const maxStart = row.hole_count - spanW
-    if (maxStart < 0) return null
-
-    const visited = new Set<number>()
-    const candidates: number[] = []
-    const push = (value: number) => {
-      if (value < 0 || value > maxStart || visited.has(value)) return
-      visited.add(value)
-      candidates.push(value)
-    }
-
-    push(requestedHoleIndex)
-    for (let offset = 1; offset <= row.hole_count; offset += 1) {
-      push(requestedHoleIndex + offset)
-      push(requestedHoleIndex - offset)
-    }
-
-    for (const holeIndex of candidates) {
-      const candidate = {
-        id: movingPortId,
-        row_index: rowIndex,
-        hole_index: holeIndex,
-        span_w: spanW,
-        span_h: spanH,
-      }
-      const result = canPlacePort(rows, existingPorts, candidate)
-      if (result.ok) return holeIndex
-    }
-
-    return null
-  }
-
-  const validatePlacementAt = (
-    rowIndex: number,
-    holeIndex: number,
     transferId: string,
     isPortMove: boolean,
-  ): { ok: boolean; reason?: string } => {
-    if (!panel) return { ok: false, reason: 'Panel is still loading.' }
+  ): boolean => {
+    if (!panel) return false
 
     if (isPortMove) {
       const movingPort = ports.find((port) => port.id === transferId)
-      if (!movingPort) return { ok: false, reason: 'Connector move payload is invalid.' }
-      const movedPort: PanelLayoutPort = {
-        ...movingPort,
-        row_index: rowIndex,
-        hole_index: holeIndex,
-      }
-      const otherPorts = ports.filter((port) => port.id !== movingPort.id)
-      const direct = canPlacePort(rows, otherPorts, movedPort)
-      if (direct.ok) return direct
-      const adaptive = findAdaptiveHoleIndex(
-        rowIndex,
-        holeIndex,
-        movingPort.span_w,
-        movingPort.span_h,
-        otherPorts,
-        movingPort.id,
-      )
-      if (adaptive !== null) return { ok: true, reason: `Will snap to nearest free cell (${adaptive + 1}).` }
-      return direct
+      if (!movingPort) return false
+      // Allow drop on same row (reorder) or on a row with capacity
+      if (movingPort.row_index === rowIndex) return true
+      return rowHasCapacity(rowIndex, movingPort.span_w, movingPort.span_h, rows, ports, movingPort.id)
     }
 
     const connector = CONNECTOR_BY_ID.get(transferId)
-    if (!connector) return { ok: false, reason: 'Unknown connector type.' }
-    if (!isMountingAllowed(connector.mounting, facing)) {
-      return { ok: false, reason: `"${connector.name}" cannot be mounted on ${facing} panels.` }
-    }
-
-    const candidate: PanelLayoutPort = {
-      id: `preview-${connector.id}`,
-      panel_layout_id: panel.id,
-      connector_id: connector.id,
-      row_index: rowIndex,
-      hole_index: holeIndex,
-      span_w: connector.grid_width,
-      span_h: connector.grid_height,
-      label: null,
-      created_at: panel.created_at,
-      updated_at: panel.updated_at,
-    }
-    const direct = canPlacePort(rows, ports, candidate)
-    if (direct.ok) return direct
-    const adaptive = findAdaptiveHoleIndex(
-      rowIndex,
-      holeIndex,
-      connector.grid_width,
-      connector.grid_height,
-      ports,
-    )
-    if (adaptive !== null) return { ok: true, reason: `Will snap to nearest free cell (${adaptive + 1}).` }
-    return direct
+    if (!connector) return false
+    if (!isMountingAllowed(connector.mounting, facing)) return false
+    return rowHasCapacity(rowIndex, connector.grid_width, connector.grid_height, rows, ports)
   }
 
-  const placeConnector = (rowIndex: number, holeIndex: number, forcedConnectorId?: string) => {
+  /** Place a new connector on a row and auto-distribute. */
+  const placeConnector = (rowIndex: number, forcedConnectorId?: string) => {
     if (!panel) return
     const connector = forcedConnectorId
       ? CONNECTOR_BY_ID.get(forcedConnectorId) ?? null
@@ -371,84 +351,70 @@ export default function PanelLayoutEditorPage() {
       setError(`"${connector.name}" cannot be mounted on ${facing} panels.`)
       return
     }
-    const resolvedHoleIndex = findAdaptiveHoleIndex(
-      rowIndex,
-      holeIndex,
-      connector.grid_width,
-      connector.grid_height,
-      ports,
-    )
-    if (resolvedHoleIndex === null) {
+    if (!rowHasCapacity(rowIndex, connector.grid_width, connector.grid_height, rows, ports)) {
       setError('No free space available for this connector footprint on the selected row.')
       return
     }
-    const candidate: PanelLayoutPort = {
+
+    const newPort: PanelLayoutPort = {
       id: `draft-port-${crypto.randomUUID()}`,
       panel_layout_id: panel.id,
       connector_id: connector.id,
       row_index: rowIndex,
-      hole_index: resolvedHoleIndex,
+      hole_index: 0, // placeholder — auto-distribute will set the real position
       span_w: connector.grid_width,
       span_h: connector.grid_height,
       label: null,
       created_at: panel.created_at,
       updated_at: panel.updated_at,
     }
-    const result = canPlacePort(rows, ports, candidate)
-    if (!result.ok) {
-      setError(result.reason ?? 'Cannot place connector here.')
-      return
-    }
-    setPorts((current) => [...current, candidate])
-    setSelectedPortId(candidate.id)
+
+    const newPorts = [...ports, newPort]
+    const distributed = autoDistributeAllRows(newPorts, rows)
+    setPorts(distributed)
+    setSelectedPortId(newPort.id)
     setError(null)
     setDirty(true)
   }
 
-  /** Move an already-placed port to a new position. */
-  const movePort = (portId: string, rowIndex: number, holeIndex: number) => {
+  /** Move an already-placed port to a new row (or reorder within same row). */
+  const movePort = (portId: string, rowIndex: number) => {
     if (!panel) return
     const existing = ports.find((p) => p.id === portId)
     if (!existing) return
-    // Dropping onto itself — ignore
-    if (existing.row_index === rowIndex && existing.hole_index === holeIndex) return
+
     const connector = CONNECTOR_BY_ID.get(existing.connector_id)
     if (connector && !isMountingAllowed(connector.mounting, facing)) {
       setError(`"${connector.name}" cannot be mounted on ${facing} panels.`)
       return
     }
-    // Validate against all other ports (excluding this one)
-    const others = ports.filter((p) => p.id !== portId)
-    const resolvedHoleIndex = findAdaptiveHoleIndex(
-      rowIndex,
-      holeIndex,
-      existing.span_w,
-      existing.span_h,
-      others,
-      existing.id,
-    )
-    if (resolvedHoleIndex === null) {
+
+    if (existing.row_index === rowIndex) {
+      // Same row — no-op for now (order is maintained by auto-distribute)
+      return
+    }
+
+    // Check capacity on target row
+    if (!rowHasCapacity(rowIndex, existing.span_w, existing.span_h, rows, ports, existing.id)) {
       setError('No free space available at this row for the selected connector footprint.')
       return
     }
-    const moved: PanelLayoutPort = { ...existing, row_index: rowIndex, hole_index: resolvedHoleIndex }
-    const result = canPlacePort(rows, others, moved)
-    if (!result.ok) {
-      setError(result.reason ?? 'Cannot place connector here.')
-      return
-    }
-    setPorts((current) => current.map((p) => p.id === portId ? moved : p))
+
+    const moved: PanelLayoutPort = { ...existing, row_index: rowIndex }
+    const newPorts = ports.map((p) => (p.id === portId ? moved : p))
+    const distributed = autoDistributeAllRows(newPorts, rows)
+    setPorts(distributed)
     setSelectedPortId(portId)
     setError(null)
     setDirty(true)
   }
 
   /** Called by canvas on drop — distinguishes library drop vs. port move. */
-  const handleHoleDrop = (rowIndex: number, holeIndex: number, transferId: string, isPortMove: boolean) => {
+  const handleRowDrop = (rowIndex: number, transferId: string, isPortMove: boolean) => {
     if (isPortMove) {
-      movePort(transferId, rowIndex, holeIndex)
+      movePort(transferId, rowIndex)
     } else {
-      placeConnector(rowIndex, holeIndex, transferId)
+      placeConnector(rowIndex, transferId)
     }
   }
 
@@ -464,7 +430,9 @@ export default function PanelLayoutEditorPage() {
 
   const removeSelectedPort = () => {
     if (!selectedPort) return
-    setPorts((current) => current.filter((port) => port.id !== selectedPort.id))
+    const remaining = ports.filter((port) => port.id !== selectedPort.id)
+    const distributed = autoDistributeAllRows(remaining, rows)
+    setPorts(distributed)
     setSelectedPortId(null)
     setDirty(true)
   }
@@ -590,7 +558,7 @@ export default function PanelLayoutEditorPage() {
         <aside className="flex w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900/80">
           <div className="border-b border-slate-800 px-4 py-3">
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Connector Library</h2>
-            <p className="mt-0.5 text-[10px] text-slate-600">Click to select, or drag onto the panel</p>
+            <p className="mt-0.5 text-[10px] text-slate-600">Click to select, or drag onto a row</p>
           </div>
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
             {groupedConnectors().map((group) => (
@@ -607,32 +575,16 @@ export default function PanelLayoutEditorPage() {
                 </div>
                 <div className="space-y-1">
                   {group.items.map((connector) => {
-                    const selected = selectedConnectorId === connector.id
-                    const allowed = isMountingAllowed(connector.mounting, facing)
+                    const isSelected = selectedConnectorId === connector.id
+                    const isAllowed = isMountingAllowed(connector.mounting, facing)
                     return (
-                      <button
+                      <DraggableConnectorButton
                         key={connector.id}
-                        type="button"
-                        onClick={() => setSelectedConnectorId(connector.id)}
-                        draggable
-                        onDragStart={(event) => {
-                          event.dataTransfer.setData('application/x-connector-id', connector.id)
-                          event.dataTransfer.effectAllowed = 'copy'
-                        }}
-                        className={`w-full rounded-lg border px-3 py-2 text-left transition select-none ${
-                          selected
-                            ? 'border-amber-500/60 bg-amber-500/10 text-amber-100'
-                            : allowed
-                            ? 'border-slate-700/50 bg-slate-800/40 text-slate-300 hover:border-slate-600 hover:bg-slate-800'
-                            : 'border-slate-800 bg-slate-900/30 text-slate-600'
-                        }`}
-                      >
-                        <p className="text-xs font-medium leading-tight">{connector.name}</p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">
-                          {connector.grid_width}×{connector.grid_height} grid
-                          {!allowed ? <span className="text-red-500/70"> · not allowed</span> : null}
-                        </p>
-                      </button>
+                        connector={connector}
+                        selected={isSelected}
+                        allowed={isAllowed}
+                        onSelect={() => setSelectedConnectorId(connector.id)}
+                      />
                     )
                   })}
                 </div>
@@ -650,7 +602,7 @@ export default function PanelLayoutEditorPage() {
               <svg className="h-3 w-3" viewBox="0 0 16 16" fill="currentColor">
                 <circle cx="8" cy="8" r="7" />
               </svg>
-              <strong>{CONNECTOR_BY_ID.get(selectedConnectorId)?.name}</strong> selected — drop on a cell to place
+              <strong>{CONNECTOR_BY_ID.get(selectedConnectorId)?.name}</strong> selected — click a row or drag to place
               <button
                 className="ml-2 text-amber-400/60 hover:text-amber-300 transition"
                 onClick={() => setSelectedConnectorId(null)}
@@ -668,16 +620,16 @@ export default function PanelLayoutEditorPage() {
               facing={facing}
               hasLacingBar={hasLacingBar}
               selectedPortId={selectedPortId}
-              onHoleClick={(rowIndex, holeIndex) => placeConnector(rowIndex, holeIndex)}
-              onHoleDrop={handleHoleDrop}
-              canPlaceAtCell={validatePlacementAt}
+              onRowClick={(rowIndex) => placeConnector(rowIndex)}
+              onRowDrop={handleRowDrop}
+              canDropInRow={canDropInRow}
               onPortClick={setSelectedPortId}
               interactive
             />
           </div>
 
           <p className="text-[10px] text-slate-600 max-w-lg text-center">
-            Placement uses cell zones per active hole position, with merged-cell behavior for larger connectors.
+            Drop connectors onto a row and spacing adjusts automatically. Drag placed connectors between rows to reorder.
           </p>
         </main>
 
@@ -728,14 +680,13 @@ export default function PanelLayoutEditorPage() {
 
             {/* Auto grid status */}
             <div className="border-t border-slate-800 pt-4 space-y-3">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Auto Grid</h3>
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Auto Spacing</h3>
               <p className="text-[10px] text-slate-500">
-                Spacing is automatic. Drag connectors to cells and the editor snaps to the nearest valid free placement within panel limits.
+                Connectors are automatically spaced evenly within each row. Drop connectors onto a row to place them.
               </p>
               {rows.map((row) => (
                 <div key={row.id} className="rounded-lg border border-slate-800 bg-slate-800/30 p-3">
                   <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-2">U{row.row_index + 1}</p>
-                  <p className="text-[10px] text-slate-500">16 logical cells (auto spacing)</p>
                   <p className="mt-2 text-[10px] text-slate-500">
                     {(() => {
                       const capacity = rowCapacityByIndex.get(row.row_index)
@@ -756,7 +707,7 @@ export default function PanelLayoutEditorPage() {
                     {CONNECTOR_BY_ID.get(selectedPort.connector_id)?.name ?? 'Unknown'}
                   </p>
                   <p className="text-[10px] text-slate-500">
-                    {selectedPort.span_w}×{selectedPort.span_h} grid · row {selectedPort.row_index + 1}, cell {selectedPort.hole_index + 1}
+                    {selectedPort.span_w}×{selectedPort.span_h} grid · row {selectedPort.row_index + 1}
                   </p>
                   <DarkInput
                     label="Label override"
@@ -782,5 +733,37 @@ export default function PanelLayoutEditorPage() {
         </aside>
       </div>
     </div>
+  )
+}
+
+// ─── DndProvider wrapper ─────────────────────────────────────────────────────
+
+export default function PanelLayoutEditorPage() {
+  const [isTouchLikeDevice, setIsTouchLikeDevice] = useState(false)
+
+  useEffect(() => {
+    const coarsePointerQuery = window.matchMedia('(pointer: coarse)')
+    const updateTouchLike = () => {
+      setIsTouchLikeDevice(coarsePointerQuery.matches || 'ontouchstart' in window)
+    }
+    updateTouchLike()
+    coarsePointerQuery.addEventListener('change', updateTouchLike)
+    return () => coarsePointerQuery.removeEventListener('change', updateTouchLike)
+  }, [])
+
+  const dndBackend = isTouchLikeDevice ? TouchBackend : HTML5Backend
+  const dndOptions = isTouchLikeDevice
+    ? {
+        enableMouseEvents: true,
+        delayTouchStart: 120,
+        touchSlop: 8,
+        ignoreContextMenu: true,
+      }
+    : undefined
+
+  return (
+    <DndProvider backend={dndBackend} options={dndOptions}>
+      <PanelLayoutEditorInner />
+    </DndProvider>
   )
 }
