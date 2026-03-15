@@ -256,10 +256,10 @@ export function useDevices() {
   }
 }
 
-export function getDeviceImageUrl(path: string | null): string | null {
+export function getDeviceImageUrl(path: string | null, bucket = 'device-images'): string | null {
   if (!path) return null
   if (path.startsWith('data:')) return path
   if (path.startsWith('http://') || path.startsWith('https://')) return path
-  const { data } = supabase.storage.from('device-images').getPublicUrl(path)
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path)
   return data.publicUrl
 }

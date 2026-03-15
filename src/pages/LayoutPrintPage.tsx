@@ -5,6 +5,7 @@ import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
 import type { Layout, LayoutItemWithDevice, Project, Rack } from '../types'
 import { supabase } from '../lib/supabase'
 import { getDeviceImageUrl } from '../hooks/useDevices'
+import { useConnectors } from '../hooks/useConnectors'
 import { LAYOUT_ITEM_SELECT, mapLayoutItemRows, type LayoutItemRow } from '../lib/layoutItemMapper'
 import '../components/print/layoutPrint.css'
 
@@ -26,6 +27,7 @@ export default function LayoutPrintPage() {
   const [rack, setRack] = useState<Rack | null>(null)
   const [project, setProject] = useState<Project | null>(null)
   const [items, setItems] = useState<LayoutItemWithDevice[]>([])
+  const { connectorById } = useConnectors()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [imagesReady, setImagesReady] = useState(false)
@@ -118,12 +120,12 @@ export default function LayoutPrintPage() {
     }
 
     const rows = (itemData ?? []) as LayoutItemRow[]
-    const mapped: LayoutItemWithDevice[] = mapLayoutItemRows(rows)
+    const mapped: LayoutItemWithDevice[] = mapLayoutItemRows(rows, connectorById)
 
     setRack(rackData as Rack)
     setItems(mapped)
     setLoading(false)
-  }, [layoutId, projectId])
+  }, [connectorById, layoutId, projectId])
 
   const recalculateScale = useCallback(() => {
     const frame = drawingFrameRef.current

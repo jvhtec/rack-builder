@@ -1,5 +1,4 @@
-import type { DeviceFacing, PanelLayout, PanelLayoutPort, PanelLayoutRow } from '../types'
-import { CONNECTOR_BY_ID } from './connectorCatalog'
+import type { ConnectorDefinition, DeviceFacing, PanelLayout, PanelLayoutPort, PanelLayoutRow } from '../types'
 import { getActiveColumns } from './panelGrid'
 
 const TOTAL_COLUMNS = 16
@@ -47,6 +46,7 @@ function getPortGeometry(
 export function buildPanelThumbnailDataUrl(
   panel: PanelLayout,
   facing: DeviceFacing,
+  connectorById: Map<string, ConnectorDefinition>,
 ): string {
   const rows = [...(panel.rows ?? [])].sort((a, b) => a.row_index - b.row_index)
   const ports = [...(panel.ports ?? [])]
@@ -76,9 +76,9 @@ export function buildPanelThumbnailDataUrl(
     const row = rows.find((entry) => entry.row_index === port.row_index)
     if (!row) return ''
     const { x, y, width: portWidth, height: portHeight } = getPortGeometry(port, row, cellWidth, rowHeight, facing)
-    const connector = CONNECTOR_BY_ID.get(port.connector_id)
+    const connector = connectorById.get(port.connector_id)
     const fill = CATEGORY_COLORS[connector?.category ?? 'other'] ?? '#374151'
-    const label = port.label?.trim() || connector?.name || 'Connector'
+    const label = port.label?.trim() || connector?.name || `Unknown (${port.connector_id})`
     return `<g>
       <rect x="${innerPad + x + 2}" y="${bodyTop + y + stripHeight + 3}" width="${Math.max(10, portWidth - 4)}" height="${Math.max(10, portHeight - stripHeight - 6)}" rx="4" fill="${fill}" stroke="#e2e8f0" stroke-width="1.5" />
       <text x="${innerPad + x + portWidth / 2}" y="${bodyTop + y + 14}" text-anchor="middle" font-size="9" font-family="Inter, Arial, sans-serif" fill="#e2e8f0">${escapeXml(label)}</text>

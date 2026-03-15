@@ -4,6 +4,7 @@ const navItems = [
   { to: '/', label: 'Devices' },
   { to: '/racks', label: 'Racks' },
   { to: '/projects', label: 'Projects' },
+  { to: '/connectors', label: 'Connectors' },
   { to: '/panels', label: 'Panel Layouts' },
 ]
 

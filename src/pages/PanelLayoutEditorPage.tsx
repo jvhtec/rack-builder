@@ -4,7 +4,7 @@ import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
 import { useDrag } from 'react-dnd'
-import { groupedConnectors, CONNECTOR_BY_ID } from '../lib/connectorCatalog'
+import { useConnectors } from '../hooks/useConnectors'
 import {
   autoDistributeAllRows,
   isMountingAllowed,
@@ -189,6 +189,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
     loading,
     savePanelLayout,
   } = usePanelLayouts(projectId)
+  const { connectorById, grouped } = useConnectors()
   const panel = useMemo(
     () => panelLayouts.find((entry) => entry.id === panelLayoutId) ?? null,
     [panelLayoutId, panelLayouts],
@@ -318,7 +319,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
     return () => window.clearTimeout(timeoutId)
   }, [dirty, draftStorageKey, facing, hasLacingBar, name, notes, panel, ports, rows])
 
-  const selectedConnector = selectedConnectorId ? CONNECTOR_BY_ID.get(selectedConnectorId) ?? null : null
+  const selectedConnector = selectedConnectorId ? connectorById.get(selectedConnectorId) ?? null : null
   const selectedPort = selectedPortId ? ports.find((port) => port.id === selectedPortId) ?? null : null
   const rowCapacities = useMemo(() => summarizeRowCapacities(rows, ports), [rows, ports])
   const rowCapacityByIndex = useMemo(
@@ -342,7 +343,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
       return rowHasCapacity(rowIndex, movingPort.span_w, movingPort.span_h, rows, ports, movingPort.id)
     }
 
-    const connector = CONNECTOR_BY_ID.get(transferId)
+    const connector = connectorById.get(transferId)
     if (!connector) return false
     if (!isMountingAllowed(connector.mounting, facing)) return false
     return rowHasCapacity(rowIndex, connector.grid_width, connector.grid_height, rows, ports)
@@ -352,7 +353,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
   const placeConnector = (rowIndex: number, forcedConnectorId?: string) => {
     if (!panel) return
     const connector = forcedConnectorId
-      ? CONNECTOR_BY_ID.get(forcedConnectorId) ?? null
+      ? connectorById.get(forcedConnectorId) ?? null
       : selectedConnector
     if (!connector) return
     if (forcedConnectorId) setSelectedConnectorId(forcedConnectorId)
@@ -392,7 +393,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
     const existing = ports.find((p) => p.id === portId)
     if (!existing) return
 
-    const connector = CONNECTOR_BY_ID.get(existing.connector_id)
+    const connector = connectorById.get(existing.connector_id)
     if (connector && !isMountingAllowed(connector.mounting, facing)) {
       setError(`"${connector.name}" cannot be mounted on ${facing} panels.`)
       return
@@ -451,12 +452,12 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
 
     // Validate all placed ports are compatible with the current facing
     const invalidPorts = ports.filter((port) => {
-      const connector = CONNECTOR_BY_ID.get(port.connector_id)
+      const connector = connectorById.get(port.connector_id)
       return connector && !isMountingAllowed(connector.mounting, facing)
     })
     if (invalidPorts.length > 0) {
       const names = invalidPorts
-        .map((p) => CONNECTOR_BY_ID.get(p.connector_id)?.name ?? p.connector_id)
+        .map((p) => connectorById.get(p.connector_id)?.name ?? p.connector_id)
         .join(', ')
       setError(`Cannot save: the following connectors are not allowed on ${facing} panels: ${names}. Remove or change facing first.`)
       return
@@ -523,7 +524,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
   // ─── Mobile Layout ──────────────────────────────────────────────────────────
   if (isMobile) {
     const selectedPortConnector = selectedPort
-      ? CONNECTOR_BY_ID.get(selectedPort.connector_id) ?? null
+      ? connectorById.get(selectedPort.connector_id) ?? null
       : null
 
     return (
@@ -566,7 +567,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
             <div className="flex items-center gap-2 min-w-0">
               <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
               <span className="text-xs text-amber-300 truncate">
-                <strong>{CONNECTOR_BY_ID.get(selectedConnectorId)?.name}</strong> — tap a row to place
+                <strong>{connectorById.get(selectedConnectorId)?.name}</strong> — tap a row to place
               </span>
             </div>
             <button
@@ -603,6 +604,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
 
             <div className="w-full max-w-lg">
               <PanelLayoutCanvas
+                connectorById={connectorById}
                 heightRu={panel.height_ru}
                 rows={rows}
                 ports={ports}
@@ -732,7 +734,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
                 {/* ── Connector Library ── */}
                 {mobileSheet === 'connectors' && (
                   <div className="space-y-4">
-                    {groupedConnectors().map((group) => (
+                    {grouped.map((group) => (
                       <section key={group.category}>
                         <div className="flex items-center gap-2 mb-2">
                           <span
@@ -940,7 +942,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
             <p className="mt-0.5 text-[10px] text-slate-600">Click to select, or drag onto a row</p>
           </div>
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-            {groupedConnectors().map((group) => (
+            {grouped.map((group) => (
               <section key={group.category}>
                 <div className="flex items-center gap-2 mb-2">
                   <span
@@ -981,7 +983,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
               <svg className="h-3 w-3" viewBox="0 0 16 16" fill="currentColor">
                 <circle cx="8" cy="8" r="7" />
               </svg>
-              <strong>{CONNECTOR_BY_ID.get(selectedConnectorId)?.name}</strong> selected — click a row or drag to place
+              <strong>{connectorById.get(selectedConnectorId)?.name}</strong> selected — click a row or drag to place
               <button
                 className="ml-2 text-amber-400/60 hover:text-amber-300 transition"
                 onClick={() => setSelectedConnectorId(null)}
@@ -993,6 +995,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
 
           <div className="w-full max-w-6xl">
             <PanelLayoutCanvas
+              connectorById={connectorById}
               heightRu={panel.height_ru}
               rows={rows}
               ports={ports}
@@ -1083,7 +1086,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-amber-500/80">Selected Connector</h3>
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-3">
                   <p className="text-xs font-medium text-slate-200">
-                    {CONNECTOR_BY_ID.get(selectedPort.connector_id)?.name ?? 'Unknown'}
+                    {connectorById.get(selectedPort.connector_id)?.name ?? 'Unknown'}
                   </p>
                   <p className="text-[10px] text-slate-500">
                     {selectedPort.span_w}×{selectedPort.span_h} grid · row {selectedPort.row_index + 1}
@@ -1092,7 +1095,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
                     label="Label override"
                     value={selectedPort.label ?? ''}
                     onChange={updateSelectedPortLabel}
-                    placeholder={CONNECTOR_BY_ID.get(selectedPort.connector_id)?.name ?? 'Label'}
+                    placeholder={connectorById.get(selectedPort.connector_id)?.name ?? 'Label'}
                   />
                   <button
                     type="button"

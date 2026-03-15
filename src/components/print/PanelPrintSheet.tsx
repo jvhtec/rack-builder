@@ -1,4 +1,4 @@
-import { CONNECTOR_BY_ID } from '../../lib/connectorCatalog'
+import { useConnectors } from '../../hooks/useConnectors'
 import type { DeviceFacing, PanelLayout, PanelLayoutPort } from '../../types'
 import PanelLayoutCanvas from '../panels/PanelLayoutCanvas'
 import PrintCartouche from './PrintCartouche'
@@ -13,14 +13,14 @@ interface PanelPrintSheetProps {
   sheetClassName?: string
 }
 
-function connectorName(port: PanelLayoutPort): string {
-  const connector = CONNECTOR_BY_ID.get(port.connector_id)
+function connectorName(port: PanelLayoutPort, connectorById: Map<string, { name: string }>): string {
+  const connector = connectorById.get(port.connector_id)
   return port.label?.trim() || connector?.name || port.connector_id
 }
 
-function connectorType(port: PanelLayoutPort): string {
-  const connector = CONNECTOR_BY_ID.get(port.connector_id)
-  return connector?.name || port.connector_id
+function connectorType(port: PanelLayoutPort, connectorById: Map<string, { name: string }>): string {
+  const connector = connectorById.get(port.connector_id)
+  return connector?.name || `Unknown (${port.connector_id})`
 }
 
 export default function PanelPrintSheet({
@@ -32,6 +32,7 @@ export default function PanelPrintSheet({
   pageCount,
   sheetClassName,
 }: PanelPrintSheetProps) {
+  const { connectorById } = useConnectors()
   const generatedAtLabel = new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -53,6 +54,7 @@ export default function PanelPrintSheet({
             <div className="panel-print-canvas-area">
               <div style={{ width: panel.height_ru <= 2 ? '80%' : '90%' }}>
                 <PanelLayoutCanvas
+                  connectorById={connectorById}
                   heightRu={panel.height_ru}
                   rows={panel.rows ?? []}
                   ports={ports}
@@ -84,8 +86,8 @@ export default function PanelPrintSheet({
                         <td>{idx + 1}</td>
                         <td>U{port.row_index + 1}</td>
                         <td>{port.hole_index + 1}</td>
-                        <td>{connectorType(port)}</td>
-                        <td>{connectorName(port)}</td>
+                        <td>{connectorType(port, connectorById)}</td>
+                        <td>{connectorName(port, connectorById)}</td>
                         <td>{port.span_w}&times;{port.span_h}</td>
                       </tr>
                     ))}
