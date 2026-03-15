@@ -45,17 +45,13 @@ export default function PanelPrintSheet({
     <section className={`layout-print-sheet ${sheetClassName ?? ''}`.trim()} aria-label={`Panel drawing for ${panel.name}`}>
       <div className="layout-print-sheet-inner">
         <div className="layout-print-drawing-frame">
-          <div className="flex h-full w-full flex-col">
-            {/* Header */}
-            <div className="px-4 pt-4 pb-2">
-              <h2 className="text-sm uppercase tracking-[0.14em] text-gray-700 font-semibold">
-                {panel.name} &mdash; {panel.height_ru}U &mdash; {facing === 'front' ? 'Front' : 'Rear'}
-              </h2>
-            </div>
+          <div className="panel-print-content">
+            <h2 className="panel-print-heading">
+              {panel.name} &mdash; {panel.height_ru}U &mdash; {facing === 'front' ? 'Front' : 'Rear'}
+            </h2>
 
-            {/* Canvas centered vertically */}
-            <div className="flex flex-1 items-center justify-center px-4">
-              <div className="w-full" style={{ maxWidth: panel.height_ru <= 2 ? '80%' : '90%' }}>
+            <div className="panel-print-canvas-area">
+              <div style={{ width: panel.height_ru <= 2 ? '80%' : '90%' }}>
                 <PanelLayoutCanvas
                   heightRu={panel.height_ru}
                   rows={panel.rows ?? []}
@@ -69,9 +65,8 @@ export default function PanelPrintSheet({
               </div>
             </div>
 
-            {/* Connector list table */}
             {ports.length > 0 && (
-              <div className="border-t border-gray-300 px-4 py-2">
+              <div className="panel-print-connector-wrap">
                 <table className="panel-print-connector-table">
                   <thead>
                     <tr>
@@ -99,7 +94,7 @@ export default function PanelPrintSheet({
               </div>
             )}
 
-            <p className="px-4 pb-2 text-[8px] text-gray-500 uppercase tracking-wide">
+            <p className="panel-print-footnote">
               19-inch panel width represented across drawing frame.
             </p>
           </div>
