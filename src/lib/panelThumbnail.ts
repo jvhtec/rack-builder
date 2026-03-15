@@ -2,6 +2,14 @@ import type { DeviceFacing, PanelLayout, PanelLayoutPort, PanelLayoutRow } from 
 import { CONNECTOR_BY_ID } from './connectorCatalog'
 import { getActiveColumns } from './panelGrid'
 
+const CATEGORY_COLORS: Record<string, string> = {
+  power: '#2563eb',
+  data: '#0891b2',
+  multipin: '#7c3aed',
+  audio: '#374151',
+  other: '#374151',
+}
+
 function escapeXml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -66,13 +74,7 @@ export function buildPanelThumbnailDataUrl(
     if (!row) return ''
     const { x, y, width: portWidth, height: portHeight } = getPortGeometry(port, row, cellWidth, rowHeight, facing)
     const connector = CONNECTOR_BY_ID.get(port.connector_id)
-    const fill = connector?.category === 'power'
-      ? '#2563eb'
-      : connector?.category === 'data'
-        ? '#0891b2'
-        : connector?.category === 'multipin'
-          ? '#7c3aed'
-          : '#374151'
+    const fill = CATEGORY_COLORS[connector?.category ?? 'other'] ?? '#374151'
     const label = port.label?.trim() || connector?.name || 'Connector'
     return `<g>
       <rect x="${innerPad + x + 2}" y="${bodyTop + y + stripHeight + 3}" width="${Math.max(10, portWidth - 4)}" height="${Math.max(10, portHeight - stripHeight - 6)}" rx="4" fill="${fill}" stroke="#e2e8f0" stroke-width="1.5" />

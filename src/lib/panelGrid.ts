@@ -409,9 +409,11 @@ export function autoDistributeAllRows(
     portsByRow.set(port.row_index, group)
   }
 
-  // First pass: distribute each row independently (no obstacles)
+  // Distribute each row in sorted order, using already-distributed positions as obstacles
   const distributed = new Map<string, PanelLayoutPort>()
-  for (const [rowIndex, rowPorts] of portsByRow) {
+  const sortedRowIndices = Array.from(portsByRow.keys()).sort((a, b) => a - b)
+  for (const rowIndex of sortedRowIndices) {
+    const rowPorts = portsByRow.get(rowIndex)!
     const row = rowMap.get(rowIndex)
     if (!row) {
       // Row doesn't exist, keep ports unchanged
@@ -419,9 +421,10 @@ export function autoDistributeAllRows(
       continue
     }
 
-    // Find obstacle holes from multi-row ports originating from OTHER rows
+    // Find obstacle holes from multi-row ports originating from OTHER rows,
+    // using already-distributed positions so moves from prior rows are respected
     const obstacleHoles = new Set<number>()
-    for (const port of ports) {
+    for (const port of distributed.values()) {
       if (port.row_index === rowIndex) continue // skip ports that belong to this row
       if (port.row_index + port.span_h - 1 >= rowIndex && port.row_index < rowIndex) {
         // This port spans into this row from above

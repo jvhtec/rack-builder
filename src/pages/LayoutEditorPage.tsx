@@ -172,7 +172,7 @@ export default function LayoutEditorPage() {
   } = useLayouts(projectId)
   const { racks, loading: racksLoading } = useRacks()
   const { devices, categories, loading: devicesLoading } = useDevices()
-  const { panelLayouts, loading: panelLayoutsLoading } = usePanelLayouts(projectId)
+  const { panelLayouts } = usePanelLayouts(projectId)
 
   const activeLayoutId = searchParams.get('layout')
   const activeLayout = useMemo(
@@ -515,7 +515,7 @@ export default function LayoutEditorPage() {
     )
   }
 
-  if (projectLoading || layoutsLoading || racksLoading || panelLayoutsLoading || !project || !activeLayout || !rack) {
+  if (projectLoading || layoutsLoading || racksLoading || !project || !activeLayout || !rack) {
     return (
       <div className="flex items-center justify-center h-screen text-gray-500">Loading...</div>
     )

@@ -118,6 +118,8 @@ export default function ProjectPrintPage() {
     setLoading(true)
     setError(null)
     setImagesReady(false)
+    setLayoutModels([])
+    setPanelModels([])
 
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
@@ -145,67 +147,64 @@ export default function ProjectPrintPage() {
     }
 
     const typedLayouts = (layoutData as Layout[]) ?? []
-    if (typedLayouts.length === 0) {
-      setLayoutModels([])
-      setLoading(false)
-      return
-    }
-
-    const rackIds = Array.from(new Set(typedLayouts.map((layout) => layout.rack_id)))
-    const { data: rackData, error: rackError } = await supabase
-      .from('racks')
-      .select('*')
-      .in('id', rackIds)
-
-    if (rackError) {
-      setError(rackError.message)
-      setLoading(false)
-      return
-    }
-
-    const rackMap = new Map(((rackData as Rack[]) ?? []).map((rack) => [rack.id, rack]))
-
-    const layoutIds = typedLayouts.map((layout) => layout.id)
-    const { data: itemData, error: itemError } = await supabase
-      .from('layout_items')
-      .select(LAYOUT_ITEM_SELECT)
-      .in('layout_id', layoutIds)
-
-    if (itemError) {
-      setError(itemError.message)
-      setLoading(false)
-      return
-    }
-
-    const rows = (itemData ?? []) as LayoutItemRow[]
-    const mappedItems: LayoutItemWithDevice[] = mapLayoutItemRows(rows)
-
-    const itemsByLayout = mappedItems.reduce<Map<string, LayoutItemWithDevice[]>>((acc, item) => {
-      const existing = acc.get(item.layout_id) ?? []
-      existing.push(item)
-      acc.set(item.layout_id, existing)
-      return acc
-    }, new Map())
 
     const models: PrintLayoutModel[] = []
-    for (const layout of typedLayouts) {
-      const rack = rackMap.get(layout.rack_id)
-      if (!rack) continue
-      const items = itemsByLayout.get(layout.id) ?? []
-      const totals = items.reduce(
-        (acc, item) => ({
-          totalWeightKg: acc.totalWeightKg + item.device.weight_kg,
-          totalPowerW: acc.totalPowerW + item.device.power_w,
-        }),
-        { totalWeightKg: 0, totalPowerW: 0 },
-      )
-      models.push({
-        layout,
-        rack,
-        items,
-        totalWeightKg: totals.totalWeightKg,
-        totalPowerW: totals.totalPowerW,
-      })
+    if (typedLayouts.length > 0) {
+      const rackIds = Array.from(new Set(typedLayouts.map((layout) => layout.rack_id)))
+      const { data: rackData, error: rackError } = await supabase
+        .from('racks')
+        .select('*')
+        .in('id', rackIds)
+
+      if (rackError) {
+        setError(rackError.message)
+        setLoading(false)
+        return
+      }
+
+      const rackMap = new Map(((rackData as Rack[]) ?? []).map((rack) => [rack.id, rack]))
+
+      const layoutIds = typedLayouts.map((layout) => layout.id)
+      const { data: itemData, error: itemError } = await supabase
+        .from('layout_items')
+        .select(LAYOUT_ITEM_SELECT)
+        .in('layout_id', layoutIds)
+
+      if (itemError) {
+        setError(itemError.message)
+        setLoading(false)
+        return
+      }
+
+      const rows = (itemData ?? []) as LayoutItemRow[]
+      const mappedItems: LayoutItemWithDevice[] = mapLayoutItemRows(rows)
+
+      const itemsByLayout = mappedItems.reduce<Map<string, LayoutItemWithDevice[]>>((acc, item) => {
+        const existing = acc.get(item.layout_id) ?? []
+        existing.push(item)
+        acc.set(item.layout_id, existing)
+        return acc
+      }, new Map())
+
+      for (const layout of typedLayouts) {
+        const rack = rackMap.get(layout.rack_id)
+        if (!rack) continue
+        const items = itemsByLayout.get(layout.id) ?? []
+        const totals = items.reduce(
+          (acc, item) => ({
+            totalWeightKg: acc.totalWeightKg + item.device.weight_kg,
+            totalPowerW: acc.totalPowerW + item.device.power_w,
+          }),
+          { totalWeightKg: 0, totalPowerW: 0 },
+        )
+        models.push({
+          layout,
+          rack,
+          items,
+          totalWeightKg: totals.totalWeightKg,
+          totalPowerW: totals.totalPowerW,
+        })
+      }
     }
 
     const { data: panelData, error: panelError } = await supabase
@@ -298,13 +297,13 @@ export default function ProjectPrintPage() {
   }, [imageUrls])
 
   useEffect(() => {
-    if (!autoPrintRequested || autoPrintDone || loading || error || !imagesReady || layoutModels.length === 0) return
+    if (!autoPrintRequested || autoPrintDone || loading || error || !imagesReady || (layoutModels.length + panelModels.length === 0)) return
     const timer = window.setTimeout(() => {
       setAutoPrintDone(true)
       window.print()
     }, 250)
     return () => window.clearTimeout(timer)
-  }, [autoPrintDone, autoPrintRequested, error, imagesReady, layoutModels.length, loading])
+  }, [autoPrintDone, autoPrintRequested, error, imagesReady, layoutModels.length, panelModels.length, loading])
 
   if (error) {
     return (
@@ -340,7 +339,15 @@ export default function ProjectPrintPage() {
     <div className="layout-print-page">
       <header className="layout-print-toolbar">
         <div className="layout-print-toolbar-actions">
-          <Button variant="secondary" onClick={() => navigate(`/editor/project/${projectId}?layout=${layoutModels[0].layout.id}`)}>
+          <Button variant="secondary" onClick={() => {
+            if (layoutModels.length > 0) {
+              navigate(`/editor/project/${projectId}?layout=${layoutModels[0].layout.id}`)
+            } else if (panelModels.length > 0) {
+              navigate(`/editor/project/${projectId}?panel=${panelModels[0].id}`)
+            } else {
+              navigate(`/editor/project/${projectId}`)
+            }
+          }}>
             Back
           </Button>
           <Button onClick={() => window.print()}>Print</Button>

@@ -43,12 +43,13 @@ function normalizeRowsToAutoGrid(
 
   return Array.from({ length: Math.max(1, heightRu) }, (_, rowIndex) => {
     const existing = byIndex.get(rowIndex)
+    const holeCount = (existing?.hole_count ?? AUTO_HOLE_COUNT) as 4 | 6 | 8 | 12 | 16
     return {
       id: existing?.id ?? `auto-row-${rowIndex}`,
       panel_layout_id: panelId,
       row_index: rowIndex,
-      hole_count: AUTO_HOLE_COUNT as 4 | 6 | 8 | 12 | 16,
-      active_column_map: getActiveColumns(AUTO_HOLE_COUNT),
+      hole_count: holeCount,
+      active_column_map: existing?.active_column_map?.length ? existing.active_column_map : getActiveColumns(holeCount),
       created_at: existing?.created_at ?? createdAt,
       updated_at: existing?.updated_at ?? updatedAt,
     }
@@ -210,11 +211,18 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
   const hydratedDraft = useRef(false)
+  const prevPanelIdRef = useRef<string | null>(null)
 
   const draftStorageKey = `${DRAFT_STORAGE_PREFIX}:${projectId ?? 'none'}:${panelLayoutId ?? 'none'}`
 
   useEffect(() => {
     if (!panel) return
+    // Reset hydration flag when switching to a different panel
+    if (prevPanelIdRef.current !== null && prevPanelIdRef.current !== panel.id) {
+      hydratedDraft.current = false
+      setDirty(false)
+    }
+    prevPanelIdRef.current = panel.id
     if (!hydratedDraft.current) {
       const draftRaw = localStorage.getItem(draftStorageKey)
       if (draftRaw) {
@@ -442,6 +450,20 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
 
   const handleSave = async () => {
     if (!panel) return
+
+    // Validate all placed ports are compatible with the current facing
+    const invalidPorts = ports.filter((port) => {
+      const connector = CONNECTOR_BY_ID.get(port.connector_id)
+      return connector && !isMountingAllowed(connector.mounting, facing)
+    })
+    if (invalidPorts.length > 0) {
+      const names = invalidPorts
+        .map((p) => CONNECTOR_BY_ID.get(p.connector_id)?.name ?? p.connector_id)
+        .join(', ')
+      setError(`Cannot save: the following connectors are not allowed on ${facing} panels: ${names}. Remove or change facing first.`)
+      return
+    }
+
     setSaving(true)
     setError(null)
     try {

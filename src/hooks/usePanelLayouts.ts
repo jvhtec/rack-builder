@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { buildDefaultRows, normalizeActiveColumnMap, toHoleCount, type HoleCount } from '../lib/panelGrid'
 import type { DeviceFacing, PanelLayout, PanelLayoutPort, PanelLayoutRow } from '../types'
@@ -81,20 +81,25 @@ export function usePanelLayouts(projectId: string | undefined) {
   const [panelLayouts, setPanelLayouts] = useState<PanelLayout[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const requestIdRef = useRef(0)
 
   const fetchPanelLayouts = useCallback(async () => {
     if (!projectId) {
       setPanelLayouts([])
+      setError(null)
       setLoading(false)
       return
     }
 
+    const requestId = ++requestIdRef.current
     setLoading(true)
     const { data, error: err } = await supabase
       .from('panel_layouts')
       .select('*, rows:panel_layout_rows(*), ports:panel_layout_ports(*)')
       .eq('project_id', projectId)
       .order('created_at', { ascending: true })
+
+    if (requestId !== requestIdRef.current) return
 
     if (err) {
       setError(err.message)
@@ -109,11 +114,15 @@ export function usePanelLayouts(projectId: string | undefined) {
   }, [projectId])
 
   useEffect(() => {
+    const ref = requestIdRef
     const timeoutId = window.setTimeout(() => {
       void fetchPanelLayouts()
     }, 0)
 
-    return () => window.clearTimeout(timeoutId)
+    return () => {
+      window.clearTimeout(timeoutId)
+      ref.current++
+    }
   }, [fetchPanelLayouts])
 
   const createPanelLayout = async (payload: {
@@ -148,7 +157,11 @@ export function usePanelLayouts(projectId: string | undefined) {
     const panel = mapPanelLayout(data as PanelLayoutRecord)
     const rows = buildDefaultRows(panel.id, safeHeight, holeCount)
     const { error: rowsError } = await supabase.from('panel_layout_rows').insert(rows)
-    if (rowsError) throw rowsError
+    if (rowsError) {
+      // Clean up the orphaned panel layout
+      await supabase.from('panel_layouts').delete().eq('id', panel.id)
+      throw rowsError
+    }
 
     await fetchPanelLayouts()
     return panel.id

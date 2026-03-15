@@ -105,6 +105,8 @@ export default function PanelLayoutManagerPage() {
     try {
       const nextId = await duplicatePanelLayout(panel)
       navigate(`/editor/project/${projectId}/panels/${nextId}`)
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to duplicate panel layout.')
     } finally {
       setSaving(false)
     }

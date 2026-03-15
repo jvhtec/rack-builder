@@ -40,17 +40,7 @@ function resolveImageUrl(path: string | null | undefined): string | null {
 
 // ─── Shared port visual ─────────────────────────────────────────────────────
 
-interface PortVisualProps {
-  port: PanelLayoutPort
-  leftPct: number
-  yPct: number
-  widthPct: number
-  heightPct: number
-  active: boolean
-  opacity?: number
-}
-
-function PortVisual({ port }: Pick<PortVisualProps, 'port'>) {
+function PortVisual({ port }: { port: PanelLayoutPort }) {
   const connector = CONNECTOR_BY_ID.get(port.connector_id)
   const label = port.label?.trim() || connector?.name || 'Connector'
   const iconUrl = resolveImageUrl(connector?.image_path)
@@ -137,7 +127,7 @@ function DraggablePort({
       }}
       title={`${label} — drag to move`}
     >
-      <PortVisual port={port} leftPct={leftPct} yPct={yPct} widthPct={widthPct} heightPct={heightPct} active={active} />
+      <PortVisual port={port} />
     </button>
   )
 }
@@ -164,7 +154,7 @@ function StaticPort({
       className="absolute z-20 overflow-hidden rounded-md border"
       style={portStyle(leftPct, yPct, widthPct, heightPct, active)}
     >
-      <PortVisual port={port} leftPct={leftPct} yPct={yPct} widthPct={widthPct} heightPct={heightPct} active={active} />
+      <PortVisual port={port} />
     </div>
   )
 }
@@ -323,9 +313,19 @@ function DroppableRow({
       <div
         ref={dropRef as unknown as React.LegacyRef<HTMLDivElement>}
         className="absolute inset-x-0 rounded-sm transition cursor-pointer"
+        role={interactive && onRowClick ? 'button' : undefined}
+        tabIndex={interactive && onRowClick ? 0 : undefined}
+        aria-disabled={invalidDrop}
         onClick={() => {
           if (!interactive || !onRowClick) return
           onRowClick(rowIndex)
+        }}
+        onKeyDown={(e) => {
+          if (!interactive || !onRowClick) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onRowClick(rowIndex)
+          }
         }}
         style={{
           top: `${idStripHeightPct}%`,
