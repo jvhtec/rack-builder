@@ -4,23 +4,36 @@ import Button from '../components/ui/Button'
 import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
 import ProjectPrintCover from '../components/print/ProjectPrintCover'
 import ProjectPrintIndex from '../components/print/ProjectPrintIndex'
-import type { Layout, LayoutItemWithDevice, Project, Rack } from '../types'
+import PanelPrintSheet from '../components/print/PanelPrintSheet'
+import type { Layout, LayoutItemWithDevice, PanelLayout, Project, Rack } from '../types'
 import { supabase } from '../lib/supabase'
 import { getDeviceImageUrl } from '../hooks/useDevices'
+import { LAYOUT_ITEM_SELECT, mapLayoutItemRows, type LayoutItemRow } from '../lib/layoutItemMapper'
+import { normalizeActiveColumnMap, toHoleCount } from '../lib/panelGrid'
 import '../components/print/layoutPrint.css'
 
-interface LayoutItemRow {
-  id: string
-  layout_id: string
-  device_id: string
-  start_u: number
-  facing: string
-  preferred_lane?: number | null
-  preferred_sub_lane?: number | null
-  force_full_width?: boolean | null
-  custom_name?: string | null
-  notes: string | null
-  device: Record<string, unknown>
+interface PanelLayoutRecord extends Omit<PanelLayout, 'rows' | 'ports'> {
+  rows?: Array<{
+    id: string
+    panel_layout_id: string
+    row_index: number
+    hole_count: number
+    active_column_map: unknown
+    created_at: string
+    updated_at: string
+  }>
+  ports?: Array<{
+    id: string
+    panel_layout_id: string
+    connector_id: string
+    row_index: number
+    hole_index: number
+    span_w: number
+    span_h: number
+    label: string | null
+    created_at: string
+    updated_at: string
+  }>
 }
 
 interface PrintLayoutModel {
@@ -29,6 +42,45 @@ interface PrintLayoutModel {
   items: LayoutItemWithDevice[]
   totalWeightKg: number
   totalPowerW: number
+}
+
+function mapPanelLayout(record: PanelLayoutRecord): PanelLayout {
+  return {
+    id: record.id,
+    project_id: record.project_id,
+    name: record.name,
+    height_ru: record.height_ru,
+    facing: record.facing,
+    has_lacing_bar: record.has_lacing_bar,
+    notes: record.notes,
+    weight_kg: Number(record.weight_kg ?? 0),
+    created_at: record.created_at,
+    updated_at: record.updated_at,
+    rows: (record.rows ?? []).map((row) => {
+      const holeCount = toHoleCount(row.hole_count)
+      return {
+        id: row.id,
+        panel_layout_id: row.panel_layout_id,
+        row_index: row.row_index,
+        hole_count: holeCount,
+        active_column_map: normalizeActiveColumnMap(row.active_column_map, holeCount),
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      }
+    }).sort((a, b) => a.row_index - b.row_index),
+    ports: (record.ports ?? []).map((port) => ({
+      id: port.id,
+      panel_layout_id: port.panel_layout_id,
+      connector_id: port.connector_id,
+      row_index: port.row_index,
+      hole_index: port.hole_index,
+      span_w: port.span_w,
+      span_h: port.span_h,
+      label: port.label,
+      created_at: port.created_at,
+      updated_at: port.updated_at,
+    })),
+  }
 }
 
 function preloadImage(url: string): Promise<void> {
@@ -47,6 +99,7 @@ export default function ProjectPrintPage() {
 
   const [project, setProject] = useState<Project | null>(null)
   const [layoutModels, setLayoutModels] = useState<PrintLayoutModel[]>([])
+  const [panelModels, setPanelModels] = useState<PanelLayout[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [imagesReady, setImagesReady] = useState(false)
@@ -115,7 +168,7 @@ export default function ProjectPrintPage() {
     const layoutIds = typedLayouts.map((layout) => layout.id)
     const { data: itemData, error: itemError } = await supabase
       .from('layout_items')
-      .select('*, device:devices(*)')
+      .select(LAYOUT_ITEM_SELECT)
       .in('layout_id', layoutIds)
 
     if (itemError) {
@@ -125,25 +178,7 @@ export default function ProjectPrintPage() {
     }
 
     const rows = (itemData ?? []) as LayoutItemRow[]
-    const mappedItems: LayoutItemWithDevice[] = rows.map((row) => {
-      const rawDevice = row.device as Record<string, unknown>
-      return {
-        id: row.id,
-        layout_id: row.layout_id,
-        device_id: row.device_id,
-        start_u: row.start_u,
-        facing: row.facing as LayoutItemWithDevice['facing'],
-        preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
-        preferred_sub_lane: row.preferred_sub_lane === 0 || row.preferred_sub_lane === 1 ? row.preferred_sub_lane : null,
-        force_full_width: row.force_full_width === true,
-        custom_name: row.custom_name ?? null,
-        notes: row.notes,
-        device: {
-          ...rawDevice,
-          is_half_rack: rawDevice.is_half_rack === true,
-        } as unknown as LayoutItemWithDevice['device'],
-      }
-    })
+    const mappedItems: LayoutItemWithDevice[] = mapLayoutItemRows(rows)
 
     const itemsByLayout = mappedItems.reduce<Map<string, LayoutItemWithDevice[]>>((acc, item) => {
       const existing = acc.get(item.layout_id) ?? []
@@ -173,7 +208,20 @@ export default function ProjectPrintPage() {
       })
     }
 
+    const { data: panelData, error: panelError } = await supabase
+      .from('panel_layouts')
+      .select('*, rows:panel_layout_rows(*), ports:panel_layout_ports(*)')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true })
+
+    if (panelError) {
+      setError(panelError.message)
+      setLoading(false)
+      return
+    }
+
     setLayoutModels(models)
+    setPanelModels(((panelData ?? []) as PanelLayoutRecord[]).map(mapPanelLayout))
     setLoading(false)
   }, [projectId])
 
@@ -190,9 +238,9 @@ export default function ProjectPrintPage() {
     return Array.from(urls)
   }, [layoutModels])
 
-  const pageCount = 2 + layoutModels.length
+  const pageCount = 2 + layoutModels.length + panelModels.length
 
-  const indexRows = layoutModels.map((model, index) => ({
+  const layoutIndexRows = layoutModels.map((model, index) => ({
     layoutName: model.layout.name,
     rackName: model.rack.name,
     rackSpec: `${model.rack.rack_units}U | ${model.rack.width} | ${model.rack.depth_mm}mm`,
@@ -200,6 +248,17 @@ export default function ProjectPrintPage() {
     totalWeightKg: model.totalWeightKg,
     pageNumber: index + 3,
   }))
+
+  const panelIndexRows = panelModels.map((panel, index) => ({
+    layoutName: `Panel: ${panel.name}`,
+    rackName: 'Connector Panel',
+    rackSpec: `${panel.height_ru}U | ${panel.facing}`,
+    totalPowerW: 0,
+    totalWeightKg: panel.weight_kg,
+    pageNumber: layoutModels.length + index + 3,
+  }))
+
+  const indexRows = [...layoutIndexRows, ...panelIndexRows]
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -266,10 +325,10 @@ export default function ProjectPrintPage() {
     )
   }
 
-  if (!project || layoutModels.length === 0) {
+  if (!project || (layoutModels.length === 0 && panelModels.length === 0)) {
     return (
       <div className="layout-print-error">
-        <p>This project does not have any layouts to print.</p>
+        <p>This project does not have any layouts or panel sheets to print.</p>
         <Button variant="secondary" onClick={() => navigate(`/editor/project/${projectId}`)}>
           Back to editor
         </Button>
@@ -287,7 +346,7 @@ export default function ProjectPrintPage() {
           <Button onClick={() => window.print()}>Print</Button>
         </div>
         <p className="layout-print-toolbar-meta">
-          {project.name} | {layoutModels.length} layouts | {imagesReady ? 'Ready' : 'Loading images'}
+          {project.name} | {layoutModels.length} layouts + {panelModels.length} panels | {imagesReady ? 'Ready' : 'Loading images'}
         </p>
       </header>
 
@@ -315,9 +374,26 @@ export default function ProjectPrintPage() {
             useAutoFitScale
             pageNumber={index + 3}
             pageCount={pageCount}
-            sheetClassName={index === layoutModels.length - 1 ? '' : 'layout-print-page-break'}
+            sheetClassName={index === layoutModels.length - 1 && panelModels.length === 0 ? '' : 'layout-print-page-break'}
           />
         ))}
+
+        {panelModels.map((panel, index) => {
+          const pageNumber = layoutModels.length + index + 3
+          const isLast = index === panelModels.length - 1
+          return (
+            <PanelPrintSheet
+              key={panel.id}
+              panel={panel}
+              facing={panel.facing}
+              generatedAt={generatedAt}
+              projectOwner={project.owner}
+              pageNumber={pageNumber}
+              pageCount={pageCount}
+              sheetClassName={isLast ? '' : 'layout-print-page-break'}
+            />
+          )
+        })}
       </main>
     </div>
   )

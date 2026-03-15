@@ -121,6 +121,9 @@ export default function ProjectManagerPage() {
                 </dl>
                 <div className="mt-3 grid grid-cols-1 gap-2">
                   <Button onClick={() => navigate(`/editor/project/${project.id}`)}>Open Editor</Button>
+                  <Button variant="secondary" onClick={() => navigate(`/editor/project/${project.id}/panels`)}>
+                    Panel Layouts
+                  </Button>
                   <Button variant="secondary" onClick={() => openEditModal(project)}>Edit</Button>
                   <Button variant="danger" onClick={() => setDeletingProject(project)}>Delete</Button>
                 </div>
@@ -149,6 +152,9 @@ export default function ProjectManagerPage() {
                     <td className="py-3 text-right">
                       <div className="flex justify-end gap-2">
                         <Button onClick={() => navigate(`/editor/project/${project.id}`)}>Open Editor</Button>
+                        <Button variant="secondary" onClick={() => navigate(`/editor/project/${project.id}/panels`)}>
+                          Panel Layouts
+                        </Button>
                         <Button variant="secondary" onClick={() => openEditModal(project)}>Edit</Button>
                         <Button variant="danger" onClick={() => setDeletingProject(project)}>Delete</Button>
                       </div>

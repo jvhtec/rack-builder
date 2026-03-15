@@ -6,6 +6,7 @@ import { TouchBackend } from 'react-dnd-touch-backend'
 import { supabase } from '../lib/supabase'
 import { useLayoutItems } from '../hooks/useLayoutItems'
 import { ALL_BRAND, filterDevicesByBrand, filterDevicesByCategory, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
+import { usePanelLayouts } from '../hooks/usePanelLayouts'
 import { useLayouts } from '../hooks/useLayouts'
 import { useRacks } from '../hooks/useRacks'
 import { hasDepthConflict, isWithinBounds } from '../lib/overlap'
@@ -17,6 +18,7 @@ import {
   preferenceToSlot,
 } from '../lib/rackPositions'
 import type { DeviceFacing, LayoutItemWithDevice, Project, RackWidth } from '../types'
+import { buildPanelThumbnailDataUrl } from '../lib/panelThumbnail'
 import DevicePalette from '../components/editor/DevicePalette'
 import RackGrid from '../components/editor/RackGrid'
 import DeviceNotes from '../components/editor/DeviceNotes'
@@ -71,6 +73,19 @@ function computeMobileColumnRange(
   const spanCols = Math.round(widthPct / colWidth)
   const endCol = startCol + spanCols - 1
   return { startCol, endCol, spanCols }
+}
+
+const PANEL_LIBRARY_CATEGORY_ID = '__panel_layouts__'
+const PANEL_LIBRARY_CATEGORY_NAME = 'Panel Layouts'
+const PANEL_LIBRARY_BRAND = 'Panel Layouts'
+
+function panelTemplateDeviceId(panelLayoutId: string): string {
+  return `panel:${panelLayoutId}`
+}
+
+function parsePanelTemplateId(deviceId: string): string | null {
+  if (!deviceId.startsWith('panel:')) return null
+  return deviceId.slice('panel:'.length)
 }
 
 
@@ -157,6 +172,7 @@ export default function LayoutEditorPage() {
   } = useLayouts(projectId)
   const { racks, loading: racksLoading } = useRacks()
   const { devices, categories, loading: devicesLoading } = useDevices()
+  const { panelLayouts, loading: panelLayoutsLoading } = usePanelLayouts(projectId)
 
   const activeLayoutId = searchParams.get('layout')
   const activeLayout = useMemo(
@@ -170,7 +186,7 @@ export default function LayoutEditorPage() {
     return rackMap.get(activeLayout.rack_id) ?? null
   }, [activeLayout, rackMap])
 
-  const { items, addItem, removeItem, moveItem, updateItemDetails } = useLayoutItems(
+  const { items, addItem, addPanelLayoutItem, removeItem, moveItem, updateItemDetails } = useLayoutItems(
     activeLayout?.id,
     rack?.rack_units ?? 0,
   )
@@ -234,14 +250,59 @@ export default function LayoutEditorPage() {
     setSearchParams(next)
   }, [searchParams, setSearchParams])
 
+  const panelLibraryDevices = useMemo(() => panelLayouts.map((panel) => ({
+    id: panelTemplateDeviceId(panel.id),
+    brand: PANEL_LIBRARY_BRAND,
+    model: panel.name,
+    rack_units: panel.height_ru,
+    depth_mm: 80,
+    weight_kg: panel.weight_kg,
+    power_w: 0,
+    is_half_rack: false,
+    category_id: PANEL_LIBRARY_CATEGORY_ID,
+    category: {
+      id: PANEL_LIBRARY_CATEGORY_ID,
+      name: PANEL_LIBRARY_CATEGORY_NAME,
+      created_at: panel.created_at,
+      updated_at: panel.updated_at,
+    },
+    front_image_path: buildPanelThumbnailDataUrl(panel, 'front'),
+    rear_image_path: buildPanelThumbnailDataUrl(panel, 'rear'),
+    created_at: panel.created_at,
+    updated_at: panel.updated_at,
+  })), [panelLayouts])
+
+  const libraryDevices = useMemo(
+    () => [...devices, ...panelLibraryDevices],
+    [devices, panelLibraryDevices],
+  )
+
+  const panelCategory = useMemo(
+    () => panelLayouts.length > 0
+      ? [{
+        id: PANEL_LIBRARY_CATEGORY_ID,
+        name: PANEL_LIBRARY_CATEGORY_NAME,
+        created_at: panelLayouts[0].created_at,
+        updated_at: panelLayouts[0].updated_at,
+      }]
+      : [],
+    [panelLayouts],
+  )
+
+  const libraryCategories = useMemo(
+    () => [...categories, ...panelCategory],
+    [categories, panelCategory],
+  )
+
   const brands = useMemo(
-    () => [...new Set(devices.map((d) => d.brand))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
-    [devices],
+    () => [...new Set(libraryDevices.map((d) => d.brand))]
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+    [libraryDevices],
   )
 
   const filteredDevices = useMemo(
-    () => filterDevicesByBrand(filterDevicesByCategory(devices, selectedCategoryId), selectedBrand),
-    [devices, selectedCategoryId, selectedBrand],
+    () => filterDevicesByBrand(filterDevicesByCategory(libraryDevices, selectedCategoryId), selectedBrand),
+    [libraryDevices, selectedCategoryId, selectedBrand],
   )
 
   useEffect(() => {
@@ -258,6 +319,21 @@ export default function LayoutEditorPage() {
     preferredSubLane?: 0 | 1,
   ) => {
     try {
+      const panelLayoutId = parsePanelTemplateId(deviceId)
+      if (panelLayoutId) {
+        const panelLayout = panelLayouts.find((entry) => entry.id === panelLayoutId)
+        if (!panelLayout) return
+        await addPanelLayoutItem(
+          panelLayoutId,
+          startU,
+          facing,
+          panelLayout.height_ru,
+          preferredLane,
+          false,
+          preferredSubLane,
+        )
+        return
+      }
       const device = devices.find((d) => d.id === deviceId)
       const allowOverlap = rack?.width === 'dual' || (device?.is_half_rack ?? false)
       await addItem(deviceId, startU, facing, rackUnits, preferredLane, allowOverlap, preferredSubLane)
@@ -302,6 +378,29 @@ export default function LayoutEditorPage() {
 
   const handleMobileSlotClick = async (slotU: number, colIndex: number) => {
     if (!selectedDeviceTemplate || !rack) return
+    const panelTemplateId = parsePanelTemplateId(selectedDeviceTemplate)
+    if (panelTemplateId) {
+      const panelLayout = panelLayouts.find((entry) => entry.id === panelTemplateId)
+      if (!panelLayout) return
+      const panelDepthMm = 80
+      if (!isWithinBounds(slotU, panelLayout.height_ru, rack.rack_units)) return
+      if (hasDepthConflict(slotU, panelLayout.height_ru, facing, panelDepthMm, items, rack.depth_mm)) return
+
+      const { preferredLane, preferredSubLane } = visualColToLanePreference(
+        colIndex, rack.width, facing, false,
+      )
+      const targetSlot = preferenceToSlot(rack.width, false, preferredLane, preferredSubLane)
+      if (!canPlaceAtPosition(slotU, panelLayout.height_ru, targetSlot, mobileItems, rack.width)) return
+
+      try {
+        await addPanelLayoutItem(panelTemplateId, slotU, facing, panelLayout.height_ru, preferredLane, false, preferredSubLane)
+        setSelectedDeviceTemplate(null)
+      } catch (err) {
+        console.error('Tap placement failed:', err)
+      }
+      return
+    }
+
     const device = devices.find((entry) => entry.id === selectedDeviceTemplate)
     if (!device) return
 
@@ -416,7 +515,7 @@ export default function LayoutEditorPage() {
     )
   }
 
-  if (projectLoading || layoutsLoading || racksLoading || !project || !activeLayout || !rack) {
+  if (projectLoading || layoutsLoading || racksLoading || panelLayoutsLoading || !project || !activeLayout || !rack) {
     return (
       <div className="flex items-center justify-center h-screen text-gray-500">Loading...</div>
     )
@@ -465,7 +564,7 @@ export default function LayoutEditorPage() {
         <div className="flex h-screen bg-gray-100">
           <DevicePalette
             devices={filteredDevices}
-            categories={categories}
+            categories={libraryCategories}
             selectedCategoryId={selectedCategoryId}
             onCategoryChange={setSelectedCategoryId}
             brands={brands}
@@ -494,6 +593,12 @@ export default function LayoutEditorPage() {
                     onClick={() => navigate(`/editor/project/${project.id}/print/${activeLayout.id}`)}
                   >
                     Print A3 / PDF
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate(`/editor/project/${project.id}/panels`)}
+                  >
+                    Panel Layouts
                   </Button>
                   <Button
                     variant="secondary"
@@ -878,7 +983,7 @@ export default function LayoutEditorPage() {
                       className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm"
                     >
                       <option value="all">All categories</option>
-                      {categories.map((category) => (
+                      {libraryCategories.map((category) => (
                         <option key={category.id} value={category.id}>{category.name}</option>
                       ))}
                     </select>
@@ -987,6 +1092,12 @@ export default function LayoutEditorPage() {
                     title={layouts.length <= 1 ? 'Add more layouts to print the full project' : undefined}
                   >
                     Print Full Project
+                  </button>
+                  <button
+                    onClick={() => navigate(`/editor/project/${project.id}/panels`)}
+                    className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
+                  >
+                    Panel Layouts
                   </button>
                   <p className="text-xs text-slate-500">Rack: {rack.name} ({rack.rack_units}U, {rack.width})</p>
                   <p className="text-xs text-slate-500">Total load: {rackTotals.weightKg.toFixed(2)} kg</p>

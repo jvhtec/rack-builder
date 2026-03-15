@@ -182,11 +182,144 @@ export interface Database {
           },
         ]
       }
+      panel_layouts: {
+        Row: {
+          id: string
+          project_id: string
+          name: string
+          height_ru: number
+          facing: 'front' | 'rear'
+          has_lacing_bar: boolean
+          notes: string | null
+          weight_kg: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          name: string
+          height_ru: number
+          facing?: 'front' | 'rear'
+          has_lacing_bar?: boolean
+          notes?: string | null
+          weight_kg?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          name?: string
+          height_ru?: number
+          facing?: 'front' | 'rear'
+          has_lacing_bar?: boolean
+          notes?: string | null
+          weight_kg?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'panel_layouts_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      panel_layout_rows: {
+        Row: {
+          id: string
+          panel_layout_id: string
+          row_index: number
+          hole_count: number
+          active_column_map: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          panel_layout_id: string
+          row_index: number
+          hole_count: number
+          active_column_map?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          panel_layout_id?: string
+          row_index?: number
+          hole_count?: number
+          active_column_map?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'panel_layout_rows_panel_layout_id_fkey'
+            columns: ['panel_layout_id']
+            isOneToOne: false
+            referencedRelation: 'panel_layouts'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      panel_layout_ports: {
+        Row: {
+          id: string
+          panel_layout_id: string
+          connector_id: string
+          row_index: number
+          hole_index: number
+          span_w: number
+          span_h: number
+          label: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          panel_layout_id: string
+          connector_id: string
+          row_index: number
+          hole_index: number
+          span_w?: number
+          span_h?: number
+          label?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          panel_layout_id?: string
+          connector_id?: string
+          row_index?: number
+          hole_index?: number
+          span_w?: number
+          span_h?: number
+          label?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'panel_layout_ports_panel_layout_id_fkey'
+            columns: ['panel_layout_id']
+            isOneToOne: false
+            referencedRelation: 'panel_layouts'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       layout_items: {
         Row: {
           id: string
           layout_id: string
-          device_id: string
+          device_id: string | null
+          panel_layout_id: string | null
           start_u: number
           facing: 'front' | 'rear'
           preferred_lane: number | null
@@ -198,7 +331,8 @@ export interface Database {
         Insert: {
           id?: string
           layout_id: string
-          device_id: string
+          device_id?: string | null
+          panel_layout_id?: string | null
           start_u: number
           facing?: 'front' | 'rear'
           preferred_lane?: number | null
@@ -210,7 +344,8 @@ export interface Database {
         Update: {
           id?: string
           layout_id?: string
-          device_id?: string
+          device_id?: string | null
+          panel_layout_id?: string | null
           start_u?: number
           facing?: 'front' | 'rear'
           preferred_lane?: number | null
@@ -232,6 +367,13 @@ export interface Database {
             columns: ['device_id']
             isOneToOne: false
             referencedRelation: 'devices'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'layout_items_panel_layout_id_fkey'
+            columns: ['panel_layout_id']
+            isOneToOne: false
+            referencedRelation: 'panel_layouts'
             referencedColumns: ['id']
           },
         ]

@@ -33,7 +33,7 @@ export default function PlacedDevice({
     item: {
       type: PLACED_DEVICE_TYPE,
       itemId: item.id,
-      deviceId: item.device_id,
+      deviceId: item.device_id ?? item.device.id,
       rackUnits: item.device.rack_units,
       isHalfRack: item.device.is_half_rack,
       forceFullWidth: item.force_full_width,

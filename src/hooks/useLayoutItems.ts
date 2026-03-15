@@ -1,21 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { LAYOUT_ITEM_SELECT, mapLayoutItemRows, type LayoutItemRow } from '../lib/layoutItemMapper'
 import type { DeviceFacing, LayoutItemWithDevice } from '../types'
 import { isWithinBounds } from '../lib/overlap'
-
-interface LayoutItemRow {
-  id: string
-  layout_id: string
-  device_id: string
-  start_u: number
-  facing: string
-  preferred_lane?: number | null
-  preferred_sub_lane?: number | null
-  force_full_width?: boolean | null
-  custom_name?: string | null
-  notes: string | null
-  device: Record<string, unknown>
-}
 
 function isMissingPreferredLaneColumn(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
@@ -39,33 +26,14 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     setLoading(true)
     const { data, error: err } = await supabase
       .from('layout_items')
-      .select('*, device:devices(*)')
+      .select(LAYOUT_ITEM_SELECT)
       .eq('layout_id', layoutId)
 
     if (err) {
       setError(err.message)
     } else {
       const rows = (data ?? []) as LayoutItemRow[]
-      const mapped: LayoutItemWithDevice[] = rows.map((row) => {
-        const rawDevice = row.device as Record<string, unknown>
-        return {
-          id: row.id,
-          layout_id: row.layout_id,
-          device_id: row.device_id,
-          start_u: row.start_u,
-          facing: row.facing as DeviceFacing,
-          preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
-          preferred_sub_lane: row.preferred_sub_lane === 0 || row.preferred_sub_lane === 1 ? row.preferred_sub_lane : null,
-          force_full_width: row.force_full_width === true,
-          custom_name: row.custom_name ?? null,
-          notes: row.notes,
-          device: {
-            ...rawDevice,
-            is_half_rack: rawDevice.is_half_rack === true,
-          } as unknown as LayoutItemWithDevice['device'],
-        }
-      })
-      setItems(mapped)
+      setItems(mapLayoutItemRows(rows))
       setError(null)
     }
     setLoading(false)
@@ -111,6 +79,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     const payload = {
       layout_id: layoutId,
       device_id: deviceId,
+      panel_layout_id: null,
       start_u: startU,
       facing,
       preferred_lane: preferredLane ?? null,
@@ -128,6 +97,69 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
         .insert({
           layout_id: layoutId,
           device_id: deviceId,
+          start_u: startU,
+          facing,
+        })
+        .select('id')
+        .single()
+      data = fallback.data
+      err = fallback.error
+    }
+
+    if (err) throw err
+    const createdId = (data as { id: string }).id
+    await fetchItems()
+    return createdId
+  }
+
+  const addPanelLayoutItem = async (
+    panelLayoutId: string,
+    startU: number,
+    facing: DeviceFacing,
+    panelRackUnits: number,
+    preferredLane?: 0 | 1,
+    allowOverlap = false,
+    preferredSubLane?: 0 | 1,
+  ) => {
+    if (!layoutId) throw new Error('Missing layout id')
+
+    if (!isWithinBounds(startU, panelRackUnits, totalRackUnits)) {
+      throw new Error('Panel exceeds rack bounds')
+    }
+
+    if (!allowOverlap) {
+      const newTop = startU + panelRackUnits - 1
+      const hasConflict = items
+        .filter((item) => item.facing === facing)
+        .some((item) => {
+          const existingTop = item.start_u + item.device.rack_units - 1
+          return startU <= existingTop && newTop >= item.start_u
+        })
+      if (hasConflict) throw new Error('Position overlaps with existing rack item')
+    }
+
+    const payload = {
+      layout_id: layoutId,
+      device_id: null,
+      panel_layout_id: panelLayoutId,
+      start_u: startU,
+      facing,
+      preferred_lane: preferredLane ?? null,
+      preferred_sub_lane: preferredSubLane ?? null,
+    }
+    let { data, error: err } = await supabase
+      .from('layout_items')
+      .insert(payload)
+      .select('id')
+      .single()
+
+    if (err && isMissingPreferredLaneColumn(err)) {
+      const fallback = await supabase
+        .from('layout_items')
+        .insert({
+          layout_id: layoutId,
+          device_id: null,
+          panel_layout_id: panelLayoutId,
           start_u: startU,
           facing,
         })
@@ -218,5 +250,15 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     await fetchItems()
   }
 
-  return { items, loading, error, addItem, removeItem, moveItem, updateItemDetails, refetch: fetchItems }
+  return {
+    items,
+    loading,
+    error,
+    addItem,
+    addPanelLayoutItem,
+    removeItem,
+    moveItem,
+    updateItemDetails,
+    refetch: fetchItems,
+  }
 }

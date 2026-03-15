@@ -95,58 +95,60 @@ export default function DeviceManagerPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Device Manager"
-        action={<Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">Add Device</Button>}
-      />
+      <div className="sticky top-0 z-10 mb-4 border-b border-gray-200 bg-gray-50/95 pb-4 backdrop-blur">
+        <PageHeader
+          title="Device Manager"
+          action={<Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">Add Device</Button>}
+        />
 
-      <div className="mb-4 text-gray-700">
-        Showing {sortedDevices.length} of {devices.length} device{devices.length !== 1 ? 's' : ''}
-      </div>
+        <div className="mb-4 text-gray-700">
+          Showing {sortedDevices.length} of {devices.length} device{devices.length !== 1 ? 's' : ''}
+        </div>
 
-      <div className="grid grid-cols-1 gap-3 mb-4 md:grid-cols-4">
-        <Select
-          label="Category"
-          value={selectedCategoryId}
-          onChange={(e) => setSelectedCategoryId(e.target.value)}
-          options={[
-            { value: 'all', label: 'All categories' },
-            ...categories.map((category) => ({ value: category.id, label: category.name })),
-          ]}
-        />
-        <Select
-          label="Brand"
-          value={selectedBrand}
-          onChange={(e) => setSelectedBrand(e.target.value)}
-          options={[
-            { value: ALL_BRAND, label: 'All brands' },
-            ...brands.map((b) => ({ value: b, label: b })),
-          ]}
-        />
-        <Select
-          label="Sort By"
-          value={sortField}
-          onChange={(e) => setSortField(e.target.value as typeof sortField)}
-          options={[
-            { value: 'default', label: 'Category, Brand, Model' },
-            { value: 'brand', label: 'Brand' },
-            { value: 'model', label: 'Model' },
-            { value: 'rack_units', label: 'Rack Units' },
-            { value: 'depth_mm', label: 'Depth (mm)' },
-            { value: 'weight_kg', label: 'Weight (kg)' },
-            { value: 'power_w', label: 'Power (W)' },
-          ]}
-        />
-        <Select
-          label="Direction"
-          value={sortDirection}
-          onChange={(e) => setSortDirection(e.target.value as 'asc' | 'desc')}
-          options={[
-            { value: 'asc', label: 'Ascending' },
-            { value: 'desc', label: 'Descending' },
-          ]}
-          disabled={sortField === 'default'}
-        />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <Select
+            label="Category"
+            value={selectedCategoryId}
+            onChange={(e) => setSelectedCategoryId(e.target.value)}
+            options={[
+              { value: 'all', label: 'All categories' },
+              ...categories.map((category) => ({ value: category.id, label: category.name })),
+            ]}
+          />
+          <Select
+            label="Brand"
+            value={selectedBrand}
+            onChange={(e) => setSelectedBrand(e.target.value)}
+            options={[
+              { value: ALL_BRAND, label: 'All brands' },
+              ...brands.map((b) => ({ value: b, label: b })),
+            ]}
+          />
+          <Select
+            label="Sort By"
+            value={sortField}
+            onChange={(e) => setSortField(e.target.value as typeof sortField)}
+            options={[
+              { value: 'default', label: 'Category, Brand, Model' },
+              { value: 'brand', label: 'Brand' },
+              { value: 'model', label: 'Model' },
+              { value: 'rack_units', label: 'Rack Units' },
+              { value: 'depth_mm', label: 'Depth (mm)' },
+              { value: 'weight_kg', label: 'Weight (kg)' },
+              { value: 'power_w', label: 'Power (W)' },
+            ]}
+          />
+          <Select
+            label="Direction"
+            value={sortDirection}
+            onChange={(e) => setSortDirection(e.target.value as 'asc' | 'desc')}
+            options={[
+              { value: 'asc', label: 'Ascending' },
+              { value: 'desc', label: 'Descending' },
+            ]}
+            disabled={sortField === 'default'}
+          />
+        </div>
       </div>
 
       <DeviceList devices={sortedDevices} onEdit={handleEdit} onDelete={setDeletingDevice} />
