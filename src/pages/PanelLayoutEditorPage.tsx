@@ -196,8 +196,8 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
     [panelLayoutId, panelLayouts],
   )
 
-  // Mobile sheet state: 'connectors' | 'properties' | null
-  const [mobileSheet, setMobileSheet] = useState<'connectors' | 'properties' | null>(null)
+  // Mobile sheet state
+  const [mobileSheet, setMobileSheet] = useState<'connectors' | 'properties' | 'port-edit' | null>(null)
 
   const [name, setName] = useState('')
   const [facing, setFacing] = useState<DeviceFacing>('front')
@@ -532,6 +532,10 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
 
   // ─── Mobile Layout ──────────────────────────────────────────────────────────
   if (isMobile) {
+    const selectedPortConnector = selectedPort
+      ? CONNECTOR_BY_ID.get(selectedPort.connector_id) ?? null
+      : null
+
     return (
       <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden">
         {/* Mobile header */}
@@ -547,7 +551,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
           </button>
           <div className="flex flex-col items-center min-w-0 px-2">
             <h1 className="text-sm font-bold truncate max-w-[180px]">{panel.name}</h1>
-            <span className="text-[10px] text-slate-500">{panel.height_ru}U · {ports.length} connectors</span>
+            <span className="text-[10px] text-slate-500">{panel.height_ru}U · {facing} · {ports.length} connectors</span>
           </div>
           <button
             onClick={() => void handleSave()}
@@ -566,33 +570,113 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
           </div>
         )}
 
+        {/* Placement mode indicator (fixed, above canvas) */}
+        {selectedConnectorId && (
+          <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2.5 flex items-center justify-between shrink-0 z-20">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+              <span className="text-xs text-amber-300 truncate">
+                <strong>{CONNECTOR_BY_ID.get(selectedConnectorId)?.name}</strong> — tap a row to place
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedConnectorId(null)}
+              className="ml-2 shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         {/* Canvas area */}
         <main
-          className="flex-1 overflow-auto p-4 flex flex-col items-center gap-3"
-          style={{ background: 'radial-gradient(ellipse at 50% 0%, #1e293b 0%, #0a0f1a 70%)' }}
+          className="flex-1 overflow-auto"
+          style={{
+            background: 'radial-gradient(ellipse at 50% 0%, #1e293b 0%, #0a0f1a 70%)',
+            paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))',
+          }}
         >
-          {selectedConnectorId && (
-            <div className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[10px] text-amber-300">
-              <strong>{CONNECTOR_BY_ID.get(selectedConnectorId)?.name}</strong> — tap a row to place
-              <button className="ml-1 text-amber-400/60" onClick={() => setSelectedConnectorId(null)}>✕</button>
+          <div className="p-4 flex flex-col items-center gap-3">
+            {/* Row usage summary */}
+            <div className="w-full max-w-lg flex flex-wrap gap-1.5 justify-center">
+              {rows.map((row) => {
+                const capacity = rowCapacityByIndex.get(row.row_index)
+                const pct = capacity ? Math.round((capacity.occupied_holes / capacity.hole_count) * 100) : 0
+                return (
+                  <div key={row.id} className="rounded-md border border-slate-800 bg-slate-900/60 px-2 py-1">
+                    <span className="text-[9px] font-mono text-slate-500">U{row.row_index + 1}</span>
+                    <span className="ml-1 text-[9px] text-slate-400">{pct}%</span>
+                  </div>
+                )
+              })}
             </div>
-          )}
-          <div className="w-full max-w-lg">
-            <PanelLayoutCanvas
-              heightRu={panel.height_ru}
-              rows={rows}
-              ports={ports}
-              facing={facing}
-              hasLacingBar={hasLacingBar}
-              selectedPortId={selectedPortId}
-              onRowClick={(rowIndex) => placeConnector(rowIndex)}
-              onRowDrop={handleRowDrop}
-              canDropInRow={canDropInRow}
-              onPortClick={setSelectedPortId}
-              interactive
-            />
+
+            <div className="w-full max-w-lg">
+              <PanelLayoutCanvas
+                heightRu={panel.height_ru}
+                rows={rows}
+                ports={ports}
+                facing={facing}
+                hasLacingBar={hasLacingBar}
+                selectedPortId={selectedPortId}
+                onRowClick={(rowIndex) => placeConnector(rowIndex)}
+                onRowDrop={handleRowDrop}
+                canDropInRow={canDropInRow}
+                onPortClick={(portId) => {
+                  setSelectedPortId(portId === selectedPortId ? null : portId)
+                  setSelectedConnectorId(null)
+                }}
+                interactive
+              />
+            </div>
+
+            <p className="text-[10px] text-slate-600 max-w-xs text-center">
+              Select a connector below, then tap a row to place. Tap placed connectors to edit.
+            </p>
           </div>
         </main>
+
+        {/* Inline port action bar (floats above footer when a port is selected) */}
+        {selectedPort && !mobileSheet && (
+          <div
+            className="fixed inset-x-0 z-40 px-4 pb-2 pointer-events-none"
+            style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
+          >
+            <div className="pointer-events-auto mx-auto max-w-lg rounded-xl border border-amber-500/30 bg-slate-900/95 shadow-2xl shadow-black/40 backdrop-blur-sm">
+              <div className="flex items-center gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-amber-200 truncate">
+                    {selectedPortConnector?.name ?? 'Connector'}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Row {selectedPort.row_index + 1} · {selectedPort.span_w}×{selectedPort.span_h}
+                    {selectedPort.label ? ` · "${selectedPort.label}"` : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setMobileSheet('port-edit')
+                  }}
+                  className="shrink-0 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-[10px] font-bold text-slate-300 uppercase"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => removeSelectedPort()}
+                  className="shrink-0 rounded-md border border-red-900/50 bg-red-950/60 px-3 py-1.5 text-[10px] font-bold text-red-400 uppercase"
+                >
+                  Remove
+                </button>
+                <button
+                  onClick={() => setSelectedPortId(null)}
+                  className="shrink-0 text-slate-500 px-1"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Mobile footer */}
         <footer
@@ -601,36 +685,61 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
         >
           <button
             onClick={() => setMobileSheet('connectors')}
-            className={`flex flex-col items-center gap-1 ${selectedConnectorId ? 'text-amber-400' : 'text-slate-400'}`}
+            className={`flex flex-col items-center gap-1 py-2 ${selectedConnectorId ? 'text-amber-400' : 'text-slate-400'}`}
           >
             <span className="text-lg">▦</span>
             <span className="text-[10px] font-bold uppercase">Connectors</span>
           </button>
+
+          <div className="relative -top-6">
+            <button
+              onClick={() => setMobileSheet('connectors')}
+              className="w-14 h-14 bg-amber-500 rounded-full shadow-xl shadow-amber-500/30 flex items-center justify-center border-4 border-slate-950 text-2xl text-slate-900 font-bold"
+            >
+              +
+            </button>
+          </div>
+
           <button
             onClick={() => setMobileSheet('properties')}
-            className="flex flex-col items-center gap-1 text-slate-400"
+            className="flex flex-col items-center gap-1 py-2 text-slate-400"
           >
             <span className="text-lg">⚙</span>
-            <span className="text-[10px] font-bold uppercase">Properties</span>
+            <span className="text-[10px] font-bold uppercase">Settings</span>
           </button>
         </footer>
 
-        {/* Mobile sheet drawer */}
+        {/* Bottom sheet drawer */}
         {mobileSheet && (
-          <div className="fixed inset-0 z-50 flex overflow-hidden">
+          <div className="fixed inset-0 z-50 flex flex-col justify-end overflow-hidden">
             <div className="absolute inset-0 bg-black/60" onClick={() => setMobileSheet(null)} />
-            <div className="relative ml-auto w-80 max-w-[85%] bg-slate-900 h-full shadow-2xl flex flex-col">
-              <div
-                className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0"
-                style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
-              >
-                <h2 className="font-bold text-sm uppercase tracking-widest text-slate-400">
-                  {mobileSheet === 'connectors' ? 'Connector Library' : 'Properties'}
-                </h2>
-                <button onClick={() => setMobileSheet(null)} className="p-2 text-slate-300">✕</button>
+            <div
+              className="relative bg-slate-900 rounded-t-2xl shadow-2xl flex flex-col"
+              style={{
+                maxHeight: '80svh',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+              }}
+            >
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1 shrink-0">
+                <div className="h-1 w-10 rounded-full bg-slate-700" />
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4">
+              {/* Sheet header */}
+              <div className="px-4 pb-3 flex items-center justify-between shrink-0">
+                <h2 className="font-bold text-sm uppercase tracking-widest text-slate-400">
+                  {mobileSheet === 'connectors'
+                    ? 'Add Connector'
+                    : mobileSheet === 'port-edit'
+                    ? 'Edit Connector'
+                    : 'Panel Settings'}
+                </h2>
+                <button onClick={() => setMobileSheet(null)} className="p-2 text-slate-300 -mr-2">✕</button>
+              </div>
+
+              {/* Sheet content */}
+              <div className="flex-1 overflow-y-auto px-4 pb-4">
+                {/* ── Connector Library ── */}
                 {mobileSheet === 'connectors' && (
                   <div className="space-y-4">
                     {groupedConnectors().map((group) => (
@@ -645,7 +754,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
                             {group.category}
                           </h3>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           {group.items.map((connector) => {
                             const isSelected = selectedConnectorId === connector.id
                             const isAllowed = isMountingAllowed(connector.mounting, facing)
@@ -655,20 +764,22 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
                                 type="button"
                                 onClick={() => {
                                   setSelectedConnectorId(connector.id)
+                                  setSelectedPortId(null)
                                   setMobileSheet(null)
                                 }}
-                                className={`w-full rounded-lg border px-3 py-2 text-left transition ${
+                                disabled={!isAllowed}
+                                className={`w-full rounded-lg border px-3 py-2.5 text-left transition min-h-11 ${
                                   isSelected
                                     ? 'border-amber-500/60 bg-amber-500/10 text-amber-100'
                                     : isAllowed
-                                    ? 'border-slate-700/50 bg-slate-800/40 text-slate-300'
+                                    ? 'border-slate-700/50 bg-slate-800/40 text-slate-300 active:bg-slate-800'
                                     : 'border-slate-800 bg-slate-900/30 text-slate-600'
                                 }`}
                               >
                                 <p className="text-xs font-medium leading-tight">{connector.name}</p>
                                 <p className="mt-0.5 text-[10px] text-slate-500">
-                                  {connector.grid_width}×{connector.grid_height} grid
-                                  {!isAllowed ? <span className="text-red-500/70"> · not allowed</span> : null}
+                                  {connector.grid_width}×{connector.grid_height} grid · {connector.mounting}
+                                  {!isAllowed ? <span className="text-red-500/70"> · {facing} not supported</span> : null}
                                 </p>
                               </button>
                             )
@@ -679,6 +790,34 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
                   </div>
                 )}
 
+                {/* ── Port Edit ── */}
+                {mobileSheet === 'port-edit' && selectedPort && (
+                  <div className="space-y-4">
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                      <p className="text-xs font-medium text-slate-200">
+                        {selectedPortConnector?.name ?? 'Unknown'}
+                      </p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        {selectedPort.span_w}×{selectedPort.span_h} grid · Row {selectedPort.row_index + 1}
+                      </p>
+                    </div>
+                    <DarkInput
+                      label="Label override"
+                      value={selectedPort.label ?? ''}
+                      onChange={updateSelectedPortLabel}
+                      placeholder={selectedPortConnector?.name ?? 'Label'}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { removeSelectedPort(); setMobileSheet(null) }}
+                      className="w-full rounded-md border border-red-900/50 bg-red-950/40 px-3 py-2.5 text-xs font-semibold text-red-400 min-h-11"
+                    >
+                      Remove Connector
+                    </button>
+                  </div>
+                )}
+
+                {/* ── Properties ── */}
                 {mobileSheet === 'properties' && (
                   <div className="space-y-5">
                     <DarkInput label="Name" value={name} onChange={(v) => { setName(v); setDirty(true) }} />
@@ -691,7 +830,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
                         { value: 'rear', label: 'Rear' },
                       ]}
                     />
-                    <label className="flex cursor-pointer items-center gap-3">
+                    <label className="flex cursor-pointer items-center gap-3 min-h-11">
                       <div className="relative">
                         <input
                           type="checkbox"
@@ -721,44 +860,26 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
                       {rows.map((row) => {
                         const capacity = rowCapacityByIndex.get(row.row_index)
                         return (
-                          <div key={row.id} className="rounded-lg border border-slate-800 bg-slate-800/30 p-2">
-                            <p className="text-[10px] text-slate-400">
-                              U{row.row_index + 1}: {capacity ? `${capacity.occupied_holes}/${capacity.hole_count} used` : `${row.hole_count} slots`}
-                            </p>
+                          <div key={row.id} className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-800/30 p-2">
+                            <span className="text-[10px] font-mono text-slate-500 w-6">U{row.row_index + 1}</span>
+                            <div className="flex-1 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-amber-500/60 transition-all"
+                                style={{ width: `${capacity ? Math.round((capacity.occupied_holes / capacity.hole_count) * 100) : 0}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-slate-400 w-12 text-right">
+                              {capacity ? `${capacity.occupied_holes}/${capacity.hole_count}` : `${row.hole_count}`}
+                            </span>
                           </div>
                         )
                       })}
                     </div>
 
-                    {/* Selected port */}
-                    {selectedPort && (
-                      <div className="border-t border-slate-800 pt-4 space-y-3">
-                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-amber-500/80">Selected Connector</h3>
-                        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-3">
-                          <p className="text-xs font-medium text-slate-200">
-                            {CONNECTOR_BY_ID.get(selectedPort.connector_id)?.name ?? 'Unknown'}
-                          </p>
-                          <DarkInput
-                            label="Label override"
-                            value={selectedPort.label ?? ''}
-                            onChange={updateSelectedPortLabel}
-                            placeholder={CONNECTOR_BY_ID.get(selectedPort.connector_id)?.name ?? 'Label'}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => { removeSelectedPort(); setMobileSheet(null) }}
-                            className="w-full rounded-md border border-red-900/50 bg-red-950/40 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-950/70 transition"
-                          >
-                            Remove Connector
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Print link */}
                     <button
                       onClick={() => navigate(`/editor/project/${projectId}/panels/${panel.id}/print`)}
-                      className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300"
+                      className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2.5 text-xs text-slate-300 min-h-11"
                     >
                       Print Layout
                     </button>
