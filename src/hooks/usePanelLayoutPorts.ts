@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { mapPanelLayoutPort, type PanelLayoutPortRecord } from '../lib/panelLayoutMapper'
 import type { PanelLayoutPort } from '../types'
 
 export function usePanelLayoutPorts(panelLayoutId: string | undefined) {
@@ -29,7 +30,7 @@ export function usePanelLayoutPorts(panelLayoutId: string | undefined) {
       setLoading(false)
       return
     }
-    setPorts((data ?? []) as PanelLayoutPort[])
+    setPorts(((data ?? []) as PanelLayoutPortRecord[]).map(mapPanelLayoutPort))
     setError(null)
     setLoading(false)
   }, [panelLayoutId])

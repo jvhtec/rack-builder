@@ -55,6 +55,87 @@ create trigger trg_validate_panel_layout_port_geometry
 before insert or update on panel_layout_ports
 for each row execute function validate_panel_layout_port_geometry();
 
+-- Exclusion constraint for overlap detection (declarative, race-condition safe)
+create extension if not exists btree_gist;
+
+alter table panel_layout_ports
+add constraint panel_layout_ports_no_overlap_excl
+exclude using gist (
+  panel_layout_id with =,
+  row_index with =,
+  int4range(hole_index, hole_index + span_w) with &&
+);
+
+-- Validate existing ports when a row's hole_count is reduced
+create or replace function validate_panel_layout_row_ports()
+returns trigger as $$
+declare
+  violating_port record;
+begin
+  if NEW.hole_count < OLD.hole_count then
+    select id, hole_index, span_w into violating_port
+    from panel_layout_ports
+    where panel_layout_id = NEW.panel_layout_id
+      and row_index = NEW.row_index
+      and hole_index + span_w > NEW.hole_count
+    limit 1;
+
+    if found then
+      raise exception 'Cannot reduce hole_count to %: port id=% at hole_index=% with span_w=% would exceed bounds',
+        NEW.hole_count, violating_port.id, violating_port.hole_index, violating_port.span_w;
+    end if;
+  end if;
+
+  return NEW;
+end;
+$$ language plpgsql;
+
+create trigger trg_validate_panel_layout_row_port_geometry
+before update on panel_layout_rows
+for each row execute function validate_panel_layout_row_ports();
+
+-- Atomic replace functions (transactional)
+create or replace function rpc_replace_panel_layout_rows(
+  p_panel_layout_id uuid,
+  p_rows jsonb
+) returns void as $$
+begin
+  delete from panel_layout_rows where panel_layout_id = p_panel_layout_id;
+
+  if jsonb_array_length(p_rows) > 0 then
+    insert into panel_layout_rows (panel_layout_id, row_index, hole_count, active_column_map)
+    select
+      p_panel_layout_id,
+      (elem->>'row_index')::integer,
+      (elem->>'hole_count')::integer,
+      elem->'active_column_map'
+    from jsonb_array_elements(p_rows) as elem;
+  end if;
+end;
+$$ language plpgsql;
+
+create or replace function rpc_replace_panel_layout_ports(
+  p_panel_layout_id uuid,
+  p_ports jsonb
+) returns void as $$
+begin
+  delete from panel_layout_ports where panel_layout_id = p_panel_layout_id;
+
+  if jsonb_array_length(p_ports) > 0 then
+    insert into panel_layout_ports (panel_layout_id, connector_id, row_index, hole_index, span_w, span_h, label)
+    select
+      p_panel_layout_id,
+      elem->>'connector_id',
+      (elem->>'row_index')::integer,
+      (elem->>'hole_index')::integer,
+      (elem->>'span_w')::integer,
+      (elem->>'span_h')::integer,
+      elem->>'label'
+    from jsonb_array_elements(p_ports) as elem;
+  end if;
+end;
+$$ language plpgsql;
+
 -- Row-level security for panel tables
 alter table panel_layouts enable row level security;
 alter table panel_layout_rows enable row level security;

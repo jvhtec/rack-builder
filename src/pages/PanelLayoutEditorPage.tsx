@@ -1141,7 +1141,7 @@ export default function PanelLayoutEditorPage() {
   useEffect(() => {
     const coarsePointerQuery = window.matchMedia('(pointer: coarse)')
     const updateTouchLike = () => {
-      setIsTouchLikeDevice(coarsePointerQuery.matches || 'ontouchstart' in window)
+      setIsTouchLikeDevice(coarsePointerQuery.matches || navigator.maxTouchPoints > 0)
     }
     updateTouchLike()
     coarsePointerQuery.addEventListener('change', updateTouchLike)

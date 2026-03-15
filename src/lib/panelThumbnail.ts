@@ -2,6 +2,9 @@ import type { DeviceFacing, PanelLayout, PanelLayoutPort, PanelLayoutRow } from 
 import { CONNECTOR_BY_ID } from './connectorCatalog'
 import { getActiveColumns } from './panelGrid'
 
+const TOTAL_COLUMNS = 16
+const MAX_COLUMN_INDEX = TOTAL_COLUMNS - 1
+
 const CATEGORY_COLORS: Record<string, string> = {
   power: '#2563eb',
   data: '#0891b2',
@@ -34,7 +37,7 @@ function getPortGeometry(
   const startCol = Math.min(rawStartCol, rawEndCol)
   const endCol = Math.max(rawStartCol, rawEndCol)
   const width = (endCol - startCol + 1) * cellWidth
-  const mirroredStart = facing === 'rear' ? 15 - endCol : startCol
+  const mirroredStart = facing === 'rear' ? MAX_COLUMN_INDEX - endCol : startCol
   const x = mirroredStart * cellWidth
   const y = port.row_index * rowHeight
   const height = port.span_h * rowHeight

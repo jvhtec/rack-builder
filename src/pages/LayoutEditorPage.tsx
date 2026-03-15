@@ -323,13 +323,14 @@ export default function LayoutEditorPage() {
       if (panelLayoutId) {
         const panelLayout = panelLayouts.find((entry) => entry.id === panelLayoutId)
         if (!panelLayout) return
+        const allowOverlapForDualRack = rack?.width === 'dual'
         await addPanelLayoutItem(
           panelLayoutId,
           startU,
           facing,
           panelLayout.height_ru,
           preferredLane,
-          false,
+          allowOverlapForDualRack,
           preferredSubLane,
         )
         return
@@ -393,7 +394,8 @@ export default function LayoutEditorPage() {
       if (!canPlaceAtPosition(slotU, panelLayout.height_ru, targetSlot, mobileItems, rack.width)) return
 
       try {
-        await addPanelLayoutItem(panelTemplateId, slotU, facing, panelLayout.height_ru, preferredLane, false, preferredSubLane)
+        const allowOverlapForDualRack = rack.width === 'dual'
+        await addPanelLayoutItem(panelTemplateId, slotU, facing, panelLayout.height_ru, preferredLane, allowOverlapForDualRack, preferredSubLane)
         setSelectedDeviceTemplate(null)
       } catch (err) {
         console.error('Tap placement failed:', err)

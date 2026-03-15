@@ -461,10 +461,11 @@ export function rowHasCapacity(
     const row = rowMap.get(r)
     if (!row) return false
 
-    // Multi-row alignment check
+    // Multi-row alignment check: hole_count and active_column_map must match
     if (spanH > 1 && r !== rowIndex) {
       const targetRow = rowMap.get(rowIndex)
       if (!targetRow || row.hole_count !== targetRow.hole_count) return false
+      if (!mapsEqual(normalizeRowActiveMap(row), normalizeRowActiveMap(targetRow))) return false
     }
 
     // Sum occupied holes in this row
