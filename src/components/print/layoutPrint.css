@@ -53,11 +53,12 @@
 }
 
 .layout-print-sheet {
-  width: min(1400px, calc(100vw - 52px));
+  width: 1400px;
   aspect-ratio: 420 / 297;
   background: #fff;
   border: 1px solid #c4ceda;
   box-shadow: 0 20px 35px rgba(14, 26, 46, 0.16);
+  zoom: var(--print-zoom, 1);
 }
 
 
@@ -671,6 +672,7 @@
     border: none;
     box-shadow: none;
     margin: 0;
+    zoom: 1;
   }
 
   .layout-print-sheet-inner {

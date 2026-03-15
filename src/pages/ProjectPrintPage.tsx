@@ -44,6 +44,18 @@ export default function ProjectPrintPage() {
   const [generatedAt] = useState(() => new Date())
 
   const autoPrintRequested = searchParams.get('autoprint') === '1'
+  const [sheetZoom, setSheetZoom] = useState(1)
+
+  useEffect(() => {
+    const DESIGN_WIDTH = 1400
+    function update() {
+      const available = window.innerWidth - 52
+      setSheetZoom(available >= DESIGN_WIDTH ? 1 : available / DESIGN_WIDTH)
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   const loadData = useCallback(async () => {
     if (!projectId) {
@@ -294,7 +306,10 @@ export default function ProjectPrintPage() {
         </p>
       </header>
 
-      <main className="layout-print-stage layout-print-stage--project">
+      <main
+        className="layout-print-stage layout-print-stage--project"
+        style={{ '--print-zoom': sheetZoom } as React.CSSProperties}
+      >
         <ProjectPrintCover project={project} generatedAt={generatedAt} />
         <ProjectPrintIndex
           projectName={project.name}
