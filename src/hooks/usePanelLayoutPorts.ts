@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { PanelLayoutPort } from '../types'
 
-interface PanelLayoutPortRecord extends PanelLayoutPort {}
+type PanelLayoutPortRecord = PanelLayoutPort
 
 function mapPort(row: PanelLayoutPortRecord): PanelLayoutPort {
   return {

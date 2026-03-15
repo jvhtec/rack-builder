@@ -50,7 +50,7 @@ interface PortVisualProps {
   opacity?: number
 }
 
-function PortVisual({ port, leftPct, yPct, widthPct, heightPct, active, opacity = 1 }: PortVisualProps) {
+function PortVisual({ port }: Pick<PortVisualProps, 'port'>) {
   const connector = CONNECTOR_BY_ID.get(port.connector_id)
   const label = port.label?.trim() || connector?.name || 'Connector'
   const iconUrl = resolveImageUrl(connector?.image_path)

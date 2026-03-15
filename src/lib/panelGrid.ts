@@ -369,7 +369,7 @@ function distributeEvenly(
   }
 
   // Distribute remaining units to positions with largest fractional remainders
-  let remaining = freeSpace - floorSum
+  const remaining = freeSpace - floorSum
   const remainders = floors.map((f, i) => ({ index: i, remainder: idealGap - f }))
   remainders.sort((a, b) => b.remainder - a.remainder)
   for (let i = 0; i < remaining; i++) {
