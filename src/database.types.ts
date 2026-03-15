@@ -116,6 +116,52 @@ export interface Database {
           },
         ]
       }
+
+      connectors: {
+        Row: {
+          id: string
+          name: string
+          category: 'audio' | 'data' | 'power' | 'multipin' | 'other'
+          image_path: string
+          is_d_size: boolean
+          grid_width: number
+          grid_height: number
+          mounting: 'front' | 'rear' | 'both'
+          notes: string
+          weight_kg: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          name: string
+          category: 'audio' | 'data' | 'power' | 'multipin' | 'other'
+          image_path: string
+          is_d_size?: boolean
+          grid_width?: number
+          grid_height?: number
+          mounting: 'front' | 'rear' | 'both'
+          notes?: string
+          weight_kg?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          category?: 'audio' | 'data' | 'power' | 'multipin' | 'other'
+          image_path?: string
+          is_d_size?: boolean
+          grid_width?: number
+          grid_height?: number
+          mounting?: 'front' | 'rear' | 'both'
+          notes?: string
+          weight_kg?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           id: string

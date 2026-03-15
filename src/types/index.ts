@@ -42,11 +42,17 @@ export interface ConnectorDefinition {
   name: string
   category: ConnectorCategory
   image_path: string
+  is_d_size: boolean
   grid_width: number
   grid_height: number
   mounting: ConnectorMounting
   notes: string
   weight_kg: number
+}
+
+export interface Connector extends ConnectorDefinition {
+  created_at: string
+  updated_at: string
 }
 
 export interface PanelLayoutRow {

@@ -1,6 +1,6 @@
-import type { DeviceFacing, PanelLayout, PanelLayoutPort, PanelLayoutRow } from '../types'
-import { CONNECTOR_BY_ID } from './connectorCatalog'
+import type { ConnectorDefinition, DeviceFacing, PanelLayout, PanelLayoutPort, PanelLayoutRow } from '../types'
 import { getActiveColumns } from './panelGrid'
+import { getDeviceImageUrl } from '../hooks/useDevices'
 
 const TOTAL_COLUMNS = 16
 const MAX_COLUMN_INDEX = TOTAL_COLUMNS - 1
@@ -47,6 +47,7 @@ function getPortGeometry(
 export function buildPanelThumbnailDataUrl(
   panel: PanelLayout,
   facing: DeviceFacing,
+  connectorById: Map<string, ConnectorDefinition>,
 ): string {
   const rows = [...(panel.rows ?? [])].sort((a, b) => a.row_index - b.row_index)
   const ports = [...(panel.ports ?? [])]
@@ -76,12 +77,25 @@ export function buildPanelThumbnailDataUrl(
     const row = rows.find((entry) => entry.row_index === port.row_index)
     if (!row) return ''
     const { x, y, width: portWidth, height: portHeight } = getPortGeometry(port, row, cellWidth, rowHeight, facing)
-    const connector = CONNECTOR_BY_ID.get(port.connector_id)
+    const connector = connectorById.get(port.connector_id)
     const fill = CATEGORY_COLORS[connector?.category ?? 'other'] ?? '#374151'
-    const label = port.label?.trim() || connector?.name || 'Connector'
+    const label = port.label?.trim() || connector?.name || `Unknown (${port.connector_id})`
+    const imageUrl = getDeviceImageUrl(connector?.image_path ?? null, 'connector-images')
+    const bodyX = innerPad + x + 2
+    const bodyY = bodyTop + y + stripHeight + 3
+    const bodyWidth = Math.max(10, portWidth - 4)
+    const bodyHeight = Math.max(10, portHeight - stripHeight - 6)
+    const labelWidth = Math.max(20, bodyWidth)
+    const labelHeight = 8
+    const labelY = bodyY - labelHeight - 2
+    const imageMarkup = imageUrl
+      ? `<image href="${escapeXml(imageUrl)}" x="${bodyX + 2}" y="${bodyY + 2}" width="${Math.max(6, bodyWidth - 4)}" height="${Math.max(6, bodyHeight - 4)}" preserveAspectRatio="xMidYMid meet" />`
+      : ''
     return `<g>
-      <rect x="${innerPad + x + 2}" y="${bodyTop + y + stripHeight + 3}" width="${Math.max(10, portWidth - 4)}" height="${Math.max(10, portHeight - stripHeight - 6)}" rx="4" fill="${fill}" stroke="#e2e8f0" stroke-width="1.5" />
-      <text x="${innerPad + x + portWidth / 2}" y="${bodyTop + y + 14}" text-anchor="middle" font-size="9" font-family="Inter, Arial, sans-serif" fill="#e2e8f0">${escapeXml(label)}</text>
+      <rect x="${bodyX}" y="${bodyY}" width="${bodyWidth}" height="${bodyHeight}" rx="4" fill="${fill}" stroke="#e2e8f0" stroke-width="1.5" />
+      <rect x="${bodyX}" y="${labelY}" width="${labelWidth}" height="${labelHeight}" rx="3" fill="rgba(2,6,23,0.75)" />
+      <text x="${bodyX + labelWidth / 2}" y="${labelY + labelHeight - 2}" text-anchor="middle" font-size="6.5" font-family="Inter, Arial, sans-serif" fill="#e2e8f0">${escapeXml(label)}</text>
+      ${imageMarkup}
     </g>`
   }).join('')
 

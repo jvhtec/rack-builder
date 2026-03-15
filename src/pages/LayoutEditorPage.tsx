@@ -9,6 +9,7 @@ import { ALL_BRAND, filterDevicesByBrand, filterDevicesByCategory, getDeviceImag
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
 import { useLayouts } from '../hooks/useLayouts'
 import { useRacks } from '../hooks/useRacks'
+import { useConnectors } from '../hooks/useConnectors'
 import { hasDepthConflict, isWithinBounds } from '../lib/overlap'
 import {
   buildSlotAssignments,
@@ -171,6 +172,7 @@ export default function LayoutEditorPage() {
     deleteLayout,
   } = useLayouts(projectId)
   const { racks, loading: racksLoading } = useRacks()
+  const { connectorById } = useConnectors()
   const { devices, categories, loading: devicesLoading } = useDevices()
   const { panelLayouts } = usePanelLayouts(projectId)
 
@@ -266,11 +268,11 @@ export default function LayoutEditorPage() {
       created_at: panel.created_at,
       updated_at: panel.updated_at,
     },
-    front_image_path: buildPanelThumbnailDataUrl(panel, 'front'),
-    rear_image_path: buildPanelThumbnailDataUrl(panel, 'rear'),
+    front_image_path: buildPanelThumbnailDataUrl(panel, 'front', connectorById),
+    rear_image_path: buildPanelThumbnailDataUrl(panel, 'rear', connectorById),
     created_at: panel.created_at,
     updated_at: panel.updated_at,
-  })), [panelLayouts])
+  })), [connectorById, panelLayouts])
 
   const libraryDevices = useMemo(
     () => [...devices, ...panelLibraryDevices],
@@ -655,6 +657,7 @@ export default function LayoutEditorPage() {
               <RackGrid
                 rack={rack}
                 items={items}
+                connectorById={connectorById}
                 facing={facing}
                 showDeviceDetails={showDeviceNames}
                 onDropNew={handleDropNew}

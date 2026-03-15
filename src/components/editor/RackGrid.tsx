@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import type { DeviceFacing, Rack, LayoutItemWithDevice } from '../../types'
+import type { ConnectorDefinition, DeviceFacing, Rack, LayoutItemWithDevice } from '../../types'
 import RackSlot from './RackSlot'
 import PlacedDevice from './PlacedDevice'
 import {
@@ -24,6 +24,7 @@ import './rackBlueprint.css'
 interface RackGridProps {
   rack: Rack
   items: LayoutItemWithDevice[]
+  connectorById: Map<string, ConnectorDefinition>
   facing: DeviceFacing
   showDeviceDetails?: boolean
   lanePreferenceByItemId?: Map<string, 0 | 1>
@@ -36,6 +37,7 @@ interface RackGridProps {
 export default function RackGrid({
   rack,
   items,
+  connectorById,
   facing,
   showDeviceDetails = true,
   onDropNew,
@@ -205,6 +207,7 @@ export default function RackGrid({
                       slotHeight={slotHeight}
                       showDeviceDetails={showDeviceDetails}
                       interactive={!showOppositePreview}
+                      connectorById={connectorById}
                       onRemove={onRemove}
                       onEditNotes={onEditNotes}
                     />

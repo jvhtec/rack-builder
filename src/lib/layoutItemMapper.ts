@@ -1,7 +1,6 @@
-import { CONNECTOR_BY_ID } from './connectorCatalog'
-import { connectorWeightKg, normalizeActiveColumnMap, toHoleCount } from './panelGrid'
+import { connectorWeightKg } from './panelGrid'
 import { buildPanelThumbnailDataUrl } from './panelThumbnail'
-import type { Device, DeviceFacing, LayoutItemWithDevice, PanelLayout } from '../types'
+import type { ConnectorDefinition, Device, DeviceFacing, LayoutItemWithDevice, PanelLayout } from '../types'
 
 export interface LayoutItemRow {
   id: string
@@ -54,6 +53,23 @@ export interface LayoutItemRow {
 export const LAYOUT_ITEM_SELECT =
   '*, device:devices(*), panel_layout:panel_layouts(*, rows:panel_layout_rows(*), ports:panel_layout_ports(*))'
 
+function toHoleCount(value: number): 4 | 6 | 8 | 12 | 16 {
+  const rounded = Math.round(value)
+  if (rounded === 4 || rounded === 6 || rounded === 8 || rounded === 12 || rounded === 16) return rounded
+  return 16
+}
+
+function normalizeActiveColumnMap(value: unknown, holeCount: number): number[] {
+  if (!Array.isArray(value)) return []
+  const numeric = value
+    .map((entry) => Number(entry))
+    .filter((entry) => Number.isInteger(entry) && entry >= 0 && entry < 16)
+  if (numeric.length !== holeCount) return []
+  const unique = new Set(numeric)
+  if (unique.size !== numeric.length) return []
+  return numeric
+}
+
 function mapPanelLayout(raw: NonNullable<LayoutItemRow['panel_layout']>): PanelLayout {
   const rows = (raw.rows ?? []).map((row) => {
     const holeCount = toHoleCount(row.hole_count)
@@ -95,8 +111,8 @@ function mapPanelLayout(raw: NonNullable<LayoutItemRow['panel_layout']>): PanelL
   }
 }
 
-function buildVirtualPanelDevice(panelLayout: PanelLayout): Device {
-  const connectorMass = connectorWeightKg(panelLayout.ports ?? [], CONNECTOR_BY_ID)
+function buildVirtualPanelDevice(panelLayout: PanelLayout, connectorById: Map<string, ConnectorDefinition>): Device {
+  const connectorMass = connectorWeightKg(panelLayout.ports ?? [], connectorById)
   return {
     id: `panel:${panelLayout.id}`,
     brand: 'Panel Layout',
@@ -107,20 +123,20 @@ function buildVirtualPanelDevice(panelLayout: PanelLayout): Device {
     power_w: 0,
     is_half_rack: false,
     category_id: '__panel_layout__',
-    front_image_path: buildPanelThumbnailDataUrl(panelLayout, 'front'),
-    rear_image_path: buildPanelThumbnailDataUrl(panelLayout, 'rear'),
+    front_image_path: buildPanelThumbnailDataUrl(panelLayout, 'front', connectorById),
+    rear_image_path: buildPanelThumbnailDataUrl(panelLayout, 'rear', connectorById),
     created_at: panelLayout.created_at,
     updated_at: panelLayout.updated_at,
     category: null,
   }
 }
 
-export function mapLayoutItemRows(rows: LayoutItemRow[]): LayoutItemWithDevice[] {
+export function mapLayoutItemRows(rows: LayoutItemRow[], connectorById: Map<string, ConnectorDefinition>): LayoutItemWithDevice[] {
   return rows.map((row) => {
     const panelLayout = row.panel_layout ? mapPanelLayout(row.panel_layout) : null
     const rawDevice = row.device as Record<string, unknown> | null
     const device = panelLayout
-      ? buildVirtualPanelDevice(panelLayout)
+      ? buildVirtualPanelDevice(panelLayout, connectorById)
       : {
           ...(rawDevice ?? {}),
           is_half_rack: rawDevice?.is_half_rack === true,

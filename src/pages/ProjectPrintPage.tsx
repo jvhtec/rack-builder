@@ -8,6 +8,7 @@ import PanelPrintSheet from '../components/print/PanelPrintSheet'
 import type { Layout, LayoutItemWithDevice, PanelLayout, Project, Rack } from '../types'
 import { supabase } from '../lib/supabase'
 import { getDeviceImageUrl } from '../hooks/useDevices'
+import { useConnectors } from '../hooks/useConnectors'
 import { LAYOUT_ITEM_SELECT, mapLayoutItemRows, type LayoutItemRow } from '../lib/layoutItemMapper'
 import { mapPanelLayout, type PanelLayoutRecord } from '../lib/panelLayoutMapper'
 import '../components/print/layoutPrint.css'
@@ -37,6 +38,7 @@ export default function ProjectPrintPage() {
   const [project, setProject] = useState<Project | null>(null)
   const [layoutModels, setLayoutModels] = useState<PrintLayoutModel[]>([])
   const [panelModels, setPanelModels] = useState<PanelLayout[]>([])
+  const { connectorById } = useConnectors()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [imagesReady, setImagesReady] = useState(false)
@@ -114,7 +116,7 @@ export default function ProjectPrintPage() {
       }
 
       const rows = (itemData ?? []) as LayoutItemRow[]
-      const mappedItems: LayoutItemWithDevice[] = mapLayoutItemRows(rows)
+      const mappedItems: LayoutItemWithDevice[] = mapLayoutItemRows(rows, connectorById)
 
       const itemsByLayout = mappedItems.reduce<Map<string, LayoutItemWithDevice[]>>((acc, item) => {
         const existing = acc.get(item.layout_id) ?? []
@@ -159,7 +161,7 @@ export default function ProjectPrintPage() {
     setLayoutModels(models)
     setPanelModels(((panelData ?? []) as PanelLayoutRecord[]).map(mapPanelLayout))
     setLoading(false)
-  }, [projectId])
+  }, [connectorById, projectId])
 
   const imageUrls = useMemo(() => {
     const urls = new Set<string>()
