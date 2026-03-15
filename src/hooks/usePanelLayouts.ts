@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { buildDefaultRows, type HoleCount } from '../lib/panelGrid'
+import type { HoleCount } from '../lib/panelGrid'
 import { mapPanelLayout, type PanelLayoutRecord } from '../lib/panelLayoutMapper'
 import type { DeviceFacing, PanelLayout, PanelLayoutPort, PanelLayoutRow } from '../types'
 
@@ -65,33 +65,22 @@ export function usePanelLayouts(projectId: string | undefined) {
     const safeHeight = Math.max(1, Math.min(6, Math.round(payload.height_ru)))
     const holeCount = payload.default_hole_count ?? 16
 
-    const { data, error: createError } = await supabase
-      .from('panel_layouts')
-      .insert({
-        project_id: projectId,
-        name: payload.name.trim(),
-        height_ru: safeHeight,
-        facing: payload.facing,
-        has_lacing_bar: payload.has_lacing_bar,
-        notes: payload.notes ?? null,
-        weight_kg: payload.weight_kg ?? 0,
-      })
-      .select('*')
-      .single()
+    const { data, error: rpcError } = await supabase.rpc('rpc_create_panel_layout', {
+      p_project_id: projectId,
+      p_name: payload.name.trim(),
+      p_height_ru: safeHeight,
+      p_facing: payload.facing,
+      p_has_lacing_bar: payload.has_lacing_bar,
+      p_notes: payload.notes ?? null,
+      p_weight_kg: payload.weight_kg ?? 0,
+      p_default_hole_count: holeCount,
+    })
 
-    if (createError || !data) throw createError ?? new Error('Failed to create panel layout')
-
-    const panel = mapPanelLayout(data as PanelLayoutRecord)
-    const rows = buildDefaultRows(panel.id, safeHeight, holeCount)
-    const { error: rowsError } = await supabase.from('panel_layout_rows').insert(rows)
-    if (rowsError) {
-      // Clean up the orphaned panel layout
-      await supabase.from('panel_layouts').delete().eq('id', panel.id)
-      throw rowsError
-    }
+    if (rpcError) throw rpcError
+    const newId = data as string
 
     await fetchPanelLayouts()
-    return panel.id
+    return newId
   }
 
   const updatePanelLayout = async (
@@ -106,6 +95,36 @@ export function usePanelLayouts(projectId: string | undefined) {
       })
       .eq('id', id)
     if (updateError) throw updateError
+    await fetchPanelLayouts()
+  }
+
+  const savePanelLayout = async (
+    id: string,
+    meta: { name: string; facing: DeviceFacing; has_lacing_bar: boolean; notes: string | null },
+    rows: Array<Pick<PanelLayoutRow, 'row_index' | 'hole_count' | 'active_column_map'>>,
+    ports: Array<Pick<PanelLayoutPort, 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label'>>,
+  ) => {
+    const { error: rpcError } = await supabase.rpc('rpc_save_panel_layout', {
+      p_id: id,
+      p_name: meta.name,
+      p_facing: meta.facing,
+      p_has_lacing_bar: meta.has_lacing_bar,
+      p_notes: meta.notes,
+      p_rows: rows.map((row) => ({
+        row_index: row.row_index,
+        hole_count: row.hole_count,
+        active_column_map: row.active_column_map,
+      })),
+      p_ports: ports.map((port) => ({
+        connector_id: port.connector_id,
+        row_index: port.row_index,
+        hole_index: port.hole_index,
+        span_w: port.span_w,
+        span_h: port.span_h,
+        label: port.label ?? null,
+      })),
+    })
+    if (rpcError) throw rpcError
     await fetchPanelLayouts()
   }
 
@@ -148,55 +167,18 @@ export function usePanelLayouts(projectId: string | undefined) {
 
   const duplicatePanelLayout = async (layout: PanelLayout) => {
     if (!projectId) throw new Error('Missing project id')
-    const { data, error: createError } = await supabase
-      .from('panel_layouts')
-      .insert({
-        project_id: projectId,
-        name: `${layout.name} Copy`,
-        height_ru: layout.height_ru,
-        facing: layout.facing,
-        has_lacing_bar: layout.has_lacing_bar,
-        notes: layout.notes,
-        weight_kg: layout.weight_kg,
-      })
-      .select('*')
-      .single()
-    if (createError || !data) throw createError ?? new Error('Failed to duplicate panel layout')
 
-    const clone = data as PanelLayoutRecord
-    const rowPayload = (layout.rows ?? []).map((row) => ({
-      panel_layout_id: clone.id,
-      row_index: row.row_index,
-      hole_count: row.hole_count,
-      active_column_map: row.active_column_map,
-    }))
-    const portPayload = (layout.ports ?? []).map((port) => ({
-      panel_layout_id: clone.id,
-      connector_id: port.connector_id,
-      row_index: port.row_index,
-      hole_index: port.hole_index,
-      span_w: port.span_w,
-      span_h: port.span_h,
-      label: port.label,
-    }))
+    const { data, error: rpcError } = await supabase.rpc('rpc_duplicate_panel_layout', {
+      p_source_id: layout.id,
+      p_project_id: projectId,
+      p_new_name: `${layout.name} Copy`,
+    })
 
-    if (rowPayload.length > 0) {
-      const { error: rowsError } = await supabase.from('panel_layout_rows').insert(rowPayload)
-      if (rowsError) {
-        await supabase.from('panel_layouts').delete().eq('id', clone.id)
-        throw rowsError
-      }
-    }
-    if (portPayload.length > 0) {
-      const { error: portsError } = await supabase.from('panel_layout_ports').insert(portPayload)
-      if (portsError) {
-        await supabase.from('panel_layouts').delete().eq('id', clone.id)
-        throw portsError
-      }
-    }
+    if (rpcError) throw rpcError
+    const newId = data as string
 
     await fetchPanelLayouts()
-    return clone.id
+    return newId
   }
 
   const deletePanelLayout = async (id: string) => {
@@ -224,6 +206,7 @@ export function usePanelLayouts(projectId: string | undefined) {
     error,
     createPanelLayout,
     updatePanelLayout,
+    savePanelLayout,
     replaceRows,
     replacePorts,
     duplicatePanelLayout,

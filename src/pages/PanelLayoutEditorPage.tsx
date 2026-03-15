@@ -187,9 +187,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
   const {
     panelLayouts,
     loading,
-    updatePanelLayout,
-    replaceRows,
-    replacePorts,
+    savePanelLayout,
   } = usePanelLayouts(projectId)
   const panel = useMemo(
     () => panelLayouts.find((entry) => entry.id === panelLayoutId) ?? null,
@@ -467,22 +465,14 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
     setSaving(true)
     setError(null)
     try {
-      await updatePanelLayout(panel.id, {
-        name: name.trim(),
-        facing,
-        has_lacing_bar: hasLacingBar,
-        notes: notes.trim() || null,
-      })
-      await replaceRows(
+      await savePanelLayout(
         panel.id,
+        { name: name.trim(), facing, has_lacing_bar: hasLacingBar, notes: notes.trim() || null },
         rows.map((row) => ({
           row_index: row.row_index,
           hole_count: row.hole_count,
           active_column_map: row.active_column_map,
         })),
-      )
-      await replacePorts(
-        panel.id,
         ports.map((port) => ({
           connector_id: port.connector_id,
           row_index: port.row_index,
