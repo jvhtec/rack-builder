@@ -1,8 +1,7 @@
 import { useCallback, useMemo, type LegacyRef } from 'react'
 import { useDrag, useDrop } from 'react-dnd'
-import { CONNECTOR_BY_ID } from '../../lib/connectorCatalog'
 import { buildRowCellGeometry, getActiveColumns, getPunchedAreaRatio } from '../../lib/panelGrid'
-import type { DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../../types'
+import type { ConnectorDefinition, DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../../types'
 import {
   CONNECTOR_ITEM_TYPE,
   PLACED_PORT_TYPE,
@@ -11,6 +10,7 @@ import {
 } from './panelDndTypes'
 
 interface PanelLayoutCanvasProps {
+  connectorById: Map<string, ConnectorDefinition>
   heightRu: number
   rows: PanelLayoutRow[]
   ports: PanelLayoutPort[]
@@ -40,8 +40,8 @@ function resolveImageUrl(path: string | null | undefined): string | null {
 
 // ─── Shared port visual ─────────────────────────────────────────────────────
 
-function PortVisual({ port }: { port: PanelLayoutPort }) {
-  const connector = CONNECTOR_BY_ID.get(port.connector_id)
+function PortVisual({ port, connectorById }: { port: PanelLayoutPort; connectorById: Map<string, ConnectorDefinition> }) {
+  const connector = connectorById.get(port.connector_id)
   const label = port.label?.trim() || connector?.name || 'Connector'
   const iconUrl = resolveImageUrl(connector?.image_path)
 
@@ -80,6 +80,7 @@ function portStyle(leftPct: number, yPct: number, widthPct: number, heightPct: n
 // ─── DraggablePort (interactive, requires DndProvider) ──────────────────────
 
 interface DraggablePortProps {
+  connectorById: Map<string, ConnectorDefinition>
   port: PanelLayoutPort
   leftPct: number
   yPct: number
@@ -90,6 +91,7 @@ interface DraggablePortProps {
 }
 
 function DraggablePort({
+  connectorById,
   port,
   leftPct,
   yPct,
@@ -98,7 +100,7 @@ function DraggablePort({
   active,
   onPortClick,
 }: DraggablePortProps) {
-  const connector = CONNECTOR_BY_ID.get(port.connector_id)
+  const connector = connectorById.get(port.connector_id)
   const label = port.label?.trim() || connector?.name || 'Connector'
 
   const [{ isDragging }, dragRef] = useDrag<PlacedPortDragItem, unknown, { isDragging: boolean }>({
@@ -127,7 +129,7 @@ function DraggablePort({
       }}
       title={`${label} — drag to move`}
     >
-      <PortVisual port={port} />
+      <PortVisual port={port} connectorById={connectorById} />
     </button>
   )
 }
@@ -135,6 +137,7 @@ function DraggablePort({
 // ─── StaticPort (non-interactive, no DndProvider needed) ────────────────────
 
 function StaticPort({
+  connectorById,
   port,
   leftPct,
   yPct,
@@ -142,6 +145,7 @@ function StaticPort({
   heightPct,
   active,
 }: {
+  connectorById: Map<string, ConnectorDefinition>
   port: PanelLayoutPort
   leftPct: number
   yPct: number
@@ -154,7 +158,7 @@ function StaticPort({
       className="absolute z-20 overflow-hidden rounded-md border"
       style={portStyle(leftPct, yPct, widthPct, heightPct, active)}
     >
-      <PortVisual port={port} />
+      <PortVisual port={port} connectorById={connectorById} />
     </div>
   )
 }
@@ -396,6 +400,7 @@ function StaticRow({
 // ─── Main Canvas ────────────────────────────────────────────────────────────
 
 export default function PanelLayoutCanvas({
+  connectorById,
   heightRu,
   rows,
   ports,
@@ -533,6 +538,7 @@ export default function PanelLayoutCanvas({
               return (
                 <DraggablePort
                   key={port.id}
+                  connectorById={connectorById}
                   port={port}
                   leftPct={leftPct}
                   yPct={yPct}
@@ -547,6 +553,7 @@ export default function PanelLayoutCanvas({
             return (
               <StaticPort
                 key={port.id}
+                connectorById={connectorById}
                 port={port}
                 leftPct={leftPct}
                 yPct={yPct}

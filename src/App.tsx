@@ -12,6 +12,7 @@ import PanelLayoutManagerPage from './pages/PanelLayoutManagerPage'
 import PanelLayoutsOverviewPage from './pages/PanelLayoutsOverviewPage'
 import PanelLayoutEditorPage from './pages/PanelLayoutEditorPage'
 import PanelLayoutPrintPage from './pages/PanelLayoutPrintPage'
+import ConnectorManagerPage from './pages/ConnectorManagerPage'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/racks" element={<RackManagerPage />} />
           <Route path="/projects" element={<ProjectManagerPage />} />
           <Route path="/panels" element={<PanelLayoutsOverviewPage />} />
+          <Route path="/connectors" element={<ConnectorManagerPage />} />
           <Route path="/layouts" element={<Navigate to="/projects" replace />} />
           <Route path="/editor/project/:projectId/panels" element={<PanelLayoutManagerPage />} />
         </Route>

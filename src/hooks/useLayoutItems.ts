@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { LAYOUT_ITEM_SELECT, mapLayoutItemRows, type LayoutItemRow } from '../lib/layoutItemMapper'
 import type { DeviceFacing, LayoutItemWithDevice } from '../types'
+import { useConnectors } from './useConnectors'
 import { isWithinBounds } from '../lib/overlap'
 
 function isMissingPreferredLaneColumn(error: unknown): boolean {
@@ -17,6 +18,7 @@ function isMissingCustomNameColumn(error: unknown): boolean {
 }
 
 export function useLayoutItems(layoutId: string | undefined, totalRackUnits: number) {
+  const { connectorById } = useConnectors()
   const [items, setItems] = useState<LayoutItemWithDevice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,11 +35,11 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
       setError(err.message)
     } else {
       const rows = (data ?? []) as LayoutItemRow[]
-      setItems(mapLayoutItemRows(rows))
+      setItems(mapLayoutItemRows(rows, connectorById))
       setError(null)
     }
     setLoading(false)
-  }, [layoutId])
+  }, [connectorById, layoutId])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {

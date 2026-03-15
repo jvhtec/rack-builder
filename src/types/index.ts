@@ -49,6 +49,12 @@ export interface ConnectorDefinition {
   weight_kg: number
 }
 
+
+export interface Connector extends ConnectorDefinition {
+  created_at: string
+  updated_at: string
+}
+
 export interface PanelLayoutRow {
   id: string
   panel_layout_id: string
