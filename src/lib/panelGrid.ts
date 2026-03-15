@@ -260,3 +260,234 @@ export function connectorWeightKg(
     return acc + (connector?.weight_kg ?? 0)
   }, 0)
 }
+
+/**
+ * Auto-distribute ports within a single row so they are evenly spaced.
+ * Preserves the existing left-to-right order (sorted by hole_index).
+ * Multi-row ports spanning INTO this row from another row are treated as
+ * fixed obstacles and excluded from redistribution.
+ */
+export function autoDistributeRow(
+  portsInRow: PanelLayoutPort[],
+  holeCount: number,
+  obstacleHoles?: Set<number>,
+): PanelLayoutPort[] {
+  if (portsInRow.length === 0) return []
+
+  const sorted = [...portsInRow].sort((a, b) => a.hole_index - b.hole_index)
+  const totalSpanWidth = sorted.reduce((sum, port) => sum + port.span_w, 0)
+
+  // Compute available space excluding obstacle holes
+  let availableHoles = holeCount
+  const obstacleRanges: Array<{ start: number; end: number }> = []
+  if (obstacleHoles && obstacleHoles.size > 0) {
+    // Build contiguous ranges from obstacle holes
+    const sortedObstacles = [...obstacleHoles].sort((a, b) => a - b)
+    availableHoles = holeCount - sortedObstacles.length
+    let rangeStart = sortedObstacles[0]
+    let rangeEnd = sortedObstacles[0]
+    for (let i = 1; i < sortedObstacles.length; i++) {
+      if (sortedObstacles[i] === rangeEnd + 1) {
+        rangeEnd = sortedObstacles[i]
+      } else {
+        obstacleRanges.push({ start: rangeStart, end: rangeEnd + 1 })
+        rangeStart = sortedObstacles[i]
+        rangeEnd = sortedObstacles[i]
+      }
+    }
+    obstacleRanges.push({ start: rangeStart, end: rangeEnd + 1 })
+  }
+
+  // If connectors don't fit, return unchanged
+  if (totalSpanWidth > availableHoles) return sorted
+
+  // If no obstacles, distribute evenly across full row
+  if (obstacleRanges.length === 0) {
+    return distributeEvenly(sorted, holeCount)
+  }
+
+  // With obstacles: find free segments and distribute across them
+  const freeSegments: Array<{ start: number; length: number }> = []
+  let segStart = 0
+  for (const obstacle of obstacleRanges) {
+    if (obstacle.start > segStart) {
+      freeSegments.push({ start: segStart, length: obstacle.start - segStart })
+    }
+    segStart = obstacle.end
+  }
+  if (segStart < holeCount) {
+    freeSegments.push({ start: segStart, length: holeCount - segStart })
+  }
+
+  // Distribute ports into free segments sequentially
+  const result: PanelLayoutPort[] = []
+  let portIdx = 0
+  for (const segment of freeSegments) {
+    const portsForSegment: PanelLayoutPort[] = []
+    while (portIdx < sorted.length) {
+      const port = sorted[portIdx]
+      const remainingInSegment = segment.length - portsForSegment.reduce((s, p) => s + p.span_w, 0)
+      if (port.span_w <= remainingInSegment) {
+        portsForSegment.push(port)
+        portIdx++
+      } else {
+        break
+      }
+    }
+    if (portsForSegment.length > 0) {
+      const distributed = distributeEvenly(portsForSegment, segment.length)
+      result.push(...distributed.map((p) => ({ ...p, hole_index: p.hole_index + segment.start })))
+    }
+  }
+
+  // Any remaining ports that didn't fit into free segments: place sequentially
+  // after the last distributed port so they don't retain stale hole_index values
+  if (portIdx < sorted.length) {
+    let nextHole = result.length > 0
+      ? Math.max(...result.map((p) => p.hole_index + p.span_w))
+      : 0
+    while (portIdx < sorted.length) {
+      const port = sorted[portIdx]
+      result.push({ ...port, hole_index: Math.min(nextHole, holeCount - port.span_w) })
+      nextHole += port.span_w
+      portIdx++
+    }
+  }
+
+  return result
+}
+
+function distributeEvenly(
+  sorted: PanelLayoutPort[],
+  holeCount: number,
+): PanelLayoutPort[] {
+  const totalSpanWidth = sorted.reduce((sum, port) => sum + port.span_w, 0)
+  const freeSpace = holeCount - totalSpanWidth
+  const gapCount = sorted.length + 1
+
+  // Compute gap sizes using largest-remainder method
+  const idealGap = freeSpace / gapCount
+  const gaps: number[] = new Array(gapCount)
+  const floors: number[] = new Array(gapCount)
+  let floorSum = 0
+
+  for (let i = 0; i < gapCount; i++) {
+    floors[i] = Math.floor(idealGap)
+    floorSum += floors[i]
+  }
+
+  // Distribute remaining units to positions with largest fractional remainders
+  const remaining = freeSpace - floorSum
+  const remainders = floors.map((f, i) => ({ index: i, remainder: idealGap - f }))
+  remainders.sort((a, b) => b.remainder - a.remainder)
+  for (let i = 0; i < remaining; i++) {
+    floors[remainders[i].index] += 1
+  }
+  for (let i = 0; i < gapCount; i++) {
+    gaps[i] = floors[i]
+  }
+
+  // Assign hole_index positions
+  let cursor = gaps[0]
+  return sorted.map((port, index) => {
+    const newPort = { ...port, hole_index: cursor }
+    cursor += port.span_w + gaps[index + 1]
+    return newPort
+  })
+}
+
+/**
+ * Auto-distribute all ports across all rows.
+ * Multi-row ports are distributed with their home row (row_index),
+ * and their footprint is treated as obstacles in other spanned rows.
+ */
+export function autoDistributeAllRows(
+  ports: PanelLayoutPort[],
+  rows: PanelLayoutRow[],
+): PanelLayoutPort[] {
+  if (ports.length === 0) return []
+
+  const rowMap = new Map(rows.map((row) => [row.row_index, row]))
+
+  // Group ports by their home row_index
+  const portsByRow = new Map<number, PanelLayoutPort[]>()
+  for (const port of ports) {
+    const group = portsByRow.get(port.row_index) ?? []
+    group.push(port)
+    portsByRow.set(port.row_index, group)
+  }
+
+  // Distribute each row in sorted order, using already-distributed positions as obstacles
+  const distributed = new Map<string, PanelLayoutPort>()
+  const sortedRowIndices = Array.from(portsByRow.keys()).sort((a, b) => a - b)
+  for (const rowIndex of sortedRowIndices) {
+    const rowPorts = portsByRow.get(rowIndex)!
+    const row = rowMap.get(rowIndex)
+    if (!row) {
+      // Row doesn't exist, keep ports unchanged
+      for (const port of rowPorts) distributed.set(port.id, port)
+      continue
+    }
+
+    // Find obstacle holes from multi-row ports originating from OTHER rows,
+    // using already-distributed positions so moves from prior rows are respected
+    const obstacleHoles = new Set<number>()
+    for (const port of distributed.values()) {
+      if (port.row_index === rowIndex) continue // skip ports that belong to this row
+      if (port.row_index + port.span_h - 1 >= rowIndex && port.row_index < rowIndex) {
+        // This port spans into this row from above
+        for (let h = port.hole_index; h < port.hole_index + port.span_w; h++) {
+          obstacleHoles.add(h)
+        }
+      }
+    }
+
+    const result = autoDistributeRow(rowPorts, row.hole_count, obstacleHoles.size > 0 ? obstacleHoles : undefined)
+    for (const port of result) distributed.set(port.id, port)
+  }
+
+  // Return in original order
+  return ports.map((port) => distributed.get(port.id) ?? port)
+}
+
+/**
+ * Check if a row has enough free capacity for a new connector of the given width.
+ * Accounts for multi-row ports spanning into this row.
+ */
+export function rowHasCapacity(
+  rowIndex: number,
+  spanW: number,
+  spanH: number,
+  rows: PanelLayoutRow[],
+  existingPorts: PanelLayoutPort[],
+  excludePortId?: string,
+): boolean {
+  const rowMap = new Map(rows.map((row) => [row.row_index, row]))
+
+  // Check all spanned rows have enough capacity
+  for (let r = rowIndex; r < rowIndex + spanH; r++) {
+    const row = rowMap.get(r)
+    if (!row) return false
+
+    // Multi-row alignment check: hole_count and active_column_map must match
+    if (spanH > 1 && r !== rowIndex) {
+      const targetRow = rowMap.get(rowIndex)
+      if (!targetRow || row.hole_count !== targetRow.hole_count) return false
+      if (!mapsEqual(normalizeRowActiveMap(row), normalizeRowActiveMap(targetRow))) return false
+    }
+
+    // Sum occupied holes in this row
+    let occupied = 0
+    for (const port of existingPorts) {
+      if (excludePortId && port.id === excludePortId) continue
+      const portRowEnd = port.row_index + port.span_h - 1
+      if (port.row_index <= r && portRowEnd >= r) {
+        occupied += port.span_w
+      }
+    }
+
+    if (occupied + spanW > row.hole_count) return false
+  }
+
+  return true
+}

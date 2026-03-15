@@ -172,7 +172,7 @@ export default function LayoutEditorPage() {
   } = useLayouts(projectId)
   const { racks, loading: racksLoading } = useRacks()
   const { devices, categories, loading: devicesLoading } = useDevices()
-  const { panelLayouts, loading: panelLayoutsLoading } = usePanelLayouts(projectId)
+  const { panelLayouts } = usePanelLayouts(projectId)
 
   const activeLayoutId = searchParams.get('layout')
   const activeLayout = useMemo(
@@ -323,13 +323,14 @@ export default function LayoutEditorPage() {
       if (panelLayoutId) {
         const panelLayout = panelLayouts.find((entry) => entry.id === panelLayoutId)
         if (!panelLayout) return
+        const allowOverlapForDualRack = rack?.width === 'dual'
         await addPanelLayoutItem(
           panelLayoutId,
           startU,
           facing,
           panelLayout.height_ru,
           preferredLane,
-          false,
+          allowOverlapForDualRack,
           preferredSubLane,
         )
         return
@@ -393,7 +394,8 @@ export default function LayoutEditorPage() {
       if (!canPlaceAtPosition(slotU, panelLayout.height_ru, targetSlot, mobileItems, rack.width)) return
 
       try {
-        await addPanelLayoutItem(panelTemplateId, slotU, facing, panelLayout.height_ru, preferredLane, false, preferredSubLane)
+        const allowOverlapForDualRack = rack.width === 'dual'
+        await addPanelLayoutItem(panelTemplateId, slotU, facing, panelLayout.height_ru, preferredLane, allowOverlapForDualRack, preferredSubLane)
         setSelectedDeviceTemplate(null)
       } catch (err) {
         console.error('Tap placement failed:', err)
@@ -515,7 +517,7 @@ export default function LayoutEditorPage() {
     )
   }
 
-  if (projectLoading || layoutsLoading || racksLoading || panelLayoutsLoading || !project || !activeLayout || !rack) {
+  if (projectLoading || layoutsLoading || racksLoading || !project || !activeLayout || !rack) {
     return (
       <div className="flex items-center justify-center h-screen text-gray-500">Loading...</div>
     )

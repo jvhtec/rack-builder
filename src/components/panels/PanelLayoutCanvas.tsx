@@ -1,7 +1,14 @@
-import { useMemo, useState, type DragEvent } from 'react'
+import { useCallback, useMemo, type LegacyRef } from 'react'
+import { useDrag, useDrop } from 'react-dnd'
 import { CONNECTOR_BY_ID } from '../../lib/connectorCatalog'
 import { buildRowCellGeometry, getActiveColumns, getPunchedAreaRatio } from '../../lib/panelGrid'
 import type { DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../../types'
+import {
+  CONNECTOR_ITEM_TYPE,
+  PLACED_PORT_TYPE,
+  type ConnectorDragItem,
+  type PlacedPortDragItem,
+} from './panelDndTypes'
 
 interface PanelLayoutCanvasProps {
   heightRu: number
@@ -10,9 +17,9 @@ interface PanelLayoutCanvasProps {
   facing: DeviceFacing
   hasLacingBar?: boolean
   selectedPortId?: string | null
-  onHoleClick?: (rowIndex: number, holeIndex: number) => void
-  onHoleDrop?: (rowIndex: number, holeIndex: number, transferId: string, isPortMove: boolean) => void
-  canPlaceAtCell?: (rowIndex: number, holeIndex: number, transferId: string, isPortMove: boolean) => boolean | { ok: boolean; reason?: string }
+  onRowClick?: (rowIndex: number) => void
+  onRowDrop?: (rowIndex: number, transferId: string, isPortMove: boolean) => void
+  canDropInRow?: (rowIndex: number, transferId: string, isPortMove: boolean) => boolean
   onPortClick?: (portId: string) => void
   showGuides?: boolean
   interactive?: boolean
@@ -31,9 +38,362 @@ function resolveImageUrl(path: string | null | undefined): string | null {
   return `${base}${normalizedPath}`
 }
 
-function occupancyKey(rowIndex: number, holeIndex: number): string {
-  return `${rowIndex}:${holeIndex}`
+// ─── Shared port visual ─────────────────────────────────────────────────────
+
+function PortVisual({ port }: { port: PanelLayoutPort }) {
+  const connector = CONNECTOR_BY_ID.get(port.connector_id)
+  const label = port.label?.trim() || connector?.name || 'Connector'
+  const iconUrl = resolveImageUrl(connector?.image_path)
+
+  return (
+    <>
+      {iconUrl ? (
+        <img
+          src={iconUrl}
+          alt={label}
+          className="absolute inset-0 h-full w-full object-contain p-1"
+          draggable={false}
+        />
+      ) : null}
+      <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-0.5">
+        <span className="block truncate text-[9px] font-semibold text-slate-100">{label}</span>
+      </div>
+    </>
+  )
 }
+
+function portStyle(leftPct: number, yPct: number, widthPct: number, heightPct: number, active: boolean, opacity = 1): React.CSSProperties {
+  return {
+    left: `${leftPct}%`,
+    top: `${yPct}%`,
+    width: `${widthPct}%`,
+    height: `${Math.max(6, heightPct)}%`,
+    opacity,
+    borderColor: active ? '#fbbf24' : 'rgba(226,232,240,0.7)',
+    boxShadow: active
+      ? '0 0 0 2px rgba(251,191,36,0.45), 0 8px 14px rgba(0,0,0,0.55)'
+      : '0 6px 12px rgba(0,0,0,0.55)',
+    background: 'linear-gradient(to bottom, rgba(15,23,42,0.92), rgba(2,6,23,0.96))',
+  }
+}
+
+// ─── DraggablePort (interactive, requires DndProvider) ──────────────────────
+
+interface DraggablePortProps {
+  port: PanelLayoutPort
+  leftPct: number
+  yPct: number
+  widthPct: number
+  heightPct: number
+  active: boolean
+  onPortClick?: (portId: string) => void
+}
+
+function DraggablePort({
+  port,
+  leftPct,
+  yPct,
+  widthPct,
+  heightPct,
+  active,
+  onPortClick,
+}: DraggablePortProps) {
+  const connector = CONNECTOR_BY_ID.get(port.connector_id)
+  const label = port.label?.trim() || connector?.name || 'Connector'
+
+  const [{ isDragging }, dragRef] = useDrag<PlacedPortDragItem, unknown, { isDragging: boolean }>({
+    type: PLACED_PORT_TYPE,
+    item: {
+      type: PLACED_PORT_TYPE,
+      portId: port.id,
+      connectorId: port.connector_id,
+      gridWidth: port.span_w,
+      gridHeight: port.span_h,
+    },
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+  })
+
+  return (
+    <button
+      ref={dragRef as unknown as LegacyRef<HTMLButtonElement>}
+      type="button"
+      onClick={() => onPortClick?.(port.id)}
+      className="absolute z-20 overflow-hidden rounded-md border transition-all cursor-grab active:cursor-grabbing hover:brightness-110"
+      style={{
+        ...portStyle(leftPct, yPct, widthPct, heightPct, active, isDragging ? 0.4 : 1),
+        touchAction: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+      }}
+      title={`${label} — drag to move`}
+    >
+      <PortVisual port={port} />
+    </button>
+  )
+}
+
+// ─── StaticPort (non-interactive, no DndProvider needed) ────────────────────
+
+function StaticPort({
+  port,
+  leftPct,
+  yPct,
+  widthPct,
+  heightPct,
+  active,
+}: {
+  port: PanelLayoutPort
+  leftPct: number
+  yPct: number
+  widthPct: number
+  heightPct: number
+  active: boolean
+}) {
+  return (
+    <div
+      className="absolute z-20 overflow-hidden rounded-md border"
+      style={portStyle(leftPct, yPct, widthPct, heightPct, active)}
+    >
+      <PortVisual port={port} />
+    </div>
+  )
+}
+
+// ─── Shared row visual ──────────────────────────────────────────────────────
+
+interface RowVisualProps {
+  rowIndex: number
+  rowHeightPct: number
+  idStripRatio: number
+  punchedAreaRatio: number
+  punchedLeftPct: number
+  holeCount: number
+  showGuides: boolean
+}
+
+function RowVisual({
+  rowIndex,
+  rowHeightPct,
+  idStripRatio,
+  punchedAreaRatio,
+  punchedLeftPct,
+  holeCount,
+  showGuides,
+}: RowVisualProps) {
+  const idStripHeightPct = rowHeightPct * idStripRatio
+
+  return (
+    <>
+      {/* ID strip */}
+      <div
+        className="absolute inset-x-0 top-0 flex items-center px-2"
+        style={{
+          height: `${idStripHeightPct}%`,
+          background: 'linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, transparent 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
+        <span className="text-[7px] font-mono tracking-[0.2em] uppercase text-white/25">
+          U{rowIndex + 1}
+        </span>
+        <span className="ml-2 text-[7px] font-mono text-white/20">{holeCount} holes</span>
+      </div>
+
+      {/* Punched area outline */}
+      <div
+        className="pointer-events-none absolute bottom-0 top-[23%] border border-dashed border-white/10 bg-white/[0.015]"
+        style={{
+          left: `${punchedLeftPct}%`,
+          width: `${punchedAreaRatio * 100}%`,
+        }}
+      />
+
+      {/* Grid guides */}
+      {showGuides && Array.from({ length: 16 }).map((_, col) => (
+        <span
+          key={`guide-${col}`}
+          className="absolute inset-y-0 border-r"
+          style={{
+            left: `${(col / 16) * 100}%`,
+            borderColor: 'rgba(255,255,255,0.03)',
+          }}
+        />
+      ))}
+    </>
+  )
+}
+
+// ─── DroppableRow (interactive, requires DndProvider) ────────────────────────
+
+interface DroppableRowProps extends RowVisualProps {
+  interactive: boolean
+  onRowClick?: (rowIndex: number) => void
+  onRowDrop?: (rowIndex: number, transferId: string, isPortMove: boolean) => void
+  canDropInRow?: (rowIndex: number, transferId: string, isPortMove: boolean) => boolean
+}
+
+function DroppableRow({
+  rowIndex,
+  rowHeightPct,
+  idStripRatio,
+  punchedAreaRatio,
+  punchedLeftPct,
+  holeCount,
+  showGuides,
+  interactive,
+  onRowClick,
+  onRowDrop,
+  canDropInRow,
+}: DroppableRowProps) {
+  const rowTopPct = rowIndex * rowHeightPct
+  const idStripHeightPct = rowHeightPct * idStripRatio
+  const connectorFieldHeightPct = rowHeightPct - idStripHeightPct
+
+  const canDropFn = useCallback(
+    (item: ConnectorDragItem | PlacedPortDragItem) => {
+      if (!interactive || !canDropInRow) return false
+      const isPortMove = item.type === PLACED_PORT_TYPE
+      const transferId = isPortMove
+        ? (item as PlacedPortDragItem).portId
+        : (item as ConnectorDragItem).connectorId
+      return canDropInRow(rowIndex, transferId, isPortMove)
+    },
+    [canDropInRow, interactive, rowIndex],
+  )
+
+  const dropFn = useCallback(
+    (item: ConnectorDragItem | PlacedPortDragItem) => {
+      if (!interactive || !onRowDrop) return
+      const isPortMove = item.type === PLACED_PORT_TYPE
+      const transferId = isPortMove
+        ? (item as PlacedPortDragItem).portId
+        : (item as ConnectorDragItem).connectorId
+      onRowDrop(rowIndex, transferId, isPortMove)
+    },
+    [interactive, onRowDrop, rowIndex],
+  )
+
+  const [{ isOver, canDrop }, dropRef] = useDrop<
+    ConnectorDragItem | PlacedPortDragItem,
+    void,
+    { isOver: boolean; canDrop: boolean }
+  >({
+    accept: [CONNECTOR_ITEM_TYPE, PLACED_PORT_TYPE],
+    canDrop: canDropFn,
+    drop: dropFn,
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+      canDrop: monitor.canDrop(),
+    }),
+  })
+
+  const validDrop = isOver && canDrop
+  const invalidDrop = isOver && !canDrop
+
+  return (
+    <div
+      className="absolute inset-x-0"
+      style={{
+        top: `${rowTopPct}%`,
+        height: `${rowHeightPct}%`,
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+      }}
+    >
+      <RowVisual
+        rowIndex={rowIndex}
+        rowHeightPct={rowHeightPct}
+        idStripRatio={idStripRatio}
+        punchedAreaRatio={punchedAreaRatio}
+        punchedLeftPct={punchedLeftPct}
+        holeCount={holeCount}
+        showGuides={showGuides}
+      />
+
+      {/* Drop zone (connector field area) */}
+      <div
+        ref={dropRef as unknown as React.LegacyRef<HTMLDivElement>}
+        className="absolute inset-x-0 rounded-sm transition cursor-pointer"
+        role={interactive && onRowClick ? 'button' : undefined}
+        tabIndex={interactive && onRowClick ? 0 : undefined}
+        aria-disabled={invalidDrop}
+        onClick={() => {
+          if (!interactive || !onRowClick) return
+          onRowClick(rowIndex)
+        }}
+        onKeyDown={(e) => {
+          if (!interactive || !onRowClick) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onRowClick(rowIndex)
+          }
+        }}
+        style={{
+          top: `${idStripHeightPct}%`,
+          height: `${connectorFieldHeightPct}%`,
+          borderWidth: '1px',
+          borderStyle: 'solid',
+          borderColor: validDrop
+            ? 'rgba(34,197,94,0.8)'
+            : invalidDrop
+            ? 'rgba(248,113,113,0.85)'
+            : 'transparent',
+          background: validDrop
+            ? 'linear-gradient(to bottom, rgba(34,197,94,0.18), rgba(21,128,61,0.10))'
+            : invalidDrop
+            ? 'linear-gradient(to bottom, rgba(248,113,113,0.18), rgba(127,29,29,0.10))'
+            : 'transparent',
+          boxShadow: validDrop
+            ? 'inset 0 0 0 1px rgba(74,222,128,0.4)'
+            : invalidDrop
+            ? 'inset 0 0 0 1px rgba(248,113,113,0.5)'
+            : 'none',
+        }}
+        title={
+          invalidDrop
+            ? 'Cannot place connector on this row'
+            : `Row ${rowIndex + 1} — drop connectors here`
+        }
+      />
+    </div>
+  )
+}
+
+// ─── StaticRow (non-interactive, no DndProvider needed) ─────────────────────
+
+function StaticRow({
+  rowIndex,
+  rowHeightPct,
+  idStripRatio,
+  punchedAreaRatio,
+  punchedLeftPct,
+  holeCount,
+  showGuides,
+}: RowVisualProps) {
+  const rowTopPct = rowIndex * rowHeightPct
+
+  return (
+    <div
+      className="absolute inset-x-0"
+      style={{
+        top: `${rowTopPct}%`,
+        height: `${rowHeightPct}%`,
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+      }}
+    >
+      <RowVisual
+        rowIndex={rowIndex}
+        rowHeightPct={rowHeightPct}
+        idStripRatio={idStripRatio}
+        punchedAreaRatio={punchedAreaRatio}
+        punchedLeftPct={punchedLeftPct}
+        holeCount={holeCount}
+        showGuides={showGuides}
+      />
+    </div>
+  )
+}
+
+// ─── Main Canvas ────────────────────────────────────────────────────────────
 
 export default function PanelLayoutCanvas({
   heightRu,
@@ -42,9 +402,9 @@ export default function PanelLayoutCanvas({
   facing,
   hasLacingBar = false,
   selectedPortId = null,
-  onHoleClick,
-  onHoleDrop,
-  canPlaceAtCell,
+  onRowClick,
+  onRowDrop,
+  canDropInRow,
   onPortClick,
   showGuides = true,
   interactive = true,
@@ -72,66 +432,6 @@ export default function PanelLayoutCanvas({
     return map
   }, [facing, rowByIndex, safeHeightRu])
 
-  const occupiedCells = useMemo(() => {
-    const map = new Map<string, PanelLayoutPort>()
-    for (const port of ports) {
-      for (let rowIndex = port.row_index; rowIndex < port.row_index + port.span_h; rowIndex += 1) {
-        const row = rowByIndex.get(rowIndex)
-        if (!row) continue
-        const holeEnd = Math.min(row.hole_count, port.hole_index + port.span_w)
-        for (let holeIndex = port.hole_index; holeIndex < holeEnd; holeIndex += 1) {
-          map.set(occupancyKey(rowIndex, holeIndex), port)
-        }
-      }
-    }
-    return map
-  }, [ports, rowByIndex])
-
-  const [dragOverCell, setDragOverCell] = useState<{
-    rowIndex: number
-    holeIndex: number
-    valid: boolean
-    reason?: string
-  } | null>(null)
-
-  const resolveDragTransfer = (event: DragEvent): { transferId: string; isPortMove: boolean } | null => {
-    const portId = event.dataTransfer.getData('application/x-port-id')
-    if (portId) return { transferId: portId, isPortMove: true }
-    const connectorId = event.dataTransfer.getData('application/x-connector-id')
-    if (connectorId) return { transferId: connectorId, isPortMove: false }
-    return null
-  }
-
-  const validateCellTarget = (
-    rowIndex: number,
-    holeIndex: number,
-    transferId: string,
-    isPortMove: boolean,
-  ): { ok: boolean; reason?: string } => {
-    const validation = canPlaceAtCell?.(rowIndex, holeIndex, transferId, isPortMove)
-    if (typeof validation === 'boolean') return { ok: validation }
-    if (validation) return { ok: validation.ok, reason: validation.reason }
-    return { ok: true }
-  }
-
-  const handleCellDrop = (
-    event: DragEvent,
-    rowIndex: number,
-    holeIndex: number,
-  ) => {
-    if (!interactive || !onHoleDrop) return
-    event.preventDefault()
-    const transfer = resolveDragTransfer(event)
-    if (!transfer) return
-    const validation = validateCellTarget(rowIndex, holeIndex, transfer.transferId, transfer.isPortMove)
-    if (!validation.ok) {
-      setDragOverCell({ rowIndex, holeIndex, valid: false, reason: validation.reason })
-      return
-    }
-    onHoleDrop(rowIndex, holeIndex, transfer.transferId, transfer.isPortMove)
-    setDragOverCell(null)
-  }
-
   return (
     <div className={`rounded-xl border border-slate-700 bg-slate-900/40 p-3 shadow-2xl ${className}`.trim()}>
       {showScaleMarker && (
@@ -143,6 +443,7 @@ export default function PanelLayoutCanvas({
       )}
 
       <div className="relative mx-auto w-full" style={{ aspectRatio: `${19 / (1.75 * safeHeightRu)}` }}>
+        {/* Left ear */}
         <div className="absolute inset-y-0 left-0 z-10" style={{ width: `${PANEL_EAR_WIDTH_PCT}%` }}>
           <div className="absolute inset-0 rounded-l-lg border-y border-l border-slate-700 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-800" />
           {Array.from({ length: safeHeightRu }).map((_, r) => (
@@ -153,6 +454,7 @@ export default function PanelLayoutCanvas({
           ))}
         </div>
 
+        {/* Right ear */}
         <div className="absolute inset-y-0 right-0 z-10" style={{ width: `${PANEL_EAR_WIDTH_PCT}%` }}>
           <div className="absolute inset-0 rounded-r-lg border-y border-r border-slate-700 bg-gradient-to-l from-slate-900 via-slate-800 to-slate-800" />
           {Array.from({ length: safeHeightRu }).map((_, r) => (
@@ -163,6 +465,7 @@ export default function PanelLayoutCanvas({
           ))}
         </div>
 
+        {/* Inner panel area */}
         <div
           className="absolute inset-y-0 overflow-hidden border-y border-slate-700 bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950"
           style={{
@@ -170,148 +473,38 @@ export default function PanelLayoutCanvas({
             width: `${INNER_WIDTH_PCT}%`,
           }}
         >
+          {/* Rows — use DroppableRow when interactive (DndProvider present), StaticRow otherwise */}
           {Array.from({ length: safeHeightRu }).map((_, rowIndex) => {
             const row = rowByIndex.get(rowIndex)
-            const cells = rowCellMap.get(rowIndex) ?? []
-            const rowTopPct = rowIndex * rowHeightPct
-            const idStripHeightPct = rowHeightPct * idStripRatio
-            const connectorFieldHeightPct = rowHeightPct - idStripHeightPct
             const punchedAreaRatio = getPunchedAreaRatio(row?.hole_count ?? 16)
             const punchedLeftPct = ((1 - punchedAreaRatio) / 2) * 100
+            const rowProps: RowVisualProps = {
+              rowIndex,
+              rowHeightPct,
+              idStripRatio,
+              punchedAreaRatio,
+              punchedLeftPct,
+              holeCount: row?.hole_count ?? 16,
+              showGuides,
+            }
 
-            return (
-              <div
-                key={`row-${rowIndex}`}
-                className="absolute inset-x-0"
-                style={{
-                  top: `${rowTopPct}%`,
-                  height: `${rowHeightPct}%`,
-                  borderBottom: '1px solid rgba(255,255,255,0.04)',
-                }}
-              >
-                <div
-                  className="absolute inset-x-0 top-0 flex items-center px-2"
-                  style={{
-                    height: `${idStripHeightPct}%`,
-                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, transparent 100%)',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
-                  }}
-                >
-                  <span className="text-[7px] font-mono tracking-[0.2em] uppercase text-white/25">
-                    U{rowIndex + 1}
-                  </span>
-                  {row ? (
-                    <span className="ml-2 text-[7px] font-mono text-white/20">{row.hole_count} holes</span>
-                  ) : null}
-                </div>
-
-                <div
-                  className="pointer-events-none absolute bottom-0 top-[23%] border border-dashed border-white/10 bg-white/[0.015]"
-                  style={{
-                    left: `${punchedLeftPct}%`,
-                    width: `${punchedAreaRatio * 100}%`,
-                  }}
+            if (interactive) {
+              return (
+                <DroppableRow
+                  key={`row-${rowIndex}`}
+                  {...rowProps}
+                  interactive={interactive}
+                  onRowClick={onRowClick}
+                  onRowDrop={onRowDrop}
+                  canDropInRow={canDropInRow}
                 />
+              )
+            }
 
-                {showGuides && Array.from({ length: 16 }).map((_, col) => (
-                  <span
-                    key={`guide-${rowIndex}-${col}`}
-                    className="absolute inset-y-0 border-r"
-                    style={{
-                      left: `${(col / 16) * 100}%`,
-                      borderColor: 'rgba(255,255,255,0.03)',
-                    }}
-                  />
-                ))}
-
-                {cells.map((cell) => {
-                  const isDropTarget =
-                    dragOverCell?.rowIndex === rowIndex && dragOverCell?.holeIndex === cell.holeIndex
-                  const occupiedBy = occupiedCells.get(occupancyKey(rowIndex, cell.holeIndex)) ?? null
-                  const occupiedByOther = !!occupiedBy && occupiedBy.id !== selectedPortId
-                  const occupiedBySelected = !!occupiedBy && occupiedBy.id === selectedPortId
-                  const invalidDrop = isDropTarget && dragOverCell && !dragOverCell.valid
-                  const validDrop = isDropTarget && dragOverCell && dragOverCell.valid
-                  return (
-                    <button
-                      key={`cell-${rowIndex}-${cell.holeIndex}`}
-                      type="button"
-                      onClick={() => {
-                        if (!interactive || !onHoleClick) return
-                        onHoleClick(rowIndex, cell.holeIndex)
-                      }}
-                      onDragOver={(event) => {
-                        if (!interactive || !onHoleDrop) return
-                        event.preventDefault()
-                        event.stopPropagation()
-                        const transfer = resolveDragTransfer(event)
-                        if (!transfer) return
-                        const validation = validateCellTarget(
-                          rowIndex,
-                          cell.holeIndex,
-                          transfer.transferId,
-                          transfer.isPortMove,
-                        )
-                        setDragOverCell({
-                          rowIndex,
-                          holeIndex: cell.holeIndex,
-                          valid: validation.ok,
-                          reason: validation.reason,
-                        })
-                      }}
-                      onDragLeave={(event) => {
-                        if ((event.currentTarget as HTMLElement).contains(event.relatedTarget as Node)) return
-                        setDragOverCell(null)
-                      }}
-                      onDrop={(event) => handleCellDrop(event, rowIndex, cell.holeIndex)}
-                      className={`absolute rounded-sm border transition ${
-                        interactive ? 'cursor-pointer' : 'cursor-default'
-                      }`}
-                      style={{
-                        left: `${cell.leftPct}%`,
-                        width: `${cell.widthPct}%`,
-                        top: `${idStripHeightPct}%`,
-                        height: `${connectorFieldHeightPct}%`,
-                        borderColor: validDrop
-                          ? 'rgba(34,197,94,0.8)'
-                          : invalidDrop
-                          ? 'rgba(248,113,113,0.85)'
-                          : occupiedBySelected
-                          ? 'rgba(245,158,11,0.7)'
-                          : occupiedByOther
-                          ? 'rgba(148,163,184,0.45)'
-                          : 'rgba(255,255,255,0.08)',
-                        background: validDrop
-                          ? 'linear-gradient(to bottom, rgba(34,197,94,0.22), rgba(21,128,61,0.12))'
-                          : invalidDrop
-                          ? 'linear-gradient(to bottom, rgba(248,113,113,0.22), rgba(127,29,29,0.12))'
-                          : occupiedByOther
-                          ? 'linear-gradient(to bottom, rgba(100,116,139,0.24), rgba(30,41,59,0.2))'
-                          : occupiedBySelected
-                          ? 'linear-gradient(to bottom, rgba(245,158,11,0.26), rgba(180,83,9,0.18))'
-                          : 'linear-gradient(to bottom, rgba(30,41,59,0.24), rgba(2,6,23,0.2))',
-                        boxShadow: validDrop
-                          ? 'inset 0 0 0 1px rgba(74,222,128,0.4)'
-                          : invalidDrop
-                          ? 'inset 0 0 0 1px rgba(248,113,113,0.5)'
-                          : 'none',
-                      }}
-                      title={
-                        invalidDrop && dragOverCell?.reason
-                          ? dragOverCell.reason
-                          : `Row ${rowIndex + 1}, cell ${cell.holeIndex + 1}`
-                      }
-                    >
-                      <span className="absolute left-1 top-1 text-[8px] font-mono text-white/25">
-                        {cell.holeIndex + 1}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            )
+            return <StaticRow key={`row-${rowIndex}`} {...rowProps} />
           })}
 
+          {/* Lacing bar */}
           {hasLacingBar && (
             <div
               className="absolute inset-x-0 border-y border-slate-500 bg-slate-700/50"
@@ -322,6 +515,7 @@ export default function PanelLayoutCanvas({
             />
           )}
 
+          {/* Placed ports — use DraggablePort when interactive, StaticPort otherwise */}
           {ports.map((port) => {
             const rowCells = rowCellMap.get(port.row_index) ?? []
             const startCell = rowCells.find((cell) => cell.holeIndex === port.hole_index)
@@ -333,55 +527,33 @@ export default function PanelLayoutCanvas({
             const widthPct = rightPct - leftPct
             const yPct = port.row_index * rowHeightPct + rowHeightPct * idStripRatio + connectorTopOffsetPct
             const heightPct = port.span_h * rowHeightPct - rowHeightPct * idStripRatio - connectorBottomOffsetPct
-
-            const connector = CONNECTOR_BY_ID.get(port.connector_id)
-            const label = port.label?.trim() || connector?.name || 'Connector'
-            const iconUrl = resolveImageUrl(connector?.image_path)
             const active = selectedPortId === port.id
 
+            if (interactive) {
+              return (
+                <DraggablePort
+                  key={port.id}
+                  port={port}
+                  leftPct={leftPct}
+                  yPct={yPct}
+                  widthPct={widthPct}
+                  heightPct={heightPct}
+                  active={active}
+                  onPortClick={onPortClick}
+                />
+              )
+            }
+
             return (
-              <button
+              <StaticPort
                 key={port.id}
-                type="button"
-                draggable={interactive}
-                onDragStart={(event) => {
-                  if (!interactive) return
-                  event.dataTransfer.setData('application/x-port-id', port.id)
-                  event.dataTransfer.effectAllowed = 'move'
-                  onPortClick?.(port.id)
-                }}
-                onClick={() => {
-                  if (!interactive) return
-                  onPortClick?.(port.id)
-                }}
-                className={`absolute z-20 overflow-hidden rounded-md border transition-all ${
-                  interactive ? 'cursor-grab active:cursor-grabbing hover:brightness-110' : 'cursor-default'
-                }`}
-                style={{
-                  left: `${leftPct}%`,
-                  top: `${yPct}%`,
-                  width: `${widthPct}%`,
-                  height: `${Math.max(6, heightPct)}%`,
-                  borderColor: active ? '#fbbf24' : 'rgba(226,232,240,0.7)',
-                  boxShadow: active
-                    ? '0 0 0 2px rgba(251,191,36,0.45), 0 8px 14px rgba(0,0,0,0.55)'
-                    : '0 6px 12px rgba(0,0,0,0.55)',
-                  background: 'linear-gradient(to bottom, rgba(15,23,42,0.92), rgba(2,6,23,0.96))',
-                }}
-                title={`${label} — drag to move`}
-              >
-                {iconUrl ? (
-                  <img
-                    src={iconUrl}
-                    alt={label}
-                    className="absolute inset-0 h-full w-full object-contain p-1"
-                    draggable={false}
-                  />
-                ) : null}
-                <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-0.5">
-                  <span className="block truncate text-[9px] font-semibold text-slate-100">{label}</span>
-                </div>
-              </button>
+                port={port}
+                leftPct={leftPct}
+                yPct={yPct}
+                widthPct={widthPct}
+                heightPct={heightPct}
+                active={active}
+              />
             )
           })}
         </div>

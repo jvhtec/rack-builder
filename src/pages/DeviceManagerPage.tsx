@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ALL_BRAND, ensureCategoryByName, filterDevicesByBrand, filterDevicesByCategory, sortDevices, useDevices } from '../hooks/useDevices'
 import PageHeader from '../components/layout/PageHeader'
 import Button from '../components/ui/Button'
@@ -26,15 +26,12 @@ export default function DeviceManagerPage() {
     [devices],
   )
 
-  useEffect(() => {
-    if (selectedBrand !== ALL_BRAND && !brands.includes(selectedBrand)) {
-      setSelectedBrand(ALL_BRAND)
-    }
-  }, [brands, selectedBrand])
+  // If the selected brand no longer exists in the data, fall back to "all"
+  const effectiveBrand = selectedBrand !== ALL_BRAND && !brands.includes(selectedBrand) ? ALL_BRAND : selectedBrand
 
   const filteredDevices = useMemo(
-    () => filterDevicesByBrand(filterDevicesByCategory(devices, selectedCategoryId), selectedBrand),
-    [devices, selectedCategoryId, selectedBrand],
+    () => filterDevicesByBrand(filterDevicesByCategory(devices, selectedCategoryId), effectiveBrand),
+    [devices, selectedCategoryId, effectiveBrand],
   )
 
   const sortedDevices = useMemo(() => {
@@ -117,7 +114,7 @@ export default function DeviceManagerPage() {
           />
           <Select
             label="Brand"
-            value={selectedBrand}
+            value={effectiveBrand}
             onChange={(e) => setSelectedBrand(e.target.value)}
             options={[
               { value: ALL_BRAND, label: 'All brands' },

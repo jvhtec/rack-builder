@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { normalizeActiveColumnMap, toHoleCount } from '../lib/panelGrid'
 import type { PanelLayoutRow } from '../types'
@@ -30,19 +30,23 @@ export function usePanelLayoutRows(panelLayoutId: string | undefined) {
   const [rows, setRows] = useState<PanelLayoutRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const requestIdRef = useRef(0)
 
   const fetchRows = useCallback(async () => {
     if (!panelLayoutId) {
       setRows([])
+      setError(null)
       setLoading(false)
       return
     }
+    const requestId = ++requestIdRef.current
     setLoading(true)
     const { data, error: err } = await supabase
       .from('panel_layout_rows')
       .select('*')
       .eq('panel_layout_id', panelLayoutId)
       .order('row_index', { ascending: true })
+    if (requestId !== requestIdRef.current) return
     if (err) {
       setError(err.message)
       setLoading(false)
@@ -54,10 +58,14 @@ export function usePanelLayoutRows(panelLayoutId: string | undefined) {
   }, [panelLayoutId])
 
   useEffect(() => {
+    const ref = requestIdRef
     const timeoutId = window.setTimeout(() => {
       void fetchRows()
     }, 0)
-    return () => window.clearTimeout(timeoutId)
+    return () => {
+      window.clearTimeout(timeoutId)
+      ref.current++
+    }
   }, [fetchRows])
 
   return { rows, loading, error, refetch: fetchRows }

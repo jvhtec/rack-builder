@@ -31,7 +31,7 @@ export default function PanelLayoutManagerPage() {
   const [heightRu, setHeightRu] = useState(1)
   const [facing, setFacing] = useState<DeviceFacing>('front')
   const [defaultHoleCount, setDefaultHoleCount] = useState<HoleCount>(16)
-  const [createError, setCreateError] = useState<string | null>(null)
+  const [operationError, setCreateError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -105,6 +105,8 @@ export default function PanelLayoutManagerPage() {
     try {
       const nextId = await duplicatePanelLayout(panel)
       navigate(`/editor/project/${projectId}/panels/${nextId}`)
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to duplicate panel layout.')
     } finally {
       setSaving(false)
     }
@@ -149,7 +151,7 @@ export default function PanelLayoutManagerPage() {
         }
       />
 
-      {createError && <p className="text-sm text-red-600">{createError}</p>}
+      {operationError && <p className="text-sm text-red-600">{operationError}</p>}
 
       {panelLayouts.length === 0 ? (
         <div className="rounded-lg border bg-white p-4 text-sm text-gray-600">

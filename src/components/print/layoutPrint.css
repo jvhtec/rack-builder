@@ -58,6 +58,7 @@
   background: #fff;
   border: 1px solid #c4ceda;
   box-shadow: 0 20px 35px rgba(14, 26, 46, 0.16);
+  container-type: inline-size;
 }
 
 
@@ -452,22 +453,31 @@
 }
 
 .project-print-index-col-num {
-  width: 5%;
+  width: 4%;
 }
 
-.project-print-index-col-layout,
-.project-print-index-col-rack,
+.project-print-index-col-layout {
+  width: 22%;
+}
+
+.project-print-index-col-rack {
+  width: 18%;
+}
+
 .project-print-index-col-spec {
-  width: 21%;
+  width: 18%;
 }
 
-.project-print-index-col-power,
-.project-print-index-col-weight {
+.project-print-index-col-power {
   width: 13%;
 }
 
+.project-print-index-col-weight {
+  width: 15%;
+}
+
 .project-print-index-col-page {
-  width: 6%;
+  width: 10%;
 }
 
 .project-print-index-table th,
@@ -547,6 +557,275 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.panel-print-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.panel-print-heading {
+  margin: 0;
+  padding: 12px 16px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #374151;
+}
+
+.panel-print-canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  min-height: 0;
+}
+
+.panel-print-connector-wrap {
+  border-top: 1px solid #d1d5db;
+  padding: 6px 16px;
+}
+
+.panel-print-footnote {
+  margin: 0;
+  padding: 0 16px 8px;
+  font-size: 8px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.panel-print-connector-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 7.5px;
+  line-height: 1.2;
+}
+
+.panel-print-connector-table th,
+.panel-print-connector-table td {
+  border: 1px solid #bbb;
+  padding: 0.8mm 1mm;
+  text-align: left;
+  vertical-align: top;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-print-connector-table th {
+  background: #f3f4f6;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 6.5px;
+  color: #555;
+}
+
+.panel-print-connector-table td:first-child,
+.panel-print-connector-table th:first-child {
+  width: 5%;
+  text-align: center;
+}
+
+.panel-print-connector-table td:nth-child(2),
+.panel-print-connector-table th:nth-child(2) {
+  width: 8%;
+}
+
+.panel-print-connector-table td:nth-child(3),
+.panel-print-connector-table th:nth-child(3) {
+  width: 8%;
+}
+
+.panel-print-connector-table td:nth-child(4),
+.panel-print-connector-table th:nth-child(4) {
+  width: 30%;
+}
+
+.panel-print-connector-table td:nth-child(5),
+.panel-print-connector-table th:nth-child(5) {
+  width: 39%;
+}
+
+.panel-print-connector-table td:nth-child(6),
+.panel-print-connector-table th:nth-child(6) {
+  width: 10%;
+  text-align: center;
+}
+
+/* ── Responsive scaling via container queries ──────────────────────────
+   Rack layouts handle their own scaling via JS auto-fit (transform:scale).
+   Cover, index, panel, and cartouche need CSS-based adaptation.            */
+
+/* Small sheets (phones, ≤ 500px) */
+@container (max-width: 500px) {
+  .layout-print-sheet-inner {
+    padding: 2mm;
+    gap: 1mm;
+  }
+
+  /* Cover */
+  .project-print-cover {
+    padding: 3mm;
+    gap: 4px;
+  }
+  .project-print-cover-logo {
+    width: 60px;
+  }
+  .project-print-cover-kicker {
+    font-size: 5px;
+    letter-spacing: 0.1em;
+  }
+  .project-print-cover-title {
+    font-size: 14px;
+  }
+  .project-print-cover-owner,
+  .project-print-cover-generated {
+    font-size: 6px;
+  }
+
+  /* Index */
+  .project-print-index-wrap {
+    padding: 1mm;
+  }
+  .project-print-index-title {
+    font-size: 7px;
+    margin-bottom: 0.5mm;
+  }
+  .project-print-index-table {
+    font-size: 4.5px;
+  }
+  .project-print-index-table th {
+    font-size: 4px;
+  }
+  .project-print-index-table th,
+  .project-print-index-table td {
+    padding: 0.3mm 0.5mm;
+  }
+
+  /* Cartouche */
+  .print-cartouche-label {
+    font-size: 2.5px;
+  }
+  .print-cartouche-value {
+    font-size: 4px;
+  }
+  .print-cartouche-cell {
+    padding: 0.5px 1px;
+  }
+
+  /* Panel */
+  .panel-print-heading {
+    font-size: 6px;
+    padding: 4px 6px 2px;
+    letter-spacing: 0.08em;
+  }
+  .panel-print-canvas-area {
+    padding: 0 6px;
+  }
+  .panel-print-connector-wrap {
+    padding: 2px 6px;
+  }
+  .panel-print-connector-table {
+    font-size: 3.5px;
+  }
+  .panel-print-connector-table th {
+    font-size: 3px;
+  }
+  .panel-print-connector-table th,
+  .panel-print-connector-table td {
+    padding: 0.2mm 0.3mm;
+  }
+  .panel-print-footnote {
+    font-size: 3.5px;
+    padding: 0 6px 3px;
+  }
+}
+
+/* Medium sheets (tablets, 501–1000px) */
+@container (min-width: 501px) and (max-width: 1000px) {
+  .layout-print-sheet-inner {
+    padding: 4mm;
+    gap: 2mm;
+  }
+
+  /* Cover */
+  .project-print-cover {
+    padding: 6mm;
+    gap: 8px;
+  }
+  .project-print-cover-logo {
+    width: 120px;
+  }
+  .project-print-cover-kicker {
+    font-size: 8px;
+  }
+  .project-print-cover-title {
+    font-size: 24px;
+  }
+  .project-print-cover-owner,
+  .project-print-cover-generated {
+    font-size: 10px;
+  }
+
+  /* Index */
+  .project-print-index-wrap {
+    padding: 2.5mm;
+  }
+  .project-print-index-title {
+    font-size: 11px;
+    margin-bottom: 1mm;
+  }
+  .project-print-index-table {
+    font-size: 6px;
+  }
+  .project-print-index-table th {
+    font-size: 5.5px;
+  }
+  .project-print-index-table th,
+  .project-print-index-table td {
+    padding: 0.6mm 0.8mm;
+  }
+
+  /* Cartouche */
+  .print-cartouche-label {
+    font-size: 3.5px;
+  }
+  .print-cartouche-value {
+    font-size: 5.5px;
+  }
+
+  /* Panel */
+  .panel-print-heading {
+    font-size: 10px;
+    padding: 8px 12px 4px;
+  }
+  .panel-print-canvas-area {
+    padding: 0 12px;
+  }
+  .panel-print-connector-wrap {
+    padding: 4px 12px;
+  }
+  .panel-print-connector-table {
+    font-size: 5.5px;
+  }
+  .panel-print-connector-table th {
+    font-size: 5px;
+  }
+  .panel-print-connector-table th,
+  .panel-print-connector-table td {
+    padding: 0.4mm 0.6mm;
+  }
+  .panel-print-footnote {
+    font-size: 6px;
+    padding: 0 12px 6px;
+  }
 }
 
 @page {
