@@ -5,6 +5,7 @@ import type { ConnectorDefinition, DeviceFacing, LayoutItemWithDevice } from '..
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { RACK_SLOT_HEIGHT_PX } from './rackGeometry'
 import PanelLayoutCanvas from '../panels/PanelLayoutCanvas'
+import { resolveVisibleImageSide, selectFacingImagePath } from '../../lib/rackViewModel'
 
 const SLOT_HEIGHT = RACK_SLOT_HEIGHT_PX
 
@@ -47,7 +48,9 @@ export default function PlacedDevice({
 
   const panelLayout = item.asset_kind === 'panel_layout' ? item.panel_layout ?? null : null
   const hasPanelPreview = !!panelLayout && !!connectorById
-  const imageUrl = getDeviceImageUrl(facing === 'front' ? item.device.front_image_path : item.device.rear_image_path)
+  const imagePath = selectFacingImagePath(item, facing)
+  const visibleSide = resolveVisibleImageSide(item.facing, facing)
+  const imageUrl = getDeviceImageUrl(imagePath)
   const imageSrc = imageUrl ?? undefined
   const hasRawImage = imageSrc !== undefined
   const hasVisual = hasPanelPreview || hasRawImage
@@ -58,7 +61,11 @@ export default function PlacedDevice({
     <div
       ref={dragRef as unknown as LegacyRef<HTMLDivElement>}
       className={`rack-device ${hasRawImage ? 'rack-device--has-image' : ''} ${isDragging ? 'rack-device--dragging' : ''}`}
-      style={{ height: `${height}px`, cursor: interactive ? undefined : 'default' }}
+      style={{
+        height: `${height}px`,
+        cursor: interactive ? undefined : 'default',
+        pointerEvents: interactive ? undefined : 'none',
+      }}
       onContextMenu={(event) => event.preventDefault()}
     >
       <div className="rack-device-media">
@@ -68,7 +75,7 @@ export default function PlacedDevice({
             heightRu={panelLayout.height_ru}
             rows={panelLayout.rows ?? []}
             ports={panelLayout.ports ?? []}
-            facing={facing}
+            facing={visibleSide}
             hasLacingBar={panelLayout.has_lacing_bar}
             showGuides={false}
             interactive={false}

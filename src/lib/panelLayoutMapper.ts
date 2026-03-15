@@ -64,6 +64,7 @@ export function mapPanelLayout(record: PanelLayoutRecord): PanelLayout {
     project_id: record.project_id,
     name: record.name,
     height_ru: record.height_ru,
+    depth_mm: Number(record.depth_mm ?? 80),
     facing: record.facing,
     has_lacing_bar: record.has_lacing_bar,
     notes: record.notes,

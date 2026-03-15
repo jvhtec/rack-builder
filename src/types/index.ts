@@ -83,6 +83,7 @@ export interface PanelLayout {
   project_id: string
   name: string
   height_ru: number
+  depth_mm: number
   facing: DeviceFacing
   has_lacing_bar: boolean
   notes: string | null

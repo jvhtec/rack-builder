@@ -234,6 +234,7 @@ export interface Database {
           project_id: string
           name: string
           height_ru: number
+          depth_mm: number
           facing: 'front' | 'rear'
           has_lacing_bar: boolean
           notes: string | null
@@ -246,6 +247,7 @@ export interface Database {
           project_id: string
           name: string
           height_ru: number
+          depth_mm?: number
           facing?: 'front' | 'rear'
           has_lacing_bar?: boolean
           notes?: string | null
@@ -258,6 +260,7 @@ export interface Database {
           project_id?: string
           name?: string
           height_ru?: number
+          depth_mm?: number
           facing?: 'front' | 'rear'
           has_lacing_bar?: boolean
           notes?: string | null

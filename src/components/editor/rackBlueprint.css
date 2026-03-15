@@ -372,6 +372,21 @@
   font-size: 10px;
 }
 
+.rack-opposite-preview-wrap {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.42;
+  filter: saturate(0.55) brightness(0.9);
+}
+
+.rack-opposite-preview-wrap .rack-device {
+  border: 1px dashed rgba(148, 163, 184, 0.55);
+}
+
+.rack-opposite-preview-wrap .rack-device-media img {
+  opacity: 0.9;
+}
+
 .rack-casters {
   display: flex;
   justify-content: space-between;
@@ -401,4 +416,140 @@
   border-radius: 50%;
   border: 5px solid #444;
   box-sizing: border-box;
+}
+
+.rack-side-body {
+  position: relative;
+  background: #0a0a0a;
+  padding: 10px;
+}
+
+.rack-side-legend {
+  display: flex;
+  justify-content: space-between;
+  color: #888;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.rack-side-lanes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.rack-side-lane {
+  position: relative;
+  border: 1px solid #222;
+  background: #050505;
+  overflow: hidden;
+}
+
+.rack-side-lane-label {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  z-index: 4;
+  font-size: 9px;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+.rack-side-slot-guide {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rack-side-slot-guide:last-child {
+  border-bottom: none;
+}
+
+.rack-depth-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rack-depth-item {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.rack-depth-item--front {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(96, 165, 250, 0.75);
+}
+
+.rack-depth-item--rear {
+  background: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.65);
+}
+
+.rack-depth-item--near {
+  opacity: 1;
+}
+
+.rack-depth-item--far {
+  opacity: 0.45;
+}
+
+.rack-depth-item--conflict {
+  border-color: rgba(248, 113, 113, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.7);
+}
+
+.rack-depth-item-label {
+  color: #dbeafe;
+  font-size: 9px;
+  font-weight: 600;
+  text-align: center;
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.rack-blueprint-container--compact {
+  width: 100%;
+  gap: 8px;
+  padding: 0;
+}
+
+.rack-blueprint-container--compact .rack-blueprint-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.rack-blueprint-container--compact .rack-blueprint {
+  width: 100% !important;
+}
+
+.rack-blueprint-container--compact .rack-u-labels {
+  padding-top: 51px;
+}
+
+.rack-blueprint-container--compact .rack-u-label-row {
+  width: 36px;
+}
+
+.rack-blueprint-container--compact .rack-u-label-text {
+  font-size: 11px;
+}
+
+.rack-blueprint-container--compact .rack-u-label-line {
+  width: 12px;
+}
+
+.rack-blueprint-container--compact .rack-casters {
+  display: none;
 }

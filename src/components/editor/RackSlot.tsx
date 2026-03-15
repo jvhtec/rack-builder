@@ -1,4 +1,4 @@
-import { useCallback, useRef, type RefCallback } from 'react'
+import { useCallback, useEffect, useRef, type RefCallback } from 'react'
 import { useDrop } from 'react-dnd'
 import {
   DEVICE_TYPE,
@@ -30,6 +30,17 @@ interface RackSlotProps {
     preferredLane?: 0 | 1,
     preferredSubLane?: 0 | 1,
   ) => boolean
+  getPlacementIssue?: (
+    slotU: number,
+    rackUnits: number,
+    isHalfRack: boolean,
+    forceFullWidth: boolean,
+    depthMm: number,
+    excludeItemId?: string,
+    preferredLane?: 0 | 1,
+    preferredSubLane?: 0 | 1,
+  ) => string | null
+  onPlacementHint?: (message: string | null) => void
   onDropNew: (deviceId: string, startU: number, rackUnits: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => void
   onDropMove: (itemId: string, newStartU: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => void
 }
@@ -42,10 +53,13 @@ export default function RackSlot({
   laneCount = 1,
   slotHeight = SLOT_HEIGHT,
   canPlaceAtSlot,
+  getPlacementIssue,
+  onPlacementHint,
   onDropNew,
   onDropMove,
 }: RackSlotProps) {
   const slotRef = useRef<HTMLDivElement | null>(null)
+  const wasOverRef = useRef(false)
 
   /**
    * Detect which preferred lane/sub-lane the user is hovering over.
@@ -92,10 +106,15 @@ export default function RackSlot({
     [facing, laneCount],
   )
 
-  const [{ isOver, canDrop }, dropRef] = useDrop<
+  const [{ isOver, canDrop, dragItem, clientOffset }, dropRef] = useDrop<
     DeviceDragItem | PlacedDeviceDragItem,
     void,
-    { isOver: boolean; canDrop: boolean }
+    {
+      isOver: boolean
+      canDrop: boolean
+      dragItem: DeviceDragItem | PlacedDeviceDragItem | null
+      clientOffset: XYCoord | null
+    }
   >({
     accept: [DEVICE_TYPE, PLACED_DEVICE_TYPE],
     canDrop: (dragItem, monitor) => {
@@ -137,10 +156,53 @@ export default function RackSlot({
       }
     },
     collect: (monitor) => ({
-      isOver: monitor.isOver(),
+      isOver: monitor.isOver({ shallow: true }),
       canDrop: monitor.canDrop(),
+      dragItem: (monitor.getItem() as DeviceDragItem | PlacedDeviceDragItem | null) ?? null,
+      clientOffset: monitor.getClientOffset(),
     }),
   })
+
+  useEffect(() => {
+    if (!onPlacementHint) return
+
+    if (!isOver) {
+      if (wasOverRef.current) {
+        onPlacementHint(null)
+        wasOverRef.current = false
+      }
+      return
+    }
+
+    wasOverRef.current = true
+
+    if (canDrop) {
+      onPlacementHint(null)
+      return
+    }
+
+    if (!dragItem) {
+      onPlacementHint('Placement blocked at this slot.')
+      return
+    }
+
+    const excludeId = dragItem.type === PLACED_DEVICE_TYPE ? dragItem.itemId : undefined
+    const { preferredLane, preferredSubLane } = getPreferredPosition(
+      clientOffset,
+      dragItem.isHalfRack && !dragItem.forceFullWidth,
+    )
+    const issue = getPlacementIssue?.(
+      slotU,
+      dragItem.rackUnits,
+      dragItem.isHalfRack,
+      dragItem.forceFullWidth,
+      dragItem.depthMm,
+      excludeId,
+      preferredLane,
+      preferredSubLane,
+    )
+    onPlacementHint(issue ?? 'Placement blocked at this slot.')
+  }, [canDrop, clientOffset, dragItem, getPlacementIssue, getPreferredPosition, isOver, onPlacementHint, slotU])
 
   const setRefs: RefCallback<HTMLDivElement> = useCallback((node) => {
     slotRef.current = node

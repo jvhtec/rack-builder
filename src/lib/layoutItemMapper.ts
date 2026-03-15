@@ -20,6 +20,7 @@ export interface LayoutItemRow {
     project_id: string
     name: string
     height_ru: number
+    depth_mm: number
     facing: DeviceFacing
     has_lacing_bar: boolean
     notes: string | null
@@ -100,6 +101,7 @@ function mapPanelLayout(raw: NonNullable<LayoutItemRow['panel_layout']>): PanelL
     project_id: raw.project_id,
     name: raw.name,
     height_ru: raw.height_ru,
+    depth_mm: Number(raw.depth_mm ?? 80),
     facing: raw.facing,
     has_lacing_bar: raw.has_lacing_bar,
     notes: raw.notes,
@@ -118,7 +120,7 @@ function buildVirtualPanelDevice(panelLayout: PanelLayout, connectorById: Map<st
     brand: 'Panel Layout',
     model: panelLayout.name,
     rack_units: panelLayout.height_ru,
-    depth_mm: 80,
+    depth_mm: panelLayout.depth_mm,
     weight_kg: Number(panelLayout.weight_kg ?? 0) + connectorMass,
     power_w: 0,
     is_half_rack: false,
@@ -131,16 +133,40 @@ function buildVirtualPanelDevice(panelLayout: PanelLayout, connectorById: Map<st
   }
 }
 
+function toNumber(value: unknown, fallback = 0): number {
+  const next = Number(value)
+  return Number.isFinite(next) ? next : fallback
+}
+
+function normalizeDevice(rawDevice: Record<string, unknown> | null): LayoutItemWithDevice['device'] {
+  const source = rawDevice ?? {}
+  const asString = (value: unknown): string => (typeof value === 'string' ? value : '')
+  const asNullableString = (value: unknown): string | null => (typeof value === 'string' ? value : null)
+  return {
+    id: asString(source.id),
+    brand: asString(source.brand),
+    model: asString(source.model),
+    rack_units: toNumber(source.rack_units, 1),
+    depth_mm: toNumber(source.depth_mm, 0),
+    weight_kg: toNumber(source.weight_kg, 0),
+    power_w: toNumber(source.power_w, 0),
+    is_half_rack: source.is_half_rack === true,
+    category_id: asString(source.category_id),
+    category: (source.category as LayoutItemWithDevice['device']['category']) ?? null,
+    front_image_path: asNullableString(source.front_image_path),
+    rear_image_path: asNullableString(source.rear_image_path),
+    created_at: asString(source.created_at),
+    updated_at: asString(source.updated_at),
+  }
+}
+
 export function mapLayoutItemRows(rows: LayoutItemRow[], connectorById: Map<string, ConnectorDefinition>): LayoutItemWithDevice[] {
   return rows.map((row) => {
     const panelLayout = row.panel_layout ? mapPanelLayout(row.panel_layout) : null
     const rawDevice = row.device as Record<string, unknown> | null
     const device = panelLayout
       ? buildVirtualPanelDevice(panelLayout, connectorById)
-      : {
-          ...(rawDevice ?? {}),
-          is_half_rack: rawDevice?.is_half_rack === true,
-        } as unknown as LayoutItemWithDevice['device']
+      : normalizeDevice(rawDevice)
     return {
       id: row.id,
       layout_id: row.layout_id,

@@ -265,6 +265,15 @@
   box-sizing: border-box;
 }
 
+.print-rack-device-wrap--ghost {
+  opacity: 0.42;
+  filter: saturate(0.55) brightness(0.92);
+}
+
+.print-rack-device-wrap--ghost .print-rack-device {
+  border-style: dashed;
+}
+
 .print-rack-device {
   position: relative;
   width: 100%;

@@ -17,6 +17,43 @@ function isMissingCustomNameColumn(error: unknown): boolean {
   return message.includes('custom_name')
 }
 
+function isLayoutItemStartUConstraintError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const code = 'code' in error && typeof error.code === 'string' ? error.code : ''
+  const message = 'message' in error && typeof error.message === 'string' ? error.message.toLowerCase() : ''
+  const details = 'details' in error && typeof error.details === 'string' ? error.details.toLowerCase() : ''
+  const text = `${message} ${details}`
+  const mentionsLayoutItems = text.includes('layout_items')
+  const mentionsStartU = text.includes('start_u') || text.includes('start-u')
+  return (code === '23505' || code === '23P01') && (mentionsLayoutItems || mentionsStartU)
+}
+
+function layoutSemanticErrorPrefix(message: string): 'RB_BOUNDS' | 'RB_SLOT' | 'RB_DEPTH' | null {
+  if (message.startsWith('RB_BOUNDS:')) return 'RB_BOUNDS'
+  if (message.startsWith('RB_SLOT:')) return 'RB_SLOT'
+  if (message.startsWith('RB_DEPTH:')) return 'RB_DEPTH'
+  return null
+}
+
+function toPlacementError(error: unknown): Error {
+  if (error && typeof error === 'object') {
+    const message = 'message' in error && typeof error.message === 'string' ? error.message : ''
+    const prefix = layoutSemanticErrorPrefix(message)
+    if (prefix) return new Error(message)
+  }
+  if (isLayoutItemStartUConstraintError(error)) {
+    return new Error(
+      'Backend placement rule rejected this position. Apply migrations 013_layout_items_constraint_alignment.sql and 014_layout_item_semantics_authority.sql, then retry.',
+    )
+  }
+  if (error instanceof Error) return error
+  if (error && typeof error === 'object') {
+    const message = 'message' in error && typeof error.message === 'string' ? error.message : null
+    if (message) return new Error(message)
+  }
+  return new Error('Unknown layout placement error.')
+}
+
 export function useLayoutItems(layoutId: string | undefined, totalRackUnits: number) {
   const { connectorById } = useConnectors()
   const [items, setItems] = useState<LayoutItemWithDevice[]>([])
@@ -57,24 +94,12 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     rackUnits: number,
     ids: { device_id: string | null; panel_layout_id: string | null },
     preferredLane?: 0 | 1,
-    allowOverlap = false,
     preferredSubLane?: 0 | 1,
   ) => {
     if (!layoutId) throw new Error('Missing layout id')
 
     if (!isWithinBounds(startU, rackUnits, totalRackUnits)) {
       throw new Error('Item exceeds rack bounds')
-    }
-
-    if (!allowOverlap) {
-      const newTop = startU + rackUnits - 1
-      const hasConflict = items
-        .filter((item) => item.facing === facing)
-        .some((item) => {
-          const existingTop = item.start_u + item.device.rack_units - 1
-          return startU <= existingTop && newTop >= item.start_u
-        })
-      if (hasConflict) throw new Error('Position overlaps with existing rack item')
     }
 
     const payload = {
@@ -101,7 +126,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
       err = fallback.error
     }
 
-    if (err) throw err
+    if (err) throw toPlacementError(err)
     const createdId = (data as { id: string }).id
     await fetchItems()
     return createdId
@@ -113,10 +138,9 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     facing: DeviceFacing,
     deviceRackUnits: number,
     preferredLane?: 0 | 1,
-    allowOverlap = false,
     preferredSubLane?: 0 | 1,
   ) =>
-    insertLayoutItem(startU, facing, deviceRackUnits, { device_id: deviceId, panel_layout_id: null }, preferredLane, allowOverlap, preferredSubLane)
+    insertLayoutItem(startU, facing, deviceRackUnits, { device_id: deviceId, panel_layout_id: null }, preferredLane, preferredSubLane)
 
   const addPanelLayoutItem = async (
     panelLayoutId: string,
@@ -124,14 +148,13 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     facing: DeviceFacing,
     panelRackUnits: number,
     preferredLane?: 0 | 1,
-    allowOverlap = false,
     preferredSubLane?: 0 | 1,
   ) =>
-    insertLayoutItem(startU, facing, panelRackUnits, { device_id: null, panel_layout_id: panelLayoutId }, preferredLane, allowOverlap, preferredSubLane)
+    insertLayoutItem(startU, facing, panelRackUnits, { device_id: null, panel_layout_id: panelLayoutId }, preferredLane, preferredSubLane)
 
   const removeItem = async (itemId: string) => {
     const { error: err } = await supabase.from('layout_items').delete().eq('id', itemId)
-    if (err) throw err
+    if (err) throw toPlacementError(err)
     await fetchItems()
   }
 
@@ -140,7 +163,6 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
     newStartU: number,
     facing: DeviceFacing,
     preferredLane?: 0 | 1,
-    allowOverlap = false,
     preferredSubLane?: 0 | 1,
   ) => {
     const item = items.find((i) => i.id === itemId)
@@ -148,17 +170,6 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
 
     if (!isWithinBounds(newStartU, item.device.rack_units, totalRackUnits)) {
       throw new Error('Device exceeds rack bounds')
-    }
-
-    if (!allowOverlap) {
-      const newTop = newStartU + item.device.rack_units - 1
-      const hasConflict = items
-        .filter((i) => i.facing === facing && i.id !== itemId)
-        .some((existing) => {
-          const existingTop = existing.start_u + existing.device.rack_units - 1
-          return newStartU <= existingTop && newTop >= existing.start_u
-        })
-      if (hasConflict) throw new Error('Position overlaps with existing device')
     }
 
     let { error: err } = await supabase
@@ -179,7 +190,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
       err = fallback.error
     }
 
-    if (err) throw err
+    if (err) throw toPlacementError(err)
     await fetchItems()
   }
 

@@ -3,7 +3,8 @@ import type { DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { buildSlots, getSlotTopPx } from '../editor/rackGeometry'
 import { getRackPanelAspect } from '../../lib/rackVisual'
-import { buildSlotAssignments, getItemSlot, getSlotStyle } from '../../lib/rackPositions'
+import { getItemSlot, getSlotStyle } from '../../lib/rackPositions'
+import { buildRackFaceViewModel, selectFacingImagePath } from '../../lib/rackViewModel'
 
 const PRINT_RAIL_WIDTH_PX = 10
 const PRINT_SINGLE_WIDTH_PX = 420
@@ -35,9 +36,14 @@ export default function RackPrintView({
   const slotHeight = useMemo(() => getPrintSlotHeight(rack.width), [rack.width])
   const labelOffsetPx = PRINT_CASING_HEIGHT_PX + PRINT_HEADER_HEIGHT_PX
   const slots = useMemo(() => buildSlots(rack.rack_units), [rack.rack_units])
-  const slotAssignments = useMemo(
-    () => buildSlotAssignments(items, rack.width),
-    [items, rack.width],
+  const {
+    activeItems,
+    activeSlotByItemId: activeSlotAssignments,
+    ghostItems,
+    ghostSlotByItemId: ghostSlotAssignments,
+  } = useMemo(
+    () => buildRackFaceViewModel(items, facing, rack.width),
+    [facing, items, rack.width],
   )
 
   const rackStyle = {
@@ -83,14 +89,58 @@ export default function RackPrintView({
             ))}
 
             <div className="print-rack-device-layer">
-              {items.map((item, index) => {
+              {ghostItems.map((item, index) => {
                 const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
-                const slot = slotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
+                const slot = ghostSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
                 const { left: laneLeft, width: laneWidth } = getSlotStyle(slot, rack.width, facing)
                 const height = item.device.rack_units * slotHeight
-                const preferredImagePath = facing === 'front' ? item.device.front_image_path : item.device.rear_image_path
-                const imageUrl = getDeviceImageUrl(preferredImagePath)
+                const imageUrl = getDeviceImageUrl(selectFacingImagePath(item, facing))
+
+                return (
+                  <div
+                    key={item.id}
+                    className="print-rack-device-wrap print-rack-device-wrap--ghost"
+                    style={{
+                      top: `${topPx}px`,
+                      left: laneLeft,
+                      width: laneWidth,
+                      height: `${height}px`,
+                      zIndex: 5 + index,
+                    }}
+                  >
+                    <div className={`print-rack-device ${item.device.rack_units === 1 ? 'print-rack-device--compact' : ''}`}>
+                      <div className="print-rack-device-media">
+                        {imageUrl ? (
+                          <img src={imageUrl} alt={label} />
+                        ) : (
+                          <div className="print-rack-device-fallback">
+                            <span>{label}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {showDeviceDetails && (
+                        <div className="print-rack-device-meta">
+                          <p className="print-rack-device-title">
+                            {label}
+                          </p>
+                          {item.custom_name && <p className="print-rack-device-note">{item.device.brand} {item.device.model}</p>}
+                          {item.notes && <p className="print-rack-device-note">{item.notes}</p>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {activeItems.map((item, index) => {
+                const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
+                const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
+                const slot = activeSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
+                const { left: laneLeft, width: laneWidth } = getSlotStyle(slot, rack.width, facing)
+                const height = item.device.rack_units * slotHeight
+                const imageUrl = getDeviceImageUrl(selectFacingImagePath(item, facing))
 
                 return (
                   <div
@@ -101,7 +151,7 @@ export default function RackPrintView({
                       left: laneLeft,
                       width: laneWidth,
                       height: `${height}px`,
-                      zIndex: 5 + index,
+                      zIndex: 10 + index,
                     }}
                   >
                     <div className={`print-rack-device ${item.device.rack_units === 1 ? 'print-rack-device--compact' : ''}`}>
