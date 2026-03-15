@@ -452,22 +452,31 @@
 }
 
 .project-print-index-col-num {
-  width: 5%;
+  width: 4%;
 }
 
-.project-print-index-col-layout,
-.project-print-index-col-rack,
+.project-print-index-col-layout {
+  width: 22%;
+}
+
+.project-print-index-col-rack {
+  width: 18%;
+}
+
 .project-print-index-col-spec {
-  width: 21%;
+  width: 18%;
 }
 
-.project-print-index-col-power,
-.project-print-index-col-weight {
+.project-print-index-col-power {
   width: 13%;
 }
 
+.project-print-index-col-weight {
+  width: 15%;
+}
+
 .project-print-index-col-page {
-  width: 6%;
+  width: 10%;
 }
 
 .project-print-index-table th,
@@ -547,6 +556,66 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.panel-print-connector-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 7.5px;
+  line-height: 1.2;
+}
+
+.panel-print-connector-table th,
+.panel-print-connector-table td {
+  border: 1px solid #bbb;
+  padding: 0.8mm 1mm;
+  text-align: left;
+  vertical-align: top;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-print-connector-table th {
+  background: #f3f4f6;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 6.5px;
+  color: #555;
+}
+
+.panel-print-connector-table td:first-child,
+.panel-print-connector-table th:first-child {
+  width: 5%;
+  text-align: center;
+}
+
+.panel-print-connector-table td:nth-child(2),
+.panel-print-connector-table th:nth-child(2) {
+  width: 8%;
+}
+
+.panel-print-connector-table td:nth-child(3),
+.panel-print-connector-table th:nth-child(3) {
+  width: 8%;
+}
+
+.panel-print-connector-table td:nth-child(4),
+.panel-print-connector-table th:nth-child(4) {
+  width: 30%;
+}
+
+.panel-print-connector-table td:nth-child(5),
+.panel-print-connector-table th:nth-child(5) {
+  width: 39%;
+}
+
+.panel-print-connector-table td:nth-child(6),
+.panel-print-connector-table th:nth-child(6) {
+  width: 10%;
+  text-align: center;
 }
 
 @page {

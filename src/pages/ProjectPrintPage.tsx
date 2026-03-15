@@ -186,9 +186,9 @@ export default function ProjectPrintPage() {
   }))
 
   const panelIndexRows = panelModels.map((panel, index) => ({
-    layoutName: `Panel: ${panel.name}`,
-    rackName: 'Connector Panel',
-    rackSpec: `${panel.height_ru}U | ${panel.facing}`,
+    layoutName: panel.name,
+    rackName: `${panel.height_ru}U panel`,
+    rackSpec: panel.facing,
     totalPowerW: 0,
     totalWeightKg: panel.weight_kg,
     pageNumber: layoutModels.length + index + 3,
