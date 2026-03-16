@@ -17,6 +17,7 @@ interface LayoutPrintSheetProps {
   pageCount: number
   scale?: number
   useAutoFitScale?: boolean
+  simplifiedView?: boolean
   drawingFrameRef?: RefObject<HTMLDivElement | null>
   drawingContentRef?: RefObject<HTMLDivElement | null>
   sheetClassName?: string
@@ -35,6 +36,7 @@ export default function LayoutPrintSheet({
   pageCount,
   scale = 1,
   useAutoFitScale = false,
+  simplifiedView = false,
   drawingFrameRef,
   drawingContentRef,
   sheetClassName,
@@ -114,14 +116,14 @@ export default function LayoutPrintSheet({
         <div ref={frameRef} className="layout-print-drawing-frame">
           <div className="layout-print-drawing-scale" style={{ transform: `scale(${effectiveScale})` }}>
             <div ref={contentRef} className="layout-print-drawing-row">
-              <RackPrintView rack={rack} items={items} facing="front" showDeviceDetails />
-              <RackPrintView rack={rack} items={items} facing="rear" showDeviceDetails />
+              <RackPrintView rack={rack} items={items} facing="front" showDeviceDetails simplifiedView={simplifiedView} />
+              <RackPrintView rack={rack} items={items} facing="rear" showDeviceDetails simplifiedView={simplifiedView} />
             </div>
           </div>
         </div>
 
         <PrintCartouche
-          title="Rack Layout Drawing"
+          title={simplifiedView ? 'Rack Layout — Simplified View' : 'Rack Layout Drawing'}
           jobName={layout.name}
           pageNumber={pageNumber}
           pageCount={pageCount}

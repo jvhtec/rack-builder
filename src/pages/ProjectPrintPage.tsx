@@ -42,6 +42,7 @@ export default function ProjectPrintPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [imagesReady, setImagesReady] = useState(false)
+  const [includeSimplified, setIncludeSimplified] = useState(false)
   const [autoPrintDone, setAutoPrintDone] = useState(false)
   const [generatedAt] = useState(() => new Date())
 
@@ -176,15 +177,17 @@ export default function ProjectPrintPage() {
     return Array.from(urls)
   }, [layoutModels])
 
-  const pageCount = 2 + layoutModels.length + panelModels.length
+  const simplifiedExtra = includeSimplified ? layoutModels.length : 0
+  const pageCount = 2 + layoutModels.length + simplifiedExtra + panelModels.length
 
+  const layoutPagesPerLayout = includeSimplified ? 2 : 1
   const layoutIndexRows = layoutModels.map((model, index) => ({
     layoutName: model.layout.name,
     rackName: model.rack.name,
     rackSpec: `${model.rack.rack_units}U | ${model.rack.width} | ${model.rack.depth_mm}mm`,
     totalPowerW: model.totalPowerW,
     totalWeightKg: model.totalWeightKg,
-    pageNumber: index + 3,
+    pageNumber: index * layoutPagesPerLayout + 3,
   }))
 
   const panelIndexRows = panelModels.map((panel, index) => ({
@@ -193,7 +196,7 @@ export default function ProjectPrintPage() {
     rackSpec: panel.facing,
     totalPowerW: 0,
     totalWeightKg: panel.weight_kg,
-    pageNumber: layoutModels.length + index + 3,
+    pageNumber: layoutModels.length * layoutPagesPerLayout + index + 3,
   }))
 
   const indexRows = [...layoutIndexRows, ...panelIndexRows]
@@ -290,6 +293,14 @@ export default function ProjectPrintPage() {
             Back
           </Button>
           <Button onClick={() => window.print()}>Print</Button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#374155', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={includeSimplified}
+              onChange={(e) => setIncludeSimplified(e.target.checked)}
+            />
+            Include simplified view
+          </label>
         </div>
         <p className="layout-print-toolbar-meta">
           {project.name} | {layoutModels.length} layouts + {panelModels.length} panels | {imagesReady ? 'Ready' : 'Loading images'}
@@ -306,23 +317,47 @@ export default function ProjectPrintPage() {
           pageCount={pageCount}
         />
 
-        {layoutModels.map((model, index) => (
-          <LayoutPrintSheet
-            key={model.layout.id}
-            layout={model.layout}
-            rack={model.rack}
-            items={model.items}
-            generatedAt={generatedAt}
-            projectOwner={project.owner}
-            totalWeightKg={model.totalWeightKg}
-            totalPowerW={model.totalPowerW}
-            scaleLabel="Fit (auto)"
-            useAutoFitScale
-            pageNumber={index + 3}
-            pageCount={pageCount}
-            sheetClassName={index === layoutModels.length - 1 && panelModels.length === 0 ? '' : 'layout-print-page-break'}
-          />
-        ))}
+        {layoutModels.map((model, index) => {
+          const layoutPageNumber = index * layoutPagesPerLayout + 3
+          const isLastLayout = index === layoutModels.length - 1
+          const hasMoreSheets = !isLastLayout || panelModels.length > 0 || includeSimplified
+
+          return (
+            <span key={model.layout.id}>
+              <LayoutPrintSheet
+                layout={model.layout}
+                rack={model.rack}
+                items={model.items}
+                generatedAt={generatedAt}
+                projectOwner={project.owner}
+                totalWeightKg={model.totalWeightKg}
+                totalPowerW={model.totalPowerW}
+                scaleLabel="Fit (auto)"
+                useAutoFitScale
+                pageNumber={layoutPageNumber}
+                pageCount={pageCount}
+                sheetClassName={hasMoreSheets ? 'layout-print-page-break' : ''}
+              />
+              {includeSimplified && (
+                <LayoutPrintSheet
+                  layout={model.layout}
+                  rack={model.rack}
+                  items={model.items}
+                  generatedAt={generatedAt}
+                  projectOwner={project.owner}
+                  totalWeightKg={model.totalWeightKg}
+                  totalPowerW={model.totalPowerW}
+                  scaleLabel="Fit (auto)"
+                  useAutoFitScale
+                  simplifiedView
+                  pageNumber={layoutPageNumber + 1}
+                  pageCount={pageCount}
+                  sheetClassName={isLastLayout && panelModels.length === 0 ? '' : 'layout-print-page-break'}
+                />
+              )}
+            </span>
+          )
+        })}
 
         {panelModels.map((panel, index) => {
           const pageNumber = layoutModels.length + index + 3
