@@ -6,6 +6,7 @@ import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { RACK_SLOT_HEIGHT_PX } from './rackGeometry'
 import PanelLayoutCanvas from '../panels/PanelLayoutCanvas'
 import { resolveVisibleImageSide, selectFacingImagePath } from '../../lib/rackViewModel'
+import AutoScaleText from '../shared/AutoScaleText'
 
 const SLOT_HEIGHT = RACK_SLOT_HEIGHT_PX
 
@@ -78,14 +79,12 @@ export default function PlacedDevice({
         <span className="rack-device-screw rb" />
 
         <div className="rack-device-simplified-layout">
-          <div className="rack-device-simplified-left">
-            <span className="rack-device-simplified-brand">{item.device.brand}</span>
-            <span className="rack-device-simplified-model">{item.device.model}</span>
-          </div>
-          <div className="rack-device-simplified-right">
-            {item.notes && <div className="rack-device-simplified-notes">{item.notes}</div>}
-            <span className="rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
-          </div>
+          <span className="rack-device-simplified-brand">{item.device.brand}</span>
+          <span className="rack-device-simplified-model">{item.device.model}</span>
+          {item.notes && (
+            <AutoScaleText className="rack-device-simplified-notes" text={item.notes} />
+          )}
+          <span className="rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
         </div>
 
         {interactive && (

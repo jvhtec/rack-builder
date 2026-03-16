@@ -26,6 +26,7 @@ import DevicePalette from '../components/editor/DevicePalette'
 import RackGrid from '../components/editor/RackGrid'
 import RackSideDepthView from '../components/editor/RackSideDepthView'
 import DeviceNotes from '../components/editor/DeviceNotes'
+import AutoScaleText from '../components/shared/AutoScaleText'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
@@ -1148,15 +1149,17 @@ export default function LayoutEditorPage() {
                                   onContextMenu={(e) => e.preventDefault()}
                                 >
                                   {simplifiedView ? (
-                                    <div className="absolute inset-1 flex pointer-events-none">
-                                      <div className="flex flex-col justify-between min-w-0 max-w-[40%] shrink-0">
-                                        <span className="text-[8px] font-bold uppercase text-white truncate">{item.device.brand}</span>
-                                        <span className="text-[8px] text-slate-400 truncate">{item.device.model}</span>
-                                      </div>
-                                      <div className="flex-1 min-w-0 flex flex-col justify-between text-right ml-1">
-                                        {item.notes && <span className="text-[8px] text-slate-300 line-clamp-2 whitespace-pre-line">{item.notes}</span>}
-                                        <span className="text-[8px] font-semibold text-blue-300 truncate">{item.custom_name?.trim() || ''}</span>
-                                      </div>
+                                    <div className="absolute inset-1 pointer-events-none">
+                                      <span className="absolute top-0 left-0 max-w-[40%] z-[1] text-[8px] font-bold uppercase text-white truncate">{item.device.brand}</span>
+                                      <span className="absolute bottom-0 left-0 max-w-[40%] z-[1] text-[8px] text-slate-400 truncate">{item.device.model}</span>
+                                      {item.notes && (
+                                        <AutoScaleText
+                                          text={item.notes}
+                                          className="absolute inset-0 flex items-center justify-center text-center text-slate-300 whitespace-pre-line overflow-hidden break-words"
+                                          minFontPx={4}
+                                        />
+                                      )}
+                                      <span className="absolute bottom-0 right-0 max-w-[50%] z-[1] text-[8px] font-semibold text-blue-300 truncate">{item.custom_name?.trim() || ''}</span>
                                     </div>
                                   ) : (
                                     <>
