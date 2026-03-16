@@ -5,18 +5,17 @@ import { buildSlots, getSlotTopPx } from '../editor/rackGeometry'
 import { getRackPanelAspect } from '../../lib/rackVisual'
 import { getItemSlot, getSlotStyle } from '../../lib/rackPositions'
 import { buildRackFaceViewModel, selectFacingImagePath } from '../../lib/rackViewModel'
+import AutoScaleText from '../shared/AutoScaleText'
 
 function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
   return (
     <div className="print-rack-device-simplified-layout">
-      <div className="print-rack-device-simplified-left">
-        <span className="print-rack-device-simplified-brand">{item.device.brand}</span>
-        <span className="print-rack-device-simplified-model">{item.device.model}</span>
-      </div>
-      <div className="print-rack-device-simplified-right">
-        {item.notes && <span className="print-rack-device-simplified-notes">{item.notes}</span>}
-        <span className="print-rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
-      </div>
+      <span className="print-rack-device-simplified-brand">{item.device.brand}</span>
+      <span className="print-rack-device-simplified-model">{item.device.model}</span>
+      {item.notes && (
+        <AutoScaleText className="print-rack-device-simplified-notes" text={item.notes} />
+      )}
+      <span className="print-rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
     </div>
   )
 }
