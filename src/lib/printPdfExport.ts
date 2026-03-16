@@ -181,6 +181,8 @@ async function renderAtScale({
     const canvas = await html2canvas(sheets[index], {
       backgroundColor: '#ffffff',
       scale,
+      width: Math.ceil(sheets[index].scrollWidth),
+      height: Math.ceil(sheets[index].scrollHeight),
       useCORS: true,
       allowTaint: false,
       imageTimeout: 15000,
@@ -194,8 +196,8 @@ async function renderAtScale({
       pdf.addPage([pageSizeMm.widthMm, pageSizeMm.heightMm], orientation)
     }
 
-    const imageData = canvas.toDataURL('image/jpeg', 0.96)
-    pdf.addImage(imageData, 'JPEG', 0, 0, pageSizeMm.widthMm, pageSizeMm.heightMm, undefined, 'FAST')
+    const imageData = canvas.toDataURL('image/png')
+    pdf.addImage(imageData, 'PNG', 0, 0, pageSizeMm.widthMm, pageSizeMm.heightMm)
     canvas.width = 1
     canvas.height = 1
   }

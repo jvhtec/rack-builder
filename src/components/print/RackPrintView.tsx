@@ -8,11 +8,12 @@ import { buildRackFaceViewModel, selectFacingImagePath } from '../../lib/rackVie
 import AutoScaleText from '../shared/AutoScaleText'
 
 function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
-  const minNoteFontPx = item.device.rack_units <= 1 ? 9.5 : 11
-  const maxNoteFontPx = item.device.rack_units <= 1 ? 14 : 18
+  const isCompact = item.device.rack_units <= 1
+  const minNoteFontPx = isCompact ? 7.5 : 9.5
+  const maxNoteFontPx = isCompact ? 10.5 : 14
 
   return (
-    <div className="print-rack-device-simplified-layout">
+    <div className={`print-rack-device-simplified-layout ${isCompact ? 'print-rack-device-simplified-layout--compact' : ''}`}>
       <span className="print-rack-device-simplified-brand">{item.device.brand}</span>
       <span className="print-rack-device-simplified-model">{item.device.model}</span>
       {item.notes && (
