@@ -26,6 +26,7 @@ import DevicePalette from '../components/editor/DevicePalette'
 import RackGrid from '../components/editor/RackGrid'
 import RackSideDepthView from '../components/editor/RackSideDepthView'
 import DeviceNotes from '../components/editor/DeviceNotes'
+import AutoScaleText from '../components/shared/AutoScaleText'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
@@ -196,6 +197,7 @@ export default function LayoutEditorPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [selectedDeviceTemplate, setSelectedDeviceTemplate] = useState<string | null>(null)
   const [showDeviceNames, setShowDeviceNames] = useState(true)
+  const [simplifiedView, setSimplifiedView] = useState(false)
   const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768)
   const [isTouchLikeDevice, setIsTouchLikeDevice] = useState<boolean>(
     () => window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window,
@@ -938,6 +940,12 @@ export default function LayoutEditorPage() {
                   >
                     Labels {showDeviceNames ? 'On' : 'Off'}
                   </Button>
+                  <Button
+                    variant={simplifiedView ? 'primary' : 'secondary'}
+                    onClick={() => setSimplifiedView((prev) => !prev)}
+                  >
+                    Simplified {simplifiedView ? 'On' : 'Off'}
+                  </Button>
                 </div>
               </div>
 
@@ -988,6 +996,7 @@ export default function LayoutEditorPage() {
                   connectorById={connectorById}
                   facing={facing}
                   showDeviceDetails={showDeviceNames}
+                  simplifiedView={simplifiedView}
                   onPlacementHint={setHoverPlacementHint}
                   onDropNew={handleDropNew}
                   onDropMove={handleDropMove}
@@ -1291,31 +1300,48 @@ export default function LayoutEditorPage() {
                                   style={{ WebkitTouchCallout: 'none', userSelect: 'none' }}
                                   onContextMenu={(e) => e.preventDefault()}
                                 >
-                                  {(() => {
-                                    const imageUrl = resolvePlacementImageUrl(item, facing)
-                                    return imageUrl ? (
-                                      <img
-                                        src={imageUrl}
-                                        alt={item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
-                                        className="w-full h-full object-fill"
-                                        draggable={false}
-                                        onContextMenu={(e) => e.preventDefault()}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full bg-indigo-500/80" />
-                                    )
-                                  })()}
-
-                                  {showDeviceNames && (
-                                    <div className="absolute inset-0 bg-black/35 p-2 flex flex-col justify-end pointer-events-none">
-                                      <p className="text-[9px] uppercase font-black text-indigo-100 truncate">
-                                        {item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
-                                      </p>
-                                      {item.custom_name && (
-                                        <p className="text-[10px] text-indigo-100 truncate">{item.device.brand} {item.device.model}</p>
+                                  {simplifiedView ? (
+                                    <div className="absolute inset-1 pointer-events-none">
+                                      <span className="absolute top-0 left-0 max-w-[40%] z-[1] text-[8px] font-bold uppercase text-white truncate">{item.device.brand}</span>
+                                      <span className="absolute bottom-0 left-0 max-w-[40%] z-[1] text-[8px] text-slate-400 truncate">{item.device.model}</span>
+                                      {item.notes && (
+                                        <AutoScaleText
+                                          text={item.notes}
+                                          className="absolute inset-0 flex items-center justify-center text-center text-slate-300 whitespace-pre-line overflow-hidden break-words"
+                                          minFontPx={4}
+                                        />
                                       )}
-                                      {item.notes && <p className="text-[10px] text-indigo-100/90 truncate">{item.notes}</p>}
+                                      <span className="absolute bottom-0 right-0 max-w-[50%] z-[1] text-[8px] font-semibold text-blue-300 truncate">{item.custom_name?.trim() || ''}</span>
                                     </div>
+                                  ) : (
+                                    <>
+                                      {(() => {
+                                        const imageUrl = resolvePlacementImageUrl(item, facing)
+                                        return imageUrl ? (
+                                          <img
+                                            src={imageUrl}
+                                            alt={item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
+                                            className="w-full h-full object-fill"
+                                            draggable={false}
+                                            onContextMenu={(e) => e.preventDefault()}
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full bg-indigo-500/80" />
+                                        )
+                                      })()}
+
+                                      {showDeviceNames && (
+                                        <div className="absolute inset-0 bg-black/35 p-2 flex flex-col justify-end pointer-events-none">
+                                          <p className="text-[9px] uppercase font-black text-indigo-100 truncate">
+                                            {item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
+                                          </p>
+                                          {item.custom_name && (
+                                            <p className="text-[10px] text-indigo-100 truncate">{item.device.brand} {item.device.model}</p>
+                                          )}
+                                          {item.notes && <p className="text-[10px] text-indigo-100/90 truncate">{item.notes}</p>}
+                                        </div>
+                                      )}
+                                    </>
                                   )}
                                 </div>
                               </div>
@@ -1477,6 +1503,14 @@ export default function LayoutEditorPage() {
                     }`}
                   >
                     Device names: {showDeviceNames ? 'On' : 'Off'}
+                  </button>
+                  <button
+                    onClick={() => setSimplifiedView((prev) => !prev)}
+                    className={`w-full py-2 rounded-lg border text-sm ${
+                      simplifiedView ? 'border-indigo-400 bg-indigo-500/20' : 'border-slate-700 bg-slate-800'
+                    }`}
+                  >
+                    Simplified view: {simplifiedView ? 'On' : 'Off'}
                   </button>
                   <button
                     onClick={() => navigate(`/editor/project/${project.id}/print/${activeLayout.id}`)}

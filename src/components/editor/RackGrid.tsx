@@ -28,6 +28,7 @@ interface RackGridProps {
   connectorById: Map<string, ConnectorDefinition>
   facing: DeviceFacing
   showDeviceDetails?: boolean
+  simplifiedView?: boolean
   lanePreferenceByItemId?: Map<string, 0 | 1>
   onDropNew: (deviceId: string, startU: number, rackUnits: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => void
   onDropMove: (itemId: string, newStartU: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => void
@@ -58,6 +59,7 @@ export default function RackGrid({
   connectorById,
   facing,
   showDeviceDetails = true,
+  simplifiedView = false,
   onDropNew,
   onDropMove,
   onRemove,
@@ -256,6 +258,7 @@ export default function RackGrid({
                       facing={facing}
                       slotHeight={slotHeight}
                       showDeviceDetails={showDeviceDetails}
+                      simplifiedView={simplifiedView}
                       interactive={false}
                       connectorById={connectorById}
                       onRemove={onRemove}
@@ -286,6 +289,7 @@ export default function RackGrid({
                       facing={facing}
                       slotHeight={slotHeight}
                       showDeviceDetails={showDeviceDetails}
+                      simplifiedView={simplifiedView}
                       interactive
                       connectorById={connectorById}
                       onRemove={onRemove}

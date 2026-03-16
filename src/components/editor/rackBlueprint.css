@@ -350,6 +350,75 @@
   background: #222;
 }
 
+/* Simplified view */
+.rack-device--simplified {
+  background: #0a0a0a;
+}
+
+.rack-device-simplified-layout {
+  position: absolute;
+  inset: 6px 8px;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.rack-device-simplified-brand {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 40%;
+  z-index: 1;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rack-device-simplified-model {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  max-width: 40%;
+  z-index: 1;
+  color: #aaa;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rack-device-simplified-notes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #ccc;
+  white-space: pre-line;
+  overflow: hidden;
+  overflow-wrap: break-word;
+}
+
+.rack-device-simplified-name {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  max-width: 50%;
+  z-index: 1;
+  color: #8ab4f8;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .rack-ghost-wrap {
   position: absolute;
   pointer-events: none;

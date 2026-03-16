@@ -6,6 +6,7 @@ import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { RACK_SLOT_HEIGHT_PX } from './rackGeometry'
 import PanelLayoutCanvas from '../panels/PanelLayoutCanvas'
 import { resolveVisibleImageSide, selectFacingImagePath } from '../../lib/rackViewModel'
+import AutoScaleText from '../shared/AutoScaleText'
 
 const SLOT_HEIGHT = RACK_SLOT_HEIGHT_PX
 
@@ -14,6 +15,7 @@ interface PlacedDeviceProps {
   facing: DeviceFacing
   slotHeight?: number
   showDeviceDetails?: boolean
+  simplifiedView?: boolean
   interactive?: boolean
   connectorById?: Map<string, ConnectorDefinition>
   onRemove: (itemId: string) => void
@@ -25,6 +27,7 @@ export default function PlacedDevice({
   facing,
   slotHeight = SLOT_HEIGHT,
   showDeviceDetails = true,
+  simplifiedView = false,
   interactive = true,
   connectorById,
   onRemove,
@@ -57,6 +60,55 @@ export default function PlacedDevice({
   const hasVisual = hasPanelPreview || hasRawImage
 
   const height = item.device.rack_units * slotHeight
+
+  if (simplifiedView) {
+    return (
+      <div
+        ref={dragRef as unknown as LegacyRef<HTMLDivElement>}
+        className={`rack-device rack-device--simplified ${isDragging ? 'rack-device--dragging' : ''}`}
+        style={{
+          height: `${height}px`,
+          cursor: interactive ? undefined : 'default',
+          pointerEvents: interactive ? undefined : 'none',
+        }}
+        onContextMenu={(event) => event.preventDefault()}
+      >
+        <div className="rack-device-wire" />
+        <span className="rack-device-screw lt" />
+        <span className="rack-device-screw rt" />
+        <span className="rack-device-screw lb" />
+        <span className="rack-device-screw rb" />
+
+        <div className="rack-device-simplified-layout">
+          <span className="rack-device-simplified-brand">{item.device.brand}</span>
+          <span className="rack-device-simplified-model">{item.device.model}</span>
+          {item.notes && (
+            <AutoScaleText className="rack-device-simplified-notes" text={item.notes} />
+          )}
+          <span className="rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
+        </div>
+
+        {interactive && (
+          <div className="rack-device-actions">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEditNotes(item) }}
+              className="rack-device-action"
+              title="Notes"
+            >
+              N
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onRemove(item.id) }}
+              className="rack-device-action"
+              title="Remove"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div

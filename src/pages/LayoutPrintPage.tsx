@@ -32,6 +32,7 @@ export default function LayoutPrintPage() {
   const [error, setError] = useState<string | null>(null)
   const [imagesReady, setImagesReady] = useState(false)
   const [scale, setScale] = useState(1)
+  const [includeSimplified, setIncludeSimplified] = useState(false)
   const [autoPrintDone, setAutoPrintDone] = useState(false)
   const [generatedAt] = useState(() => new Date())
 
@@ -240,13 +241,21 @@ export default function LayoutPrintPage() {
             Back
           </Button>
           <Button onClick={() => window.print()}>Print</Button>
+          <label className="layout-print-toolbar-label">
+            <input
+              type="checkbox"
+              checked={includeSimplified}
+              onChange={(e) => setIncludeSimplified(e.target.checked)}
+            />
+            Include simplified view
+          </label>
         </div>
         <p className="layout-print-toolbar-meta">
           {layout.name} | {rack.name} | {rackTotals.weightKg.toFixed(2)} kg | {rackTotals.powerW} W | {imagesReady ? 'Ready' : 'Loading images'}
         </p>
       </header>
 
-      <main className="layout-print-stage">
+      <main className={`layout-print-stage ${includeSimplified ? 'layout-print-stage--project' : ''}`}>
         <LayoutPrintSheet
           layout={layout}
           rack={rack}
@@ -257,11 +266,28 @@ export default function LayoutPrintPage() {
           totalPowerW={rackTotals.powerW}
           scaleLabel={scaleLabel}
           pageNumber={1}
-          pageCount={1}
+          pageCount={includeSimplified ? 2 : 1}
           scale={scale}
           drawingFrameRef={drawingFrameRef}
           drawingContentRef={drawingContentRef}
+          sheetClassName={includeSimplified ? 'layout-print-page-break' : undefined}
         />
+        {includeSimplified && (
+          <LayoutPrintSheet
+            layout={layout}
+            rack={rack}
+            items={items}
+            generatedAt={generatedAt}
+            projectOwner={project?.owner}
+            totalWeightKg={rackTotals.weightKg}
+            totalPowerW={rackTotals.powerW}
+            scaleLabel={scaleLabel}
+            pageNumber={2}
+            pageCount={2}
+            useAutoFitScale
+            simplifiedView
+          />
+        )}
       </main>
     </div>
   )
