@@ -9,11 +9,20 @@ import ScaledNotes from '../editor/ScaledNotes'
 
 function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
   return (
-    <ScaledNotes
-      text={item.notes || item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
-      textColor="#222"
-      padding="2px 4px"
-    />
+    <div className="print-rack-device-simplified-layout">
+      <div className="print-rack-device-simplified-left">
+        <span className="print-rack-device-simplified-brand">{item.device.brand}</span>
+        <span className="print-rack-device-simplified-model">{item.device.model}</span>
+      </div>
+      <div className="print-rack-device-simplified-center">
+        {item.notes && <ScaledNotes text={item.notes} textColor="#222" />}
+      </div>
+      <div className="print-rack-device-simplified-right">
+        {item.custom_name?.trim() && (
+          <span className="print-rack-device-simplified-name">{item.custom_name.trim()}</span>
+        )}
+      </div>
+    </div>
   )
 }
 

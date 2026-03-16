@@ -78,11 +78,20 @@ export default function PlacedDevice({
         <span className="rack-device-screw lb" />
         <span className="rack-device-screw rb" />
 
-        <ScaledNotes
-          text={item.notes || item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
-          textColor="#ddd"
-          padding="6px 8px"
-        />
+        <div className="rack-device-simplified-layout">
+          <div className="rack-device-simplified-left">
+            <span className="rack-device-simplified-brand">{item.device.brand}</span>
+            <span className="rack-device-simplified-model">{item.device.model}</span>
+          </div>
+          <div className="rack-device-simplified-center">
+            {item.notes && <ScaledNotes text={item.notes} textColor="#ccc" />}
+          </div>
+          <div className="rack-device-simplified-right">
+            {item.custom_name?.trim() && (
+              <span className="rack-device-simplified-name">{item.custom_name.trim()}</span>
+            )}
+          </div>
+        </div>
 
         {interactive && (
           <div className="rack-device-actions">

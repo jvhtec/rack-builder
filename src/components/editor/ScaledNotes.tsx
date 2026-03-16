@@ -3,14 +3,13 @@ import { useRef, useLayoutEffect } from 'react'
 interface ScaledNotesProps {
   text: string
   textColor?: string
-  padding?: string
 }
 
 /**
- * Renders text centered and auto-scaled to fill the available space of its
- * nearest positioned ancestor.
+ * Renders text centered and auto-scaled to fill its nearest positioned ancestor.
+ * The parent must have `position: relative` and defined dimensions.
  */
-export default function ScaledNotes({ text, textColor = '#ddd', padding = '6px 8px' }: ScaledNotesProps) {
+export default function ScaledNotes({ text, textColor = '#ddd' }: ScaledNotesProps) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
 
@@ -41,14 +40,12 @@ export default function ScaledNotes({ text, textColor = '#ddd', padding = '6px 8
       ref={wrapRef}
       style={{
         position: 'absolute',
-        inset: padding,
+        inset: 0,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
-        zIndex: 2,
         pointerEvents: 'none',
-        boxSizing: 'border-box',
       }}
     >
       <div

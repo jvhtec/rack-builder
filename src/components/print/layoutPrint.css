@@ -386,6 +386,72 @@
   display: none;
 }
 
+.print-rack-device-simplified-layout {
+  position: absolute;
+  inset: 2px 4px;
+  display: flex;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.print-rack-device-simplified-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  flex-shrink: 0;
+  max-width: 35%;
+}
+
+.print-rack-device-simplified-brand {
+  color: #111;
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
+}
+
+.print-rack-device-simplified-model {
+  color: #555;
+  font-size: 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
+}
+
+.print-rack-device-simplified-center {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.print-rack-device-simplified-right {
+  flex-shrink: 0;
+  max-width: 30%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.print-rack-device-simplified-name {
+  color: #1a56db;
+  font-size: 7px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
+}
+
 
 .layout-print-page-break {
   /* stylelint-disable-next-line property-no-deprecated */

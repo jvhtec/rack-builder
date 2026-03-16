@@ -355,6 +355,71 @@
   background: #0a0a0a;
 }
 
+.rack-device-simplified-layout {
+  position: absolute;
+  inset: 6px 8px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.rack-device-simplified-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  flex-shrink: 0;
+  max-width: 35%;
+}
+
+.rack-device-simplified-brand {
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rack-device-simplified-model {
+  color: #aaa;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rack-device-simplified-center {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.rack-device-simplified-right {
+  flex-shrink: 0;
+  max-width: 30%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.rack-device-simplified-name {
+  color: #8ab4f8;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+
 .rack-ghost-wrap {
   position: absolute;
   pointer-events: none;
