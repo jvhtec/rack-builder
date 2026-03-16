@@ -884,31 +884,7 @@ export default function LayoutEditorPage() {
                 </Button>
               </div>
 
-              {!isSideView && selectedItemToMove && (() => {
-          const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
-          if (!selectedItem) return null
-          const selectedLabel = selectedItem.custom_name?.trim() || `${selectedItem.device.brand} ${selectedItem.device.model}`
-          return (
-            <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-xl border border-indigo-400 bg-slate-900/95 px-3 py-2 shadow-2xl" style={{ top: 'calc(14.2rem + env(safe-area-inset-top))' }}>
-              <div className="mb-2 text-[11px] font-semibold text-indigo-100 truncate">Offset · {selectedLabel}</div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  step="0.1"
-                  value={mobileOffsetDraft}
-                  onChange={(e) => setMobileOffsetDraft(e.target.value)}
-                  className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"
-                />
-                <button
-                  onClick={() => void handleMobileOffsetSave()}
-                  className="min-h-9 rounded-md border border-indigo-300 bg-indigo-600 px-3 text-xs font-semibold text-white"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          )
-        })()}
+
 
         {placementHint && !isSideView && (
                 <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -1065,8 +1041,37 @@ export default function LayoutEditorPage() {
           </div>
         )}
 
+        {!isSideView && selectedItemToMove && (() => {
+          const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
+          if (!selectedItem) return null
+          const selectedLabel = selectedItem.custom_name?.trim() || `${selectedItem.device.brand} ${selectedItem.device.model}`
+          return (
+            <div
+              className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-[380px] rounded-xl border border-indigo-400 bg-slate-900/95 px-3 py-2 shadow-2xl"
+              style={{ top: 'calc(10rem + env(safe-area-inset-top))' }}
+            >
+              <div className="mb-2 text-[11px] font-semibold text-indigo-100 truncate">Offset · {selectedLabel}</div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={mobileOffsetDraft}
+                  onChange={(e) => setMobileOffsetDraft(e.target.value)}
+                  className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"
+                />
+                <button
+                  onClick={() => void handleMobileOffsetSave()}
+                  className="min-h-9 rounded-md border border-indigo-300 bg-indigo-600 px-3 text-xs font-semibold text-white"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+
         {placementHint && !isSideView && (
-          <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-lg border border-amber-400 bg-amber-100 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-lg" style={{ top: 'calc(10rem + env(safe-area-inset-top))' }}>
+          <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-lg border border-amber-400 bg-amber-100 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-lg" style={{ top: 'calc(14.5rem + env(safe-area-inset-top))' }}>
             {placementHint}
           </div>
         )}
