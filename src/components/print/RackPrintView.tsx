@@ -1,4 +1,4 @@
-import { useMemo, useRef, useLayoutEffect, type CSSProperties } from 'react'
+import { useMemo, useRef, useEffect, type CSSProperties } from 'react'
 import type { DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { buildSlots, getSlotTopPx } from '../editor/rackGeometry'
@@ -10,31 +10,38 @@ function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
   const centerRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!item.notes) return
     const center = centerRef.current
     const textEl = textRef.current
     if (!center || !textEl) return
 
-    const availH = center.clientHeight
-    const availW = center.clientWidth
-    if (availH === 0 || availW === 0) return
+    function scaleText() {
+      if (!center || !textEl) return
+      const availH = center.clientHeight
+      const availW = center.clientWidth
+      if (availH === 0 || availW === 0) return
 
-    let lo = 5
-    let hi = 40
-    textEl.style.fontSize = `${hi}px`
+      let lo = 5
+      let hi = 40
+      textEl.style.fontSize = `${hi}px`
 
-    while (hi - lo > 0.5) {
-      const mid = (lo + hi) / 2
-      textEl.style.fontSize = `${mid}px`
-      if (textEl.scrollHeight <= availH && textEl.scrollWidth <= availW) {
-        lo = mid
-      } else {
-        hi = mid
+      while (hi - lo > 0.5) {
+        const mid = (lo + hi) / 2
+        textEl.style.fontSize = `${mid}px`
+        if (textEl.scrollHeight <= availH && textEl.scrollWidth <= availW) {
+          lo = mid
+        } else {
+          hi = mid
+        }
       }
+      textEl.style.fontSize = `${lo}px`
     }
-    textEl.style.fontSize = `${lo}px`
-  })
+
+    const observer = new ResizeObserver(scaleText)
+    observer.observe(center)
+    return () => observer.disconnect()
+  }, [item.notes])
 
   return (
     <div className="print-rack-device-simplified-layout">

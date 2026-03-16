@@ -1,5 +1,5 @@
 import type { LegacyRef } from 'react'
-import { useRef, useLayoutEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import { useDrag } from 'react-dnd'
 import { PLACED_DEVICE_TYPE, type PlacedDeviceDragItem } from './DraggableDevice'
 import type { ConnectorDefinition, DeviceFacing, LayoutItemWithDevice } from '../../types'
@@ -53,32 +53,41 @@ export default function PlacedDevice({
   const notesCenterRef = useRef<HTMLDivElement>(null)
   const notesTextRef = useRef<HTMLDivElement>(null)
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!simplifiedView || !item.notes) return
     const center = notesCenterRef.current
     const textEl = notesTextRef.current
     if (!center || !textEl) return
 
-    const availH = center.clientHeight
-    const availW = center.clientWidth
-    if (availH === 0 || availW === 0) return
+    function scaleText() {
+      if (!center || !textEl) return
+      const availH = center.clientHeight
+      const availW = center.clientWidth
+      if (availH === 0 || availW === 0) return
 
-    // Binary search: find the largest font size where the text still fits
-    let lo = 5
-    let hi = 80
-    textEl.style.fontSize = `${hi}px`
+      // Binary search: find the largest font size where the text still fits
+      let lo = 5
+      let hi = 80
+      textEl.style.fontSize = `${hi}px`
 
-    while (hi - lo > 0.5) {
-      const mid = (lo + hi) / 2
-      textEl.style.fontSize = `${mid}px`
-      if (textEl.scrollHeight <= availH && textEl.scrollWidth <= availW) {
-        lo = mid
-      } else {
-        hi = mid
+      while (hi - lo > 0.5) {
+        const mid = (lo + hi) / 2
+        textEl.style.fontSize = `${mid}px`
+        if (textEl.scrollHeight <= availH && textEl.scrollWidth <= availW) {
+          lo = mid
+        } else {
+          hi = mid
+        }
       }
+      textEl.style.fontSize = `${lo}px`
     }
-    textEl.style.fontSize = `${lo}px`
-  })
+
+    // ResizeObserver fires after Safari has fully computed flex layout,
+    // avoiding the clientHeight === 0 issue that useLayoutEffect hits on iOS.
+    const observer = new ResizeObserver(scaleText)
+    observer.observe(center)
+    return () => observer.disconnect()
+  }, [simplifiedView, item.notes])
 
   const panelLayout = item.asset_kind === 'panel_layout' ? item.panel_layout ?? null : null
   const hasPanelPreview = !!panelLayout && !!connectorById
