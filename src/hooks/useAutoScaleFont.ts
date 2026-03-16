@@ -43,7 +43,7 @@ export function useAutoScaleFont(
       style.textAlign = 'center'
       style.lineHeight = '1.2'
       style.width = `${containerW}px`
-      style.wordBreak = 'break-word'
+      style.overflowWrap = 'break-word'
 
       // Copy font family from container
       const computed = getComputedStyle(container)
@@ -76,12 +76,17 @@ export function useAutoScaleFont(
 
     compute()
 
+    let rafId = 0
     const observer = new ResizeObserver(() => {
-      compute()
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(compute)
     })
     observer.observe(container)
 
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(rafId)
+    }
   }, [containerRef, text, minFont, maxFontOpt])
 
   return fontSize

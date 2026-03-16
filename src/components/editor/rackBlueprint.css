@@ -402,7 +402,7 @@
   color: #ccc;
   white-space: pre-line;
   overflow: hidden;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .rack-device-simplified-name {

@@ -433,7 +433,7 @@
   color: #333;
   white-space: pre-line;
   overflow: hidden;
-  word-break: break-word;
+  overflow-wrap: break-word;
   font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
