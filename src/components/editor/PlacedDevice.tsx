@@ -63,7 +63,9 @@ export default function PlacedDevice({
 
     function scaleText() {
       if (!center || !textEl) return
-      const availH = center.clientHeight
+      // Compute height from known device dimensions instead of clientHeight,
+      // which Safari mobile reports as 0 for flex items sized by inset offsets.
+      const availH = item.device.rack_units * slotHeight - 12 // 6px top + 6px bottom inset
       const availW = center.clientWidth
       if (availH === 0 || availW === 0) return
 
