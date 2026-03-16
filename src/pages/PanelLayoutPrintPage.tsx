@@ -5,6 +5,8 @@ import type { DeviceFacing, PanelLayout, Project } from '../types'
 import { supabase } from '../lib/supabase'
 import { normalizeActiveColumnMap, toHoleCount } from '../lib/panelGrid'
 import PanelPrintSheet from '../components/print/PanelPrintSheet'
+import { useTheme } from '../hooks/useTheme'
+import ThemeToggle from '../components/ui/ThemeToggle'
 import '../components/print/layoutPrint.css'
 
 interface PanelLayoutRecord extends Omit<PanelLayout, 'rows' | 'ports'> {
@@ -77,6 +79,7 @@ export default function PanelLayoutPrintPage() {
   const { projectId, panelLayoutId } = useParams<{ projectId: string; panelLayoutId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { isDark, toggle } = useTheme()
 
   const [project, setProject] = useState<Project | null>(null)
   const [panel, setPanel] = useState<PanelLayout | null>(null)
@@ -166,6 +169,9 @@ export default function PanelLayoutPrintPage() {
             Rear
           </Button>
           <Button onClick={() => window.print()}>Print</Button>
+          <div className="ml-2 pl-4 border-l border-gray-300 dark:border-slate-700">
+            <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
+          </div>
         </div>
         <p className="layout-print-toolbar-meta">
           {project.name} | {panel.name} | {panel.height_ru}U

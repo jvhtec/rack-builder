@@ -25,11 +25,11 @@ export default function DevicePalette({
   loading,
 }: DevicePaletteProps) {
   return (
-    <div className="w-72 bg-white border-r flex flex-col shrink-0">
-      <div className="px-4 py-4 border-b font-semibold text-base text-gray-700">
+    <div className="w-72 bg-white dark:bg-gray-900 border-r dark:border-gray-800 flex flex-col shrink-0">
+      <div className="px-4 py-4 border-b dark:border-gray-800 font-semibold text-base text-gray-700 dark:text-white">
         Device Library
       </div>
-      <div className="p-3 border-b space-y-2">
+      <div className="p-3 border-b dark:border-gray-800 space-y-2">
         <Select
           label="Category"
           value={selectedCategoryId}

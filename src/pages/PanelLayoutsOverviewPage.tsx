@@ -41,9 +41,9 @@ export default function PanelLayoutsOverviewPage() {
         {projects.map((project) => {
           const panelCount = counts.get(project.id) ?? 0
           return (
-            <article key={project.id} className="rounded-lg border bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-gray-900">{project.name}</h2>
-              <p className="mt-1 text-xs text-gray-500">
+            <article key={project.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{project.name}</h2>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {panelCount} panel layout{panelCount !== 1 ? 's' : ''}
                 {project.owner ? ` · ${project.owner}` : ''}
               </p>
@@ -62,7 +62,7 @@ export default function PanelLayoutsOverviewPage() {
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-gray-500">
+            <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-gray-500 dark:text-gray-400">
               <th className="pb-2 font-medium">Project</th>
               <th className="pb-2 font-medium">Owner</th>
               <th className="pb-2 font-medium">Panel Layouts</th>
@@ -73,10 +73,10 @@ export default function PanelLayoutsOverviewPage() {
             {projects.map((project) => {
               const panelCount = counts.get(project.id) ?? 0
               return (
-                <tr key={project.id} className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="py-3 font-medium text-gray-900">{project.name}</td>
-                  <td className="py-3 text-gray-500">{project.owner ?? '—'}</td>
-                  <td className="py-3">{panelCount}</td>
+                <tr key={project.id} className="border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <td className="py-3 font-medium text-gray-900 dark:text-white">{project.name}</td>
+                  <td className="py-3 text-gray-500 dark:text-gray-400">{project.owner ?? '—'}</td>
+                  <td className="py-3 dark:text-gray-300">{panelCount}</td>
                   <td className="py-3 text-right">
                     <Button onClick={() => navigate(`/editor/project/${project.id}/panels`)}>
                       {panelCount > 0 ? 'Open Panel Layouts' : 'Create Panel Layout'}

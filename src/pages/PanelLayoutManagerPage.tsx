@@ -160,12 +160,12 @@ export default function PanelLayoutManagerPage() {
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {panelLayouts.map((panel) => (
-            <article key={panel.id} className="rounded-lg border bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-gray-900">{panel.name}</h2>
-              <p className="mt-1 text-xs text-gray-600">
+            <article key={panel.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{panel.name}</h2>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                 {panel.height_ru}U • Facing: {panel.facing} • Lacing bar: {panel.has_lacing_bar ? 'Yes' : 'No'}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Row densities: {rowsSummary(panel.height_ru, (panel.rows ?? []).map((row) => row.hole_count))}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">

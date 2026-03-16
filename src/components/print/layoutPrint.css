@@ -11,12 +11,23 @@
   font-size: 15px;
 }
 
+.dark .layout-print-loading,
+.dark .layout-print-error {
+  background: #0f172a;
+  color: #94a3b8;
+}
+
 .layout-print-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background: #dce2eb;
   color: #0f1726;
+}
+
+.dark .layout-print-page {
+  background: #020617;
+  color: #f1f5f9;
 }
 
 .layout-print-toolbar {
@@ -27,6 +38,11 @@
   padding: calc(14px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 14px calc(18px + env(safe-area-inset-left));
   border-bottom: 1px solid #b7c1d0;
   background: #f7f9fc;
+}
+
+.dark .layout-print-toolbar {
+  background: #0f172a;
+  border-color: #1e293b;
 }
 
 .layout-print-toolbar-actions {
@@ -44,12 +60,20 @@
   cursor: pointer;
 }
 
+.dark .layout-print-toolbar-label {
+  color: #94a3b8;
+}
+
 .layout-print-toolbar-meta {
   margin: 0;
   font-size: 12px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: #374155;
+}
+
+.dark .layout-print-toolbar-meta {
+  color: #64748b;
 }
 
 .layout-print-stage {

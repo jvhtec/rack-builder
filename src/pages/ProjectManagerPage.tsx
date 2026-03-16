@@ -109,9 +109,9 @@ export default function ProjectManagerPage() {
         <>
           <div className="space-y-3 md:hidden">
             {projects.map((project) => (
-              <article key={project.id} className="rounded-lg border bg-white p-4 shadow-sm">
-                <h2 className="text-sm font-semibold text-gray-900">{project.name}</h2>
-                <dl className="mt-2 grid grid-cols-2 gap-y-1 text-xs text-gray-600">
+              <article key={project.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{project.name}</h2>
+                <dl className="mt-2 grid grid-cols-2 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
                   <dt>Owner</dt>
                   <dd className="text-right">{project.owner ?? '—'}</dd>
                   <dt>Layouts</dt>
@@ -134,7 +134,7 @@ export default function ProjectManagerPage() {
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-gray-500">
+                <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-gray-500 dark:text-gray-400">
                   <th className="pb-2 font-medium">Name</th>
                   <th className="pb-2 font-medium">Owner</th>
                   <th className="pb-2 font-medium">Layouts</th>
@@ -144,11 +144,11 @@ export default function ProjectManagerPage() {
               </thead>
               <tbody>
                 {projects.map((project) => (
-                  <tr key={project.id} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="py-3 font-medium text-gray-900">{project.name}</td>
-                    <td className="py-3 text-gray-500">{project.owner ?? '—'}</td>
-                    <td className="py-3">{project.layout_count}</td>
-                    <td className="py-3 text-gray-500">{new Date(project.created_at).toLocaleDateString()}</td>
+                  <tr key={project.id} className="border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <td className="py-3 font-medium text-gray-900 dark:text-white">{project.name}</td>
+                    <td className="py-3 text-gray-500 dark:text-gray-400">{project.owner ?? '—'}</td>
+                    <td className="py-3 dark:text-gray-300">{project.layout_count}</td>
+                    <td className="py-3 text-gray-500 dark:text-gray-400">{new Date(project.created_at).toLocaleDateString()}</td>
                     <td className="py-3 text-right">
                       <div className="flex justify-end gap-2">
                         <Button onClick={() => navigate(`/editor/project/${project.id}`)}>Open Editor</Button>

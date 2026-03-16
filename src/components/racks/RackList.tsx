@@ -16,9 +16,9 @@ export default function RackList({ racks, onEdit, onDelete }: RackListProps) {
     <>
       <div className="space-y-3 md:hidden">
         {racks.map((rack) => (
-          <article key={rack.id} className="rounded-lg border bg-white p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900">{rack.name}</h3>
-            <dl className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-gray-600">
+          <article key={rack.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{rack.name}</h3>
+            <dl className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
               <dt>Rack Units</dt>
               <dd className="text-right">{rack.rack_units}U</dd>
               <dt>Depth</dt>
@@ -41,7 +41,7 @@ export default function RackList({ racks, onEdit, onDelete }: RackListProps) {
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-gray-500">
+            <tr className="border-b dark:border-gray-700 text-left text-gray-500 dark:text-gray-400">
               <th className="pb-2 font-medium">Name</th>
               <th className="pb-2 font-medium">Rack Units</th>
               <th className="pb-2 font-medium">Depth (mm)</th>
@@ -51,11 +51,11 @@ export default function RackList({ racks, onEdit, onDelete }: RackListProps) {
           </thead>
           <tbody>
             {racks.map((rack) => (
-              <tr key={rack.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="py-3 font-medium text-gray-900">{rack.name}</td>
-                <td className="py-3">{rack.rack_units}U</td>
-                <td className="py-3">{rack.depth_mm}mm</td>
-                <td className="py-3 capitalize">{rack.width}</td>
+              <tr key={rack.id} className="border-b dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <td className="py-3 font-medium text-gray-900 dark:text-white">{rack.name}</td>
+                <td className="py-3 dark:text-gray-300">{rack.rack_units}U</td>
+                <td className="py-3 dark:text-gray-300">{rack.depth_mm}mm</td>
+                <td className="py-3 capitalize dark:text-gray-300">{rack.width}</td>
                 <td className="py-3 text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="secondary" onClick={() => onEdit(rack)}>

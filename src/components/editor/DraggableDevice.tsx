@@ -51,7 +51,7 @@ export default function DraggableDevice({ device }: DraggableDeviceProps) {
   return (
     <div
       ref={dragRef as unknown as LegacyRef<HTMLDivElement>}
-      className={`border rounded-md p-3 bg-white cursor-grab active:cursor-grabbing transition-opacity shadow-sm ${
+      className={`border dark:border-gray-700 rounded-md p-3 bg-white dark:bg-gray-800 cursor-grab active:cursor-grabbing transition-opacity shadow-sm ${
         isDragging ? 'opacity-40' : 'opacity-100'
       }`}
       style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
@@ -62,11 +62,11 @@ export default function DraggableDevice({ device }: DraggableDeviceProps) {
           src={thumbUrl}
           alt={device.model}
           draggable={false}
-          className="w-full h-14 object-contain bg-gray-50 rounded mb-2"
+          className="w-full h-14 object-contain bg-gray-50 dark:bg-gray-900/50 rounded mb-2"
         />
       )}
-      <div className="text-sm font-medium truncate">{device.brand} {device.model}</div>
-      <div className="text-xs text-gray-500">
+      <div className="text-sm font-medium truncate dark:text-white">{device.brand} {device.model}</div>
+      <div className="text-xs text-gray-500 dark:text-gray-400">
         {device.rack_units}U{device.is_half_rack ? ' · ½' : ''} · {device.power_w}W
       </div>
     </div>

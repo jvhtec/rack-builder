@@ -4,6 +4,8 @@ import Button from '../components/ui/Button'
 import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
 import type { Layout, LayoutItemWithDevice, Project, Rack } from '../types'
 import { supabase } from '../lib/supabase'
+import { useTheme } from '../hooks/useTheme'
+import ThemeToggle from '../components/ui/ThemeToggle'
 import { getDeviceImageUrl } from '../hooks/useDevices'
 import { useConnectors } from '../hooks/useConnectors'
 import { LAYOUT_ITEM_SELECT, mapLayoutItemRows, type LayoutItemRow } from '../lib/layoutItemMapper'
@@ -22,6 +24,7 @@ export default function LayoutPrintPage() {
   const { projectId, layoutId } = useParams<{ projectId: string; layoutId: string }>()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { isDark, toggle } = useTheme()
 
   const [layout, setLayout] = useState<Layout | null>(null)
   const [rack, setRack] = useState<Rack | null>(null)
@@ -249,6 +252,9 @@ export default function LayoutPrintPage() {
             />
             Include simplified view
           </label>
+          <div className="ml-2 pl-4 border-l border-gray-300 dark:border-slate-700">
+            <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
+          </div>
         </div>
         <p className="layout-print-toolbar-meta">
           {layout.name} | {rack.name} | {rackTotals.weightKg.toFixed(2)} kg | {rackTotals.powerW} W | {imagesReady ? 'Ready' : 'Loading images'}

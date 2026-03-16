@@ -56,13 +56,13 @@ export default function ConnectorManagerPage() {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 mb-4 border-b border-gray-200 bg-gray-50/95 pb-4 backdrop-blur">
+      <div className="sticky top-0 z-10 mb-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/95 dark:bg-gray-900/95 pb-4 backdrop-blur">
         <PageHeader
           title="Connector Manager"
           action={<Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">Add Connector</Button>}
         />
 
-        <div className="mb-4 text-gray-700">
+        <div className="mb-4 text-gray-700 dark:text-gray-300">
           Showing {filteredConnectors.length} of {connectors.length} connector{connectors.length === 1 ? '' : 's'}
         </div>
 

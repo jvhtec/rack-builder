@@ -11,6 +11,8 @@ import { getDeviceImageUrl } from '../hooks/useDevices'
 import { useConnectors } from '../hooks/useConnectors'
 import { LAYOUT_ITEM_SELECT, mapLayoutItemRows, type LayoutItemRow } from '../lib/layoutItemMapper'
 import { mapPanelLayout, type PanelLayoutRecord } from '../lib/panelLayoutMapper'
+import { useTheme } from '../hooks/useTheme'
+import ThemeToggle from '../components/ui/ThemeToggle'
 import '../components/print/layoutPrint.css'
 
 interface PrintLayoutModel {
@@ -34,6 +36,7 @@ export default function ProjectPrintPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { isDark, toggle } = useTheme()
 
   const [project, setProject] = useState<Project | null>(null)
   const [layoutModels, setLayoutModels] = useState<PrintLayoutModel[]>([])
@@ -301,6 +304,9 @@ export default function ProjectPrintPage() {
             />
             Include simplified view
           </label>
+          <div className="ml-2 pl-4 border-l border-gray-300 dark:border-slate-700">
+            <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
+          </div>
         </div>
         <p className="layout-print-toolbar-meta">
           {project.name} | {layoutModels.length} layouts + {panelModels.length} panels | {imagesReady ? 'Ready' : 'Loading images'}

@@ -32,6 +32,8 @@ import Modal from '../components/ui/Modal'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
 import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
+import { useTheme } from '../hooks/useTheme'
+import ThemeToggle from '../components/ui/ThemeToggle'
 
 function getTopU(item: LayoutItemWithDevice): number {
   return item.start_u + item.device.rack_units - 1
@@ -189,6 +191,7 @@ export default function LayoutEditorPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { isDark, toggle } = useTheme()
 
   const [facing, setFacing] = useState<DeviceFacing>('front')
   const [viewMode, setViewMode] = useState<RackViewMode>('front')
@@ -878,7 +881,7 @@ export default function LayoutEditorPage() {
   if (!isMobile) {
     return (
       <DndProvider backend={dndBackend} options={dndOptions}>
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex h-screen bg-gray-100 dark:bg-gray-950">
           <DevicePalette
             devices={filteredDevices}
             categories={libraryCategories}
@@ -891,15 +894,15 @@ export default function LayoutEditorPage() {
           />
 
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="bg-white border-b px-6 py-3 shrink-0">
+            <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-3 shrink-0">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
                   <Button variant="secondary" onClick={() => navigate('/projects')}>
                     &larr; Back
                   </Button>
                   <div className="min-w-0">
-                    <h1 className="text-xl font-semibold truncate">{project.name}</h1>
-                    <p className="text-xs text-gray-500 truncate">
+                    <h1 className="text-xl font-semibold dark:text-white truncate">{project.name}</h1>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                       {activeLayout.name} | {rack.name} ({rack.rack_units}U) | {rackTotals.weightKg.toFixed(2)} kg | {rackTotals.powerW} W
                     </p>
                   </div>
@@ -940,14 +943,17 @@ export default function LayoutEditorPage() {
                   >
                     Labels {showDeviceNames ? 'On' : 'Off'}
                   </Button>
-                  <Button
-                    variant={simplifiedView ? 'primary' : 'secondary'}
-                    onClick={() => setSimplifiedView((prev) => !prev)}
-                  >
-                    Simplified {simplifiedView ? 'On' : 'Off'}
-                  </Button>
+                    <Button
+                      variant={simplifiedView ? 'primary' : 'secondary'}
+                      onClick={() => setSimplifiedView((prev) => !prev)}
+                    >
+                      Simplified {simplifiedView ? 'On' : 'Off'}
+                    </Button>
+                    <div className="ml-2 pl-4 border-l border-gray-200 dark:border-gray-700">
+                      <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" />
+                    </div>
+                  </div>
                 </div>
-              </div>
 
               <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
                 {tabButtons}
@@ -1074,18 +1080,21 @@ export default function LayoutEditorPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden">
-      <header className="flex items-center justify-between px-4 h-14 bg-slate-900 border-b border-slate-800 shrink-0 z-30" style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(3.5rem + env(safe-area-inset-top))' }}>
-        <button onClick={() => navigate('/projects')} className="text-slate-300 text-sm font-semibold">
-          ← Back
+    <div className="flex flex-col h-screen bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100 overflow-hidden">
+      <header className="flex items-center justify-between px-4 h-14 bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shrink-0 z-30" style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(3.5rem + env(safe-area-inset-top))' }}>
+        <button onClick={() => navigate('/projects')} className="text-gray-600 dark:text-slate-300 text-sm font-semibold">
+          &larr; Back
         </button>
         <div className="flex flex-col items-center min-w-0 px-2">
-          <h1 className="text-sm font-bold truncate max-w-[180px]">{project.name}</h1>
-          <span className="text-[10px] text-slate-500 uppercase tracking-widest truncate">{activeLayout.name}</span>
+          <h1 className="text-sm font-bold truncate max-w-[150px] dark:text-white">{project.name}</h1>
+          <span className="text-[10px] text-gray-500 dark:text-slate-500 uppercase tracking-widest truncate">{activeLayout.name}</span>
         </div>
-        <button onClick={() => setIsSheetOpen(true)} className="text-indigo-400 text-sm font-semibold">
-          Menu
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
+          <button onClick={() => setIsSheetOpen(true)} className="text-blue-600 dark:text-indigo-400 text-sm font-semibold px-2">
+            Menu
+          </button>
+        </div>
       </header>
 
       <div className="px-2 py-2 bg-slate-900 border-b border-slate-800 overflow-x-auto shrink-0">

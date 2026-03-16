@@ -14,6 +14,8 @@ import {
 } from '../lib/panelGrid'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
 import type { ConnectorDefinition, DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../types'
+import { useTheme } from '../hooks/useTheme'
+import ThemeToggle from '../components/ui/ThemeToggle'
 import PanelLayoutCanvas from '../components/panels/PanelLayoutCanvas'
 import { CONNECTOR_ITEM_TYPE, type ConnectorDragItem } from '../components/panels/panelDndTypes'
 
@@ -184,6 +186,7 @@ function DraggableConnectorButton({
 function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
   const { projectId, panelLayoutId } = useParams<{ projectId: string; panelLayoutId: string }>()
   const navigate = useNavigate()
+  const { isDark, toggle } = useTheme()
   const {
     panelLayouts,
     loading,
@@ -528,29 +531,32 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
       : null
 
     return (
-      <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden">
+      <div className="flex flex-col h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 overflow-hidden">
         {/* Mobile header */}
         <header
-          className="flex items-center justify-between px-4 bg-slate-900 border-b border-slate-800 shrink-0 z-30"
+          className="flex items-center justify-between px-4 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shrink-0 z-30"
           style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(3.5rem + env(safe-area-inset-top))' }}
         >
           <button
             onClick={() => navigate(`/editor/project/${projectId}/panels`)}
-            className="text-slate-300 text-sm font-semibold"
+            className="text-gray-600 dark:text-slate-300 text-sm font-semibold"
           >
-            ← Back
+            &larr; Back
           </button>
           <div className="flex flex-col items-center min-w-0 px-2">
-            <h1 className="text-sm font-bold truncate max-w-[180px]">{panel.name}</h1>
-            <span className="text-[10px] text-slate-500">{panel.height_ru}U · {facing} · {ports.length} connectors</span>
+            <h1 className="text-sm font-bold truncate max-w-[150px] dark:text-white">{panel.name}</h1>
+            <span className="text-[10px] text-gray-500 dark:text-slate-500">{panel.height_ru}U · {facing} · {ports.length} connectors</span>
           </div>
-          <button
-            onClick={() => void handleSave()}
-            disabled={!saveActive}
-            className={`text-sm font-semibold ${saveActive ? 'text-amber-400' : 'text-slate-600'}`}
-          >
-            {saving ? '…' : dirty ? 'Save' : 'Saved'}
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
+            <button
+              onClick={() => void handleSave()}
+              disabled={!saveActive}
+              className={`text-sm font-semibold px-2 ${saveActive ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-slate-600'}`}
+            >
+              {saving ? '…' : dirty ? 'Save' : 'Saved'}
+            </button>
+          </div>
         </header>
 
         {/* Error banner */}
@@ -887,11 +893,11 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
 
   // ─── Desktop Layout ──────────────────────────────────────────────────────────
   return (
-    // Full workspace: dark background, full-height layout
-    <div className="flex h-full min-h-screen flex-col gap-0 bg-slate-950 text-slate-100 -m-4 md:-m-6 md:text-[17px]">
+    // Full workspace: theme-aware background, full-height layout
+    <div className="flex h-full min-h-screen flex-col gap-0 bg-gray-100 dark:bg-slate-950 text-gray-900 dark:text-slate-100 -m-4 md:-m-6 md:text-[17px]">
 
       {/* ── Toolbar ──────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-6 border-b border-slate-800 bg-slate-950/90 px-8 py-5 backdrop-blur-sm">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-6 border-b border-gray-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-8 py-5 backdrop-blur-sm">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate(`/editor/project/${projectId}/panels`)}
@@ -902,10 +908,10 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
             </svg>
             Panels
           </button>
-          <div className="h-5 w-px bg-slate-700" />
+          <div className="h-5 w-px bg-gray-200 dark:bg-slate-700" />
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold text-slate-100 md:text-2xl">{panel.name}</h1>
-            <p className="text-sm text-slate-500">{panel.height_ru}U • {rows.length} rows • {ports.length} connectors</p>
+            <h1 className="truncate text-lg font-semibold text-gray-900 dark:text-slate-100 md:text-2xl">{panel.name}</h1>
+            <p className="text-sm text-gray-500 dark:text-slate-500">{panel.height_ru}U • {rows.length} rows • {ports.length} connectors</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -929,6 +935,9 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
           >
             {saveLabel}
           </button>
+          <div className="ml-2 pl-4 border-l border-gray-200 dark:border-slate-700">
+            <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
+          </div>
         </div>
       </header>
 
