@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { LayoutItemWithDevice, Rack } from '../../types'
 import { getItemSlot } from '../../lib/rackPositions'
 import { hasDepthConflict } from '../../lib/overlap'
-import { inwardDepthMm } from '../../lib/deviceDepth'
 import {
   buildSlots,
   getAutoSlotHeight,
