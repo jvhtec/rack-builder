@@ -10,8 +10,9 @@ function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
   const centerRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
 
+  const centerText = item.notes || item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
+
   useEffect(() => {
-    if (!item.notes) return
     const center = centerRef.current
     const textEl = textRef.current
     if (!center || !textEl) return
@@ -41,7 +42,7 @@ function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
     const observer = new ResizeObserver(scaleText)
     observer.observe(center)
     return () => observer.disconnect()
-  }, [item.notes])
+  }, [centerText])
 
   return (
     <div className="print-rack-device-simplified-layout">
@@ -50,11 +51,9 @@ function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
         <span className="print-rack-device-simplified-model">{item.device.model}</span>
       </div>
       <div ref={centerRef} className="print-rack-device-simplified-center">
-        {item.notes && (
-          <div ref={textRef} className="print-rack-device-simplified-notes">
-            {item.notes}
-          </div>
-        )}
+        <div ref={textRef} className="print-rack-device-simplified-notes">
+          {centerText}
+        </div>
       </div>
       <div className="print-rack-device-simplified-right">
         {item.custom_name?.trim() && (

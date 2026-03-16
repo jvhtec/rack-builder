@@ -53,8 +53,10 @@ export default function PlacedDevice({
   const notesCenterRef = useRef<HTMLDivElement>(null)
   const notesTextRef = useRef<HTMLDivElement>(null)
 
+  const centerText = item.notes || item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
+
   useEffect(() => {
-    if (!simplifiedView || !item.notes) return
+    if (!simplifiedView) return
     const center = notesCenterRef.current
     const textEl = notesTextRef.current
     if (!center || !textEl) return
@@ -87,7 +89,7 @@ export default function PlacedDevice({
     const observer = new ResizeObserver(scaleText)
     observer.observe(center)
     return () => observer.disconnect()
-  }, [simplifiedView, item.notes])
+  }, [simplifiedView, centerText])
 
   const panelLayout = item.asset_kind === 'panel_layout' ? item.panel_layout ?? null : null
   const hasPanelPreview = !!panelLayout && !!connectorById
@@ -124,11 +126,9 @@ export default function PlacedDevice({
             <span className="rack-device-simplified-model">{item.device.model}</span>
           </div>
           <div ref={notesCenterRef} className="rack-device-simplified-center">
-            {item.notes && (
-              <div ref={notesTextRef} className="rack-device-simplified-notes">
-                {item.notes}
-              </div>
-            )}
+            <div ref={notesTextRef} className="rack-device-simplified-notes">
+              {centerText}
+            </div>
           </div>
           <div className="rack-device-simplified-right">
             {item.custom_name?.trim() && (

@@ -396,6 +396,7 @@
 .rack-device-simplified-center {
   flex: 1;
   min-width: 0;
+  height: 100%;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -406,7 +407,8 @@
   color: #ccc;
   text-align: center;
   white-space: pre-line;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: anywhere;
   line-height: 1.25;
   font-weight: 600;
   width: 100%;
