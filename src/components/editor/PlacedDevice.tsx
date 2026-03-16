@@ -82,8 +82,12 @@ export default function PlacedDevice({
             <span className="rack-device-simplified-brand">{item.device.brand}</span>
             <span className="rack-device-simplified-model">{item.device.model}</span>
           </div>
+          {item.notes && (
+            <div className="rack-device-simplified-notes-wrap">
+              <div className="rack-device-simplified-notes">{item.notes}</div>
+            </div>
+          )}
           <div className="rack-device-simplified-right">
-            {item.notes && <div className="rack-device-simplified-notes">{item.notes}</div>}
             <span className="rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
           </div>
         </div>
