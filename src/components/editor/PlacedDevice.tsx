@@ -61,13 +61,17 @@ export default function PlacedDevice({
     const textEl = notesTextRef.current
     if (!center || !textEl) return
 
+    // Safari mobile does not compute a definite CSS height for flex items
+    // inside absolutely-positioned containers sized via inset offsets.
+    // Set the height directly in pixels so the element is visible and
+    // overflow:hidden clips at the right boundary.
+    const availH = item.device.rack_units * slotHeight - 12 // 6px top + 6px bottom inset
+    center.style.height = `${availH}px`
+
     function scaleText() {
       if (!center || !textEl) return
-      // Compute height from known device dimensions instead of clientHeight,
-      // which Safari mobile reports as 0 for flex items sized by inset offsets.
-      const availH = item.device.rack_units * slotHeight - 12 // 6px top + 6px bottom inset
       const availW = center.clientWidth
-      if (availH === 0 || availW === 0) return
+      if (availW === 0) return
 
       // Binary search: find the largest font size where the text still fits
       let lo = 5
@@ -86,12 +90,13 @@ export default function PlacedDevice({
       textEl.style.fontSize = `${lo}px`
     }
 
-    // ResizeObserver fires after Safari has fully computed flex layout,
-    // avoiding the clientHeight === 0 issue that useLayoutEffect hits on iOS.
     const observer = new ResizeObserver(scaleText)
     observer.observe(center)
-    return () => observer.disconnect()
-  }, [simplifiedView, centerText])
+    return () => {
+      observer.disconnect()
+      center.style.height = ''
+    }
+  }, [simplifiedView, centerText, item.device.rack_units, slotHeight])
 
   const panelLayout = item.asset_kind === 'panel_layout' ? item.panel_layout ?? null : null
   const hasPanelPreview = !!panelLayout && !!connectorById
