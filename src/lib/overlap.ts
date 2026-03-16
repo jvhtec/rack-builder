@@ -6,6 +6,13 @@ function toFiniteNumber(value: unknown): number | null {
   return Number.isFinite(numeric) ? numeric : null
 }
 
+export function effectiveDepthMm(depthMm: number, rackEarOffsetMm: number): number {
+  const depth = toFiniteNumber(depthMm)
+  const offset = toFiniteNumber(rackEarOffsetMm)
+  if (depth === null || offset === null) return 0
+  return Math.max(0, depth - offset)
+}
+
 export function hasOverlap(
   startU: number,
   rackUnits: number,
@@ -43,19 +50,12 @@ export interface DepthConflictDetail {
   rackDepthMm: number
 }
 
-/**
- * Returns true when a device being placed at `startU`/`rackUnits` on `facing`
- * with depth `deviceDepthMm` would physically collide with an opposing-face device
- * given the rack's total internal depth (`rackDepthMm`).
- *
- * Two devices on opposite faces conflict at the same vertical positions when:
- *   front_depth + rear_depth > rack_depth
- */
 export function hasDepthConflict(
   startU: number,
   rackUnits: number,
   facing: DeviceFacing,
   deviceDepthMm: number,
+  currentRackEarOffsetMm: number,
   items: LayoutItemWithDevice[],
   rackDepthMm: number,
   excludeItemId?: string,
@@ -69,6 +69,7 @@ export function hasDepthConflict(
       rackUnits,
       facing,
       deviceDepthMm,
+      currentRackEarOffsetMm,
       items,
       rackDepthMm,
       excludeItemId,
@@ -84,6 +85,7 @@ export function findDepthConflict(
   rackUnits: number,
   facing: DeviceFacing,
   deviceDepthMm: number,
+  currentRackEarOffsetMm: number,
   items: LayoutItemWithDevice[],
   rackDepthMm: number,
   excludeItemId?: string,
@@ -93,7 +95,7 @@ export function findDepthConflict(
 ): DepthConflictDetail | null {
   const normalizedStartU = toFiniteNumber(startU)
   const normalizedRackUnits = toFiniteNumber(rackUnits)
-  const currentDepth = toFiniteNumber(deviceDepthMm)
+  const currentDepth = toFiniteNumber(effectiveDepthMm(deviceDepthMm, currentRackEarOffsetMm))
   const rackDepth = toFiniteNumber(rackDepthMm)
   if (normalizedStartU === null || normalizedRackUnits === null || currentDepth === null || rackDepth === null) return null
 
@@ -115,7 +117,7 @@ export function findDepthConflict(
       if (!slotsConflict(targetSlot, oppositeSlot)) continue
     }
 
-    const oppositeDepth = toFiniteNumber(item.device.depth_mm)
+    const oppositeDepth = toFiniteNumber(effectiveDepthMm(item.device.depth_mm, item.rack_ear_offset_mm))
     if (oppositeDepth === null) continue
 
     const combinedDepth = currentDepth + oppositeDepth
