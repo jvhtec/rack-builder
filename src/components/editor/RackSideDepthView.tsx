@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { LayoutItemWithDevice, Rack } from '../../types'
 import { getItemSlot } from '../../lib/rackPositions'
-import { hasDepthConflict } from '../../lib/overlap'
+import { effectiveDepthMm, hasDepthConflict } from '../../lib/overlap'
 import {
   buildSlots,
   getAutoSlotHeight,
@@ -90,7 +90,8 @@ export default function RackSideDepthView({
     return items.map((item): DepthSegment => {
       const slot = slotByItemId.get(item.id) ?? getItemSlot(item, rack.width)
       const lane: 0 | 1 = rack.width === 'dual' ? ((slot.outer ?? 0) as 0 | 1) : 0
-      const depthPctRaw = ratioBase > 0 ? item.device.depth_mm * ratioBase : 100
+      const effectiveDepth = effectiveDepthMm(item.device.depth_mm, item.rack_ear_offset_mm)
+      const depthPctRaw = ratioBase > 0 ? effectiveDepth * ratioBase : 100
       const depthPct = clamp(depthPctRaw, 5, 100)
       const frontOffset = side === 'left' ? 0 : 100 - depthPct
       const rearOffset = side === 'left' ? 100 - depthPct : 0
@@ -111,6 +112,7 @@ export default function RackSideDepthView({
           item.device.rack_units,
           item.facing,
           item.device.depth_mm,
+          item.rack_ear_offset_mm,
           items,
           rack.depth_mm,
           item.id,

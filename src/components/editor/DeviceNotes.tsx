@@ -6,14 +6,21 @@ import type { LayoutItemWithDevice } from '../../types'
 
 interface DeviceNotesProps {
   item: LayoutItemWithDevice | null
-  onSave: (itemId: string, updates: { notes: string; custom_name: string | null; force_full_width?: boolean }) => Promise<void>
+  onSave: (itemId: string, updates: { notes: string; custom_name: string | null; force_full_width?: boolean; rack_ear_offset_mm?: number }) => Promise<void>
   onClose: () => void
+}
+
+function toOffset(value: string): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return 0
+  return Math.round(parsed * 10) / 10
 }
 
 export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps) {
   const [customName, setCustomName] = useState(item?.custom_name ?? '')
   const [notes, setNotes] = useState(item?.notes ?? '')
   const [forceFullWidth, setForceFullWidth] = useState(item?.force_full_width ?? false)
+  const [rackEarOffset, setRackEarOffset] = useState(String(item?.rack_ear_offset_mm ?? 0))
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -22,6 +29,7 @@ export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps)
     await onSave(item.id, {
       custom_name: customName.trim() || null,
       notes,
+      rack_ear_offset_mm: toOffset(rackEarOffset),
       ...(item.device.is_half_rack ? { force_full_width: forceFullWidth } : {}),
     })
     setSaving(false)
@@ -42,6 +50,14 @@ export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps)
           value={customName}
           onChange={(e) => setCustomName(e.target.value)}
           placeholder={defaultName}
+        />
+        <Input
+          label="Rack ear offset (mm)"
+          type="number"
+          step="0.1"
+          value={rackEarOffset}
+          onChange={(e) => setRackEarOffset(e.target.value)}
+          placeholder="0"
         />
         <textarea
           className="w-full border rounded-md p-2 text-sm h-32 focus:outline-none focus:ring-2 focus:ring-blue-500"

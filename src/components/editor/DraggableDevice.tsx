@@ -13,6 +13,7 @@ export interface DeviceDragItem {
   isHalfRack: boolean
   forceFullWidth: boolean
   depthMm: number
+  rackEarOffsetMm: number
 }
 
 export interface PlacedDeviceDragItem {
@@ -23,6 +24,7 @@ export interface PlacedDeviceDragItem {
   isHalfRack: boolean
   forceFullWidth: boolean
   depthMm: number
+  rackEarOffsetMm: number
 }
 
 interface DraggableDeviceProps {
@@ -39,6 +41,7 @@ export default function DraggableDevice({ device }: DraggableDeviceProps) {
       isHalfRack: device.is_half_rack,
       forceFullWidth: false,
       depthMm: device.depth_mm,
+      rackEarOffsetMm: 0,
     },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   })

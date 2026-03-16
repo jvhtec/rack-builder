@@ -374,6 +374,7 @@ export interface Database {
           preferred_lane: number | null
           preferred_sub_lane: number | null
           force_full_width: boolean
+          rack_ear_offset_mm: number
           custom_name: string | null
           notes: string | null
         }
@@ -387,6 +388,7 @@ export interface Database {
           preferred_lane?: number | null
           preferred_sub_lane?: number | null
           force_full_width?: boolean
+          rack_ear_offset_mm?: number
           custom_name?: string | null
           notes?: string | null
         }
@@ -400,6 +402,7 @@ export interface Database {
           preferred_lane?: number | null
           preferred_sub_lane?: number | null
           force_full_width?: boolean
+          rack_ear_offset_mm?: number
           custom_name?: string | null
           notes?: string | null
         }

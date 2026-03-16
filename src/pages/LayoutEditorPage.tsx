@@ -206,6 +206,7 @@ export default function LayoutEditorPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
   const [selectedBrand, setSelectedBrand] = useState(ALL_BRAND)
   const [selectedItemToMove, setSelectedItemToMove] = useState<string | null>(null)
+  const [mobileOffsetDraft, setMobileOffsetDraft] = useState('0')
   const [hoverPlacementHint, setHoverPlacementHint] = useState<string | null>(null)
   const [placementErrorHint, setPlacementErrorHint] = useState<string | null>(null)
   const placementHint = placementErrorHint ?? hoverPlacementHint
@@ -471,6 +472,7 @@ export default function LayoutEditorPage() {
     isHalfRack: boolean,
     forceFullWidth: boolean,
     depthMm: number,
+    rackEarOffsetMm = 0,
     excludeItemId?: string,
     preferredLane?: 0 | 1,
     preferredSubLane?: 0 | 1,
@@ -507,6 +509,7 @@ export default function LayoutEditorPage() {
       normalizedRackUnits,
       facing,
       depthMm,
+      rackEarOffsetMm,
       items,
       rack.depth_mm,
       excludeItemId,
@@ -567,6 +570,7 @@ export default function LayoutEditorPage() {
         false,
         false,
         panelDepthMm,
+        0,
         undefined,
         preferredLane,
         preferredSubLane,
@@ -604,6 +608,7 @@ export default function LayoutEditorPage() {
       device.is_half_rack,
       false,
       device.depth_mm,
+      0,
       undefined,
       preferredLane,
       preferredSubLane,
@@ -642,6 +647,7 @@ export default function LayoutEditorPage() {
       item.device.is_half_rack,
       item.force_full_width,
       item.device.depth_mm,
+      item.rack_ear_offset_mm,
       selectedItemToMove,
       preferredLane,
       preferredSubLane,
@@ -659,6 +665,18 @@ export default function LayoutEditorPage() {
       console.error('Tap move failed:', err)
       showBackendPlacementReject('Move', err)
     }
+  }
+
+
+  const handleMobileOffsetSave = async () => {
+    if (!selectedItemToMove) return
+    const offset = Number(mobileOffsetDraft)
+    if (!Number.isFinite(offset)) {
+      setPlacementErrorHint('Rack ear offset must be a valid number.')
+      return
+    }
+    await updateItemDetails(selectedItemToMove, { rack_ear_offset_mm: Math.round(offset * 10) / 10 })
+    setPlacementErrorHint(null)
   }
 
   const openCreateLayoutModal = () => {
@@ -743,7 +761,7 @@ export default function LayoutEditorPage() {
 
   const handleSaveNotes = async (
     itemId: string,
-    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean }>,
+    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean; rack_ear_offset_mm: number }>,
   ) => {
     // When a half-rack device is being widened to full-column, verify it won't conflict
     if (updates.force_full_width === true && rack) {
@@ -866,7 +884,9 @@ export default function LayoutEditorPage() {
                 </Button>
               </div>
 
-              {placementHint && !isSideView && (
+
+
+        {placementHint && !isSideView && (
                 <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                   {placementHint}
                 </div>
@@ -1017,12 +1037,41 @@ export default function LayoutEditorPage() {
         {!isSideView && (selectedDeviceTemplate || selectedItemToMove) && (
           <div className="fixed left-1/2 -translate-x-1/2 z-20 bg-indigo-600 px-4 py-2 rounded-full shadow-2xl border border-indigo-400 flex items-center gap-2" style={{ top: 'calc(7rem + env(safe-area-inset-top))' }}>
             <span className="text-xs font-bold">{selectedItemToMove ? 'Tap a slot to move' : 'Tap a slot to place'}</span>
-            <button onClick={() => { setSelectedDeviceTemplate(null); setSelectedItemToMove(null) }} className="text-xs">✕</button>
+            <button onClick={() => { setSelectedDeviceTemplate(null); setSelectedItemToMove(null); setMobileOffsetDraft('0') }} className="text-xs">✕</button>
           </div>
         )}
 
+        {!isSideView && selectedItemToMove && (() => {
+          const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
+          if (!selectedItem) return null
+          const selectedLabel = selectedItem.custom_name?.trim() || `${selectedItem.device.brand} ${selectedItem.device.model}`
+          return (
+            <div
+              className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-[380px] rounded-xl border border-indigo-400 bg-slate-900/95 px-3 py-2 shadow-2xl"
+              style={{ top: 'calc(10rem + env(safe-area-inset-top))' }}
+            >
+              <div className="mb-2 text-[11px] font-semibold text-indigo-100 truncate">Offset · {selectedLabel}</div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={mobileOffsetDraft}
+                  onChange={(e) => setMobileOffsetDraft(e.target.value)}
+                  className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"
+                />
+                <button
+                  onClick={() => void handleMobileOffsetSave()}
+                  className="min-h-9 rounded-md border border-indigo-300 bg-indigo-600 px-3 text-xs font-semibold text-white"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+
         {placementHint && !isSideView && (
-          <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-lg border border-amber-400 bg-amber-100 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-lg" style={{ top: 'calc(10rem + env(safe-area-inset-top))' }}>
+          <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-lg border border-amber-400 bg-amber-100 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-lg" style={{ top: 'calc(14.5rem + env(safe-area-inset-top))' }}>
             {placementHint}
           </div>
         )}
@@ -1122,6 +1171,7 @@ export default function LayoutEditorPage() {
                                 } else {
                                   setSelectedItemToMove(item.id)
                                   setSelectedDeviceTemplate(null)
+                                  setMobileOffsetDraft(String(item.rack_ear_offset_mm ?? 0))
                                 }
                               }
                             : undefined

@@ -196,7 +196,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
 
   const updateItemDetails = async (
     itemId: string,
-    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean }>,
+    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean; rack_ear_offset_mm: number }>,
   ) => {
     let { error: err } = await supabase
       .from('layout_items')

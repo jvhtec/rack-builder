@@ -126,6 +126,7 @@ export interface LayoutItem {
   preferred_lane: 0 | 1 | null
   preferred_sub_lane: 0 | 1 | null
   force_full_width: boolean
+  rack_ear_offset_mm: number
   custom_name: string | null
   notes: string | null
 }

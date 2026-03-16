@@ -12,6 +12,7 @@ export interface LayoutItemRow {
   preferred_lane?: number | null
   preferred_sub_lane?: number | null
   force_full_width?: boolean | null
+  rack_ear_offset_mm?: number | null
   custom_name?: string | null
   notes: string | null
   device: Record<string, unknown> | null
@@ -178,6 +179,7 @@ export function mapLayoutItemRows(rows: LayoutItemRow[], connectorById: Map<stri
       preferred_lane: row.preferred_lane === 0 || row.preferred_lane === 1 ? row.preferred_lane : null,
       preferred_sub_lane: row.preferred_sub_lane === 0 || row.preferred_sub_lane === 1 ? row.preferred_sub_lane : null,
       force_full_width: row.force_full_width === true,
+      rack_ear_offset_mm: toNumber(row.rack_ear_offset_mm, 0),
       custom_name: row.custom_name ?? null,
       notes: row.notes,
       device,
