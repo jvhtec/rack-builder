@@ -403,7 +403,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-rack-device-simplified-model {
@@ -412,7 +412,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-rack-device-simplified-right {
@@ -435,7 +435,7 @@
   -webkit-line-clamp: 3;
   white-space: pre-line;
   text-align: right;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-rack-device-simplified-name {
@@ -446,7 +446,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: right;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 

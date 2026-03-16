@@ -6,6 +6,21 @@ import { getRackPanelAspect } from '../../lib/rackVisual'
 import { getItemSlot, getSlotStyle } from '../../lib/rackPositions'
 import { buildRackFaceViewModel, selectFacingImagePath } from '../../lib/rackViewModel'
 
+function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
+  return (
+    <div className="print-rack-device-simplified-layout">
+      <div className="print-rack-device-simplified-left">
+        <span className="print-rack-device-simplified-brand">{item.device.brand}</span>
+        <span className="print-rack-device-simplified-model">{item.device.model}</span>
+      </div>
+      <div className="print-rack-device-simplified-right">
+        {item.notes && <span className="print-rack-device-simplified-notes">{item.notes}</span>}
+        <span className="print-rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
+      </div>
+    </div>
+  )
+}
+
 const PRINT_RAIL_WIDTH_PX = 10
 const PRINT_SINGLE_WIDTH_PX = 420
 const PRINT_DUAL_WIDTH_PX = 690
@@ -113,16 +128,7 @@ export default function RackPrintView({
                   >
                     <div className={`print-rack-device ${item.device.rack_units === 1 ? 'print-rack-device--compact' : ''} ${simplifiedView ? 'print-rack-device--simplified' : ''}`}>
                       {simplifiedView ? (
-                        <div className="print-rack-device-simplified-layout">
-                          <div className="print-rack-device-simplified-left">
-                            <span className="print-rack-device-simplified-brand">{item.device.brand}</span>
-                            <span className="print-rack-device-simplified-model">{item.device.model}</span>
-                          </div>
-                          <div className="print-rack-device-simplified-right">
-                            {item.notes && <span className="print-rack-device-simplified-notes">{item.notes}</span>}
-                            <span className="print-rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
-                          </div>
-                        </div>
+                        <SimplifiedDeviceContent item={item} />
                       ) : (
                         <>
                           <div className="print-rack-device-media">
@@ -173,16 +179,7 @@ export default function RackPrintView({
                   >
                     <div className={`print-rack-device ${item.device.rack_units === 1 ? 'print-rack-device--compact' : ''} ${simplifiedView ? 'print-rack-device--simplified' : ''}`}>
                       {simplifiedView ? (
-                        <div className="print-rack-device-simplified-layout">
-                          <div className="print-rack-device-simplified-left">
-                            <span className="print-rack-device-simplified-brand">{item.device.brand}</span>
-                            <span className="print-rack-device-simplified-model">{item.device.model}</span>
-                          </div>
-                          <div className="print-rack-device-simplified-right">
-                            {item.notes && <span className="print-rack-device-simplified-notes">{item.notes}</span>}
-                            <span className="print-rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
-                          </div>
-                        </div>
+                        <SimplifiedDeviceContent item={item} />
                       ) : (
                         <>
                           <div className="print-rack-device-media">

@@ -360,7 +360,7 @@ export default function ProjectPrintPage() {
         })}
 
         {panelModels.map((panel, index) => {
-          const pageNumber = layoutModels.length + index + 3
+          const pageNumber = layoutModels.length * layoutPagesPerLayout + index + 3
           const isLast = index === panelModels.length - 1
           return (
             <PanelPrintSheet
