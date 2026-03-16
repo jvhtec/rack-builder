@@ -206,6 +206,10 @@ export default function LayoutEditorPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
   const [selectedBrand, setSelectedBrand] = useState(ALL_BRAND)
   const [selectedItemToMove, setSelectedItemToMove] = useState<string | null>(null)
+  const [mobileOffsetDraft, setMobileOffsetDraft] = useState('0')
+  const [mobileNameDraft, setMobileNameDraft] = useState('')
+  const [mobileNotesDraft, setMobileNotesDraft] = useState('')
+  const [mobileEditorError, setMobileEditorError] = useState<string | null>(null)
   const [hoverPlacementHint, setHoverPlacementHint] = useState<string | null>(null)
   const [placementErrorHint, setPlacementErrorHint] = useState<string | null>(null)
   const placementHint = placementErrorHint ?? hoverPlacementHint
@@ -334,6 +338,24 @@ export default function LayoutEditorPage() {
     if (hoverPlacementHint) setHoverPlacementHint(null)
     if (placementErrorHint) setPlacementErrorHint(null)
   }, [hoverPlacementHint, isSideView, placementErrorHint])
+
+  useEffect(() => {
+    if (!selectedItemToMove) {
+      setMobileOffsetDraft('0')
+      setMobileNameDraft('')
+      setMobileNotesDraft('')
+      setMobileEditorError(null)
+      return
+    }
+
+    const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
+    if (!selectedItem) return
+
+    setMobileOffsetDraft(String(selectedItem.rack_ear_offset_mm ?? 0))
+    setMobileNameDraft(selectedItem.custom_name ?? '')
+    setMobileNotesDraft(selectedItem.notes ?? '')
+    setMobileEditorError(null)
+  }, [items, selectedItemToMove])
 
   const panelLibraryDevices = useMemo(() => panelLayouts.map((panel) => ({
     id: panelTemplateDeviceId(panel.id),
@@ -471,6 +493,7 @@ export default function LayoutEditorPage() {
     isHalfRack: boolean,
     forceFullWidth: boolean,
     depthMm: number,
+    rackEarOffsetMm = 0,
     excludeItemId?: string,
     preferredLane?: 0 | 1,
     preferredSubLane?: 0 | 1,
@@ -507,6 +530,7 @@ export default function LayoutEditorPage() {
       normalizedRackUnits,
       facing,
       depthMm,
+      rackEarOffsetMm,
       items,
       rack.depth_mm,
       excludeItemId,
@@ -567,6 +591,7 @@ export default function LayoutEditorPage() {
         false,
         false,
         panelDepthMm,
+        0,
         undefined,
         preferredLane,
         preferredSubLane,
@@ -604,6 +629,7 @@ export default function LayoutEditorPage() {
       device.is_half_rack,
       false,
       device.depth_mm,
+      0,
       undefined,
       preferredLane,
       preferredSubLane,
@@ -642,6 +668,7 @@ export default function LayoutEditorPage() {
       item.device.is_half_rack,
       item.force_full_width,
       item.device.depth_mm,
+      item.rack_ear_offset_mm,
       selectedItemToMove,
       preferredLane,
       preferredSubLane,
@@ -659,6 +686,55 @@ export default function LayoutEditorPage() {
       console.error('Tap move failed:', err)
       showBackendPlacementReject('Move', err)
     }
+  }
+
+
+  const handleMobileOffsetSave = async () => {
+    if (!selectedItemToMove) return
+
+    const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
+    if (!selectedItem) return
+
+    const offset = Number(mobileOffsetDraft)
+    if (!Number.isFinite(offset)) {
+      setMobileEditorError('Rack ear offset must be a valid number.')
+      return
+    }
+    if (offset < 0) {
+      setMobileEditorError('Rack ear offset cannot be negative.')
+      return
+    }
+
+    const normalizedOffset = Math.round(offset * 10) / 10
+    const issue = getPlacementIssue(
+      selectedItem.start_u,
+      selectedItem.device.rack_units,
+      selectedItem.device.is_half_rack,
+      selectedItem.force_full_width,
+      selectedItem.device.depth_mm,
+      normalizedOffset,
+      selectedItem.id,
+      selectedItem.preferred_lane ?? undefined,
+      selectedItem.preferred_sub_lane ?? undefined,
+    )
+    if (issue) {
+      setMobileEditorError(issue)
+      return
+    }
+
+    await updateItemDetails(selectedItemToMove, {
+      custom_name: mobileNameDraft.trim() || null,
+      notes: mobileNotesDraft,
+      rack_ear_offset_mm: normalizedOffset,
+    })
+    setMobileEditorError(null)
+    setPlacementErrorHint(null)
+  }
+
+  const handleMobileDeleteItem = async () => {
+    if (!selectedItemToMove) return
+    await removeItem(selectedItemToMove)
+    setSelectedItemToMove(null)
   }
 
   const openCreateLayoutModal = () => {
@@ -743,19 +819,34 @@ export default function LayoutEditorPage() {
 
   const handleSaveNotes = async (
     itemId: string,
-    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean }>,
+    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean; rack_ear_offset_mm: number }>,
   ) => {
+    const item = items.find((i) => i.id === itemId)
+
     // When a half-rack device is being widened to full-column, verify it won't conflict
-    if (updates.force_full_width === true && rack) {
-      const item = items.find((i) => i.id === itemId)
-      if (item?.device.is_half_rack) {
-        const widenedSlot = getItemSlot({ ...item, force_full_width: true }, rack.width)
-        const sameFacing = items.filter((i) => i.id !== itemId && i.facing === item.facing)
-        if (!canPlaceAtPosition(item.start_u, item.device.rack_units, widenedSlot, sameFacing, rack.width)) {
-          throw new Error('Cannot span full width: another device occupies the adjacent half-rack slot at this position.')
-        }
+    if (updates.force_full_width === true && rack && item?.device.is_half_rack) {
+      const widenedSlot = getItemSlot({ ...item, force_full_width: true }, rack.width)
+      const sameFacing = items.filter((i) => i.id !== itemId && i.facing === item.facing)
+      if (!canPlaceAtPosition(item.start_u, item.device.rack_units, widenedSlot, sameFacing, rack.width)) {
+        throw new Error('Cannot span full width: another device occupies the adjacent half-rack slot at this position.')
       }
     }
+
+    if (item && typeof updates.rack_ear_offset_mm === 'number' && updates.rack_ear_offset_mm !== item.rack_ear_offset_mm) {
+      const issue = getPlacementIssue(
+        item.start_u,
+        item.device.rack_units,
+        item.device.is_half_rack,
+        updates.force_full_width ?? item.force_full_width,
+        item.device.depth_mm,
+        updates.rack_ear_offset_mm,
+        item.id,
+        item.preferred_lane ?? undefined,
+        item.preferred_sub_lane ?? undefined,
+      )
+      if (issue) throw new Error(issue)
+    }
+
     return updateItemDetails(itemId, updates)
   }
 
@@ -866,7 +957,8 @@ export default function LayoutEditorPage() {
                 </Button>
               </div>
 
-              {placementHint && !isSideView && (
+
+        {placementHint && !isSideView && (
                 <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                   {placementHint}
                 </div>
@@ -1017,12 +1109,61 @@ export default function LayoutEditorPage() {
         {!isSideView && (selectedDeviceTemplate || selectedItemToMove) && (
           <div className="fixed left-1/2 -translate-x-1/2 z-20 bg-indigo-600 px-4 py-2 rounded-full shadow-2xl border border-indigo-400 flex items-center gap-2" style={{ top: 'calc(7rem + env(safe-area-inset-top))' }}>
             <span className="text-xs font-bold">{selectedItemToMove ? 'Tap a slot to move' : 'Tap a slot to place'}</span>
-            <button onClick={() => { setSelectedDeviceTemplate(null); setSelectedItemToMove(null) }} className="text-xs">✕</button>
+            <button onClick={() => { setSelectedDeviceTemplate(null); setSelectedItemToMove(null); setMobileOffsetDraft('0') }} className="text-xs">✕</button>
           </div>
         )}
 
+        {!isSideView && selectedItemToMove && (() => {
+          const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
+          if (!selectedItem) return null
+          const selectedLabel = selectedItem.custom_name?.trim() || `${selectedItem.device.brand} ${selectedItem.device.model}`
+          return (
+            <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-xl border border-indigo-400 bg-slate-900/95 px-3 py-2 shadow-2xl" style={{ top: 'calc(10rem + env(safe-area-inset-top))' }}>
+              <div className="mb-2 text-[11px] font-semibold text-indigo-100 truncate">Edit · {selectedLabel}</div>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={mobileNameDraft}
+                  onChange={(e) => { setMobileNameDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
+                  placeholder="Custom name"
+                  className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"
+                />
+                <textarea
+                  value={mobileNotesDraft}
+                  onChange={(e) => { setMobileNotesDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
+                  placeholder="Notes"
+                  className="w-full h-16 rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-xs text-slate-100"
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={mobileOffsetDraft}
+                    onChange={(e) => { setMobileOffsetDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
+                    className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"
+                    placeholder="Offset (mm)"
+                  />
+                  <button
+                    onClick={() => void handleMobileOffsetSave()}
+                    className="min-h-9 rounded-md border border-indigo-300 bg-indigo-600 px-3 text-xs font-semibold text-white"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => void handleMobileDeleteItem()}
+                    className="min-h-9 rounded-md border border-red-500/70 bg-red-700/70 px-3 text-xs font-semibold text-white"
+                  >
+                    Delete
+                  </button>
+                </div>
+                {mobileEditorError && <p className="text-[11px] text-amber-300">{mobileEditorError}</p>}
+              </div>
+            </div>
+          )
+        })()}
+
         {placementHint && !isSideView && (
-          <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-lg border border-amber-400 bg-amber-100 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-lg" style={{ top: 'calc(10rem + env(safe-area-inset-top))' }}>
+          <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-lg border border-amber-400 bg-amber-100 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-lg" style={{ top: 'calc(20rem + env(safe-area-inset-top))' }}>
             {placementHint}
           </div>
         )}
@@ -1190,13 +1331,6 @@ export default function LayoutEditorPage() {
                                         </div>
                                       )}
                                     </>
-                                  )}
-
-                                  {!isGhost && (
-                                    <div className="absolute top-1 right-1 flex gap-1 text-[10px]">
-                                      <button onClick={(e) => { e.stopPropagation(); setNotesItem(item) }} className="bg-black/45 px-1.5 py-0.5 rounded">N</button>
-                                      <button onClick={(e) => { e.stopPropagation(); void removeItem(item.id) }} className="bg-black/45 px-1.5 py-0.5 rounded">✕</button>
-                                    </div>
                                   )}
                                 </div>
                               </div>
