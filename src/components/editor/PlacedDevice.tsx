@@ -1,4 +1,5 @@
 import type { LegacyRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDrag } from 'react-dnd'
 import { PLACED_DEVICE_TYPE, type PlacedDeviceDragItem } from './DraggableDevice'
 import type { ConnectorDefinition, DeviceFacing, LayoutItemWithDevice } from '../../types'
@@ -59,6 +60,40 @@ export default function PlacedDevice({
 
   const height = item.device.rack_units * slotHeight
 
+  const simplifiedRef = useRef<HTMLDivElement>(null)
+  const [simplifiedFontSize, setSimplifiedFontSize] = useState(11)
+
+  useEffect(() => {
+    if (!simplifiedView) return
+    const el = simplifiedRef.current
+    if (!el) return
+
+    const fit = () => {
+      const w = el.clientWidth
+      const h = el.clientHeight
+      if (w <= 0 || h <= 0) return
+
+      let lo = 6
+      let hi = 48
+      while (lo < hi - 1) {
+        const mid = (lo + hi) >> 1
+        el.style.fontSize = `${mid}px`
+        if (el.scrollWidth <= w && el.scrollHeight <= h) {
+          lo = mid
+        } else {
+          hi = mid
+        }
+      }
+      el.style.fontSize = ''
+      setSimplifiedFontSize(lo)
+    }
+
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [simplifiedView, label, item.notes, item.custom_name, height])
+
   if (simplifiedView) {
     return (
       <div
@@ -77,15 +112,13 @@ export default function PlacedDevice({
         <span className="rack-device-screw lb" />
         <span className="rack-device-screw rb" />
 
-        <div className="rack-device-simplified-layout">
-          <div className="rack-device-simplified-left">
-            <span className="rack-device-simplified-brand">{item.device.brand}</span>
-            <span className="rack-device-simplified-model">{item.device.model}</span>
-          </div>
-          <div className="rack-device-simplified-right">
-            {item.notes && <div className="rack-device-simplified-notes">{item.notes}</div>}
-            <span className="rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
-          </div>
+        <div
+          ref={simplifiedRef}
+          className="rack-device-simplified-center"
+          style={{ fontSize: `${simplifiedFontSize}px` }}
+        >
+          <span className="rack-device-simplified-label">{label}</span>
+          {item.notes && <span className="rack-device-simplified-notes">{item.notes}</span>}
         </div>
 
         {interactive && (
