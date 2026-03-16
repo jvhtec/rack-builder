@@ -138,7 +138,7 @@ export default function ConnectorForm({ initialData, onSubmit, onCancel }: Conne
             onChange={(event) => setIsDSize(event.target.checked)}
             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-          <span className="text-sm font-medium text-gray-700">D-size profile (26:31 flange ratio)</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">D-size profile (26:31 flange ratio)</span>
         </label>
 
         <Select
@@ -165,7 +165,7 @@ export default function ConnectorForm({ initialData, onSubmit, onCancel }: Conne
         <Input label="Notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional notes" />
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Connector image</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Connector image</label>
           <div className="flex items-center gap-3">
             <input
               ref={fileInputRef}
