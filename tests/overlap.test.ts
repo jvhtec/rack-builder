@@ -24,6 +24,7 @@ function makeItem(args: {
     preferred_lane: args.preferredLane,
     preferred_sub_lane: args.preferredSubLane ?? null,
     force_full_width: false,
+    rack_ear_offset_mm: 0,
     custom_name: null,
     notes: null,
     device: {
@@ -47,6 +48,34 @@ function makeItem(args: {
 }
 
 describe('depth overlap rules', () => {
+
+  it('accounts for rack ear offset when calculating effective depth', () => {
+    const frontItem = makeItem({
+      id: 'front-offset',
+      facing: 'front',
+      startU: 4,
+      rackUnits: 1,
+      depthMm: 500,
+      preferredLane: 0,
+    })
+    frontItem.rack_ear_offset_mm = 150
+
+    const conflict = findDepthConflict(
+      4,
+      1,
+      'rear',
+      360,
+      0,
+      [frontItem],
+      800,
+      undefined,
+      preferenceToSlot('dual', false, 0),
+      'dual',
+      new Map([[frontItem.id, getItemSlot(frontItem, 'dual')]]),
+    )
+
+    expect(conflict).toBeNull()
+  })
   it('reports depth collision only when target slot footprint overlaps opposite side', () => {
     const frontItem = makeItem({
       id: 'front-1',
@@ -63,6 +92,7 @@ describe('depth overlap rules', () => {
       2,
       'rear',
       400,
+      0,
       [frontItem],
       800,
       undefined,
@@ -78,6 +108,7 @@ describe('depth overlap rules', () => {
       2,
       'rear',
       400,
+      0,
       [frontItem],
       800,
       undefined,
