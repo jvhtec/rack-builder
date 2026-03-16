@@ -1,4 +1,5 @@
 import type { LegacyRef } from 'react'
+import { useRef, useLayoutEffect } from 'react'
 import { useDrag } from 'react-dnd'
 import { PLACED_DEVICE_TYPE, type PlacedDeviceDragItem } from './DraggableDevice'
 import type { ConnectorDefinition, DeviceFacing, LayoutItemWithDevice } from '../../types'
@@ -6,7 +7,6 @@ import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { RACK_SLOT_HEIGHT_PX } from './rackGeometry'
 import PanelLayoutCanvas from '../panels/PanelLayoutCanvas'
 import { resolveVisibleImageSide, selectFacingImagePath } from '../../lib/rackViewModel'
-import ScaledNotes from './ScaledNotes'
 
 const SLOT_HEIGHT = RACK_SLOT_HEIGHT_PX
 
@@ -49,6 +49,37 @@ export default function PlacedDevice({
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   })
 
+  // Refs for auto-scaling notes in simplified view
+  const notesCenterRef = useRef<HTMLDivElement>(null)
+  const notesTextRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (!simplifiedView || !item.notes) return
+    const center = notesCenterRef.current
+    const textEl = notesTextRef.current
+    if (!center || !textEl) return
+
+    const availH = center.clientHeight
+    const availW = center.clientWidth
+    if (availH === 0 || availW === 0) return
+
+    // Binary search: find the largest font size where the text still fits
+    let lo = 5
+    let hi = 80
+    textEl.style.fontSize = `${hi}px`
+
+    while (hi - lo > 0.5) {
+      const mid = (lo + hi) / 2
+      textEl.style.fontSize = `${mid}px`
+      if (textEl.scrollHeight <= availH && textEl.scrollWidth <= availW) {
+        lo = mid
+      } else {
+        hi = mid
+      }
+    }
+    textEl.style.fontSize = `${lo}px`
+  })
+
   const panelLayout = item.asset_kind === 'panel_layout' ? item.panel_layout ?? null : null
   const hasPanelPreview = !!panelLayout && !!connectorById
   const imagePath = selectFacingImagePath(item, facing)
@@ -83,8 +114,12 @@ export default function PlacedDevice({
             <span className="rack-device-simplified-brand">{item.device.brand}</span>
             <span className="rack-device-simplified-model">{item.device.model}</span>
           </div>
-          <div className="rack-device-simplified-center">
-            {item.notes && <ScaledNotes text={item.notes} textColor="#ccc" />}
+          <div ref={notesCenterRef} className="rack-device-simplified-center">
+            {item.notes && (
+              <div ref={notesTextRef} className="rack-device-simplified-notes">
+                {item.notes}
+              </div>
+            )}
           </div>
           <div className="rack-device-simplified-right">
             {item.custom_name?.trim() && (

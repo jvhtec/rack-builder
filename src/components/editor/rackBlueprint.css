@@ -395,9 +395,21 @@
 
 .rack-device-simplified-center {
   flex: 1;
-  position: relative;
-  overflow: hidden;
   min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rack-device-simplified-notes {
+  color: #ccc;
+  text-align: center;
+  white-space: pre-line;
+  word-break: break-word;
+  line-height: 1.25;
+  font-weight: 600;
+  width: 100%;
 }
 
 .rack-device-simplified-right {

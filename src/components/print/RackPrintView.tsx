@@ -1,21 +1,53 @@
-import { useMemo, type CSSProperties } from 'react'
+import { useMemo, useRef, useLayoutEffect, type CSSProperties } from 'react'
 import type { DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { buildSlots, getSlotTopPx } from '../editor/rackGeometry'
 import { getRackPanelAspect } from '../../lib/rackVisual'
 import { getItemSlot, getSlotStyle } from '../../lib/rackPositions'
 import { buildRackFaceViewModel, selectFacingImagePath } from '../../lib/rackViewModel'
-import ScaledNotes from '../editor/ScaledNotes'
 
 function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
+  const centerRef = useRef<HTMLDivElement>(null)
+  const textRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (!item.notes) return
+    const center = centerRef.current
+    const textEl = textRef.current
+    if (!center || !textEl) return
+
+    const availH = center.clientHeight
+    const availW = center.clientWidth
+    if (availH === 0 || availW === 0) return
+
+    let lo = 5
+    let hi = 40
+    textEl.style.fontSize = `${hi}px`
+
+    while (hi - lo > 0.5) {
+      const mid = (lo + hi) / 2
+      textEl.style.fontSize = `${mid}px`
+      if (textEl.scrollHeight <= availH && textEl.scrollWidth <= availW) {
+        lo = mid
+      } else {
+        hi = mid
+      }
+    }
+    textEl.style.fontSize = `${lo}px`
+  })
+
   return (
     <div className="print-rack-device-simplified-layout">
       <div className="print-rack-device-simplified-left">
         <span className="print-rack-device-simplified-brand">{item.device.brand}</span>
         <span className="print-rack-device-simplified-model">{item.device.model}</span>
       </div>
-      <div className="print-rack-device-simplified-center">
-        {item.notes && <ScaledNotes text={item.notes} textColor="#222" />}
+      <div ref={centerRef} className="print-rack-device-simplified-center">
+        {item.notes && (
+          <div ref={textRef} className="print-rack-device-simplified-notes">
+            {item.notes}
+          </div>
+        )}
       </div>
       <div className="print-rack-device-simplified-right">
         {item.custom_name?.trim() && (
