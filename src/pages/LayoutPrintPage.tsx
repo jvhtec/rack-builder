@@ -241,7 +241,7 @@ export default function LayoutPrintPage() {
             Back
           </Button>
           <Button onClick={() => window.print()}>Print</Button>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#374155', cursor: 'pointer' }}>
+          <label className="layout-print-toolbar-label">
             <input
               type="checkbox"
               checked={includeSimplified}

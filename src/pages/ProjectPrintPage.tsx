@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
@@ -293,7 +293,7 @@ export default function ProjectPrintPage() {
             Back
           </Button>
           <Button onClick={() => window.print()}>Print</Button>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#374155', cursor: 'pointer' }}>
+          <label className="layout-print-toolbar-label">
             <input
               type="checkbox"
               checked={includeSimplified}
@@ -323,7 +323,7 @@ export default function ProjectPrintPage() {
           const hasMoreSheets = !isLastLayout || panelModels.length > 0 || includeSimplified
 
           return (
-            <span key={model.layout.id}>
+            <Fragment key={model.layout.id}>
               <LayoutPrintSheet
                 layout={model.layout}
                 rack={model.rack}
@@ -355,7 +355,7 @@ export default function ProjectPrintPage() {
                   sheetClassName={isLastLayout && panelModels.length === 0 ? '' : 'layout-print-page-break'}
                 />
               )}
-            </span>
+            </Fragment>
           )
         })}
 
