@@ -137,10 +137,26 @@ interface VerticalRange {
   rackUnits: number
 }
 
+function toFiniteNumber(value: unknown): number | null {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : null
+}
+
 function verticalOverlap(a: VerticalRange, b: VerticalRange): boolean {
   const aTop = a.startU + a.rackUnits - 1
   const bTop = b.startU + b.rackUnits - 1
   return a.startU <= bTop && aTop >= b.startU
+}
+
+export interface PositionConflictDetail {
+  conflictingItemId: string
+  conflictingItemName: string
+  targetSlot: ItemSlot
+  conflictingSlot: ItemSlot
+  startU: number
+  rackUnits: number
+  conflictingStartU: number
+  conflictingRackUnits: number
 }
 
 /**
@@ -230,6 +246,21 @@ export function canPlaceAtPosition(
   rackWidth: RackWidth,
   excludeItemId?: string,
 ): boolean {
+  return findPositionConflict(slotU, rackUnits, targetSlot, items, rackWidth, excludeItemId) === null
+}
+
+export function findPositionConflict(
+  slotU: number,
+  rackUnits: number,
+  targetSlot: ItemSlot,
+  items: LayoutItemWithDevice[],
+  rackWidth: RackWidth,
+  excludeItemId?: string,
+): PositionConflictDetail | null {
+  const normalizedSlotU = toFiniteNumber(slotU)
+  const normalizedRackUnits = toFiniteNumber(rackUnits)
+  if (normalizedSlotU === null || normalizedRackUnits === null) return null
+
   const candidates = items.filter((i) => i.id !== excludeItemId)
   const assignments = buildSlotAssignments(candidates, rackWidth)
 
@@ -237,12 +268,27 @@ export function canPlaceAtPosition(
     const itemSlot = assignments.get(item.id)
     if (!itemSlot) continue
     if (!slotsConflict(targetSlot, itemSlot)) continue
+
+    const existingStartU = toFiniteNumber(item.start_u)
+    const existingRackUnits = toFiniteNumber(item.device.rack_units)
+    if (existingStartU === null || existingRackUnits === null) continue
+
     if (verticalOverlap(
-      { startU: slotU, rackUnits },
-      { startU: item.start_u, rackUnits: item.device.rack_units },
+      { startU: normalizedSlotU, rackUnits: normalizedRackUnits },
+      { startU: existingStartU, rackUnits: existingRackUnits },
     )) {
-      return false
+      return {
+        conflictingItemId: item.id,
+        conflictingItemName: item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`,
+        targetSlot,
+        conflictingSlot: itemSlot,
+        startU: normalizedSlotU,
+        rackUnits: normalizedRackUnits,
+        conflictingStartU: existingStartU,
+        conflictingRackUnits: existingRackUnits,
+      }
     }
   }
-  return true
+
+  return null
 }

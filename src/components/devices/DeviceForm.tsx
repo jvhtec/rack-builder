@@ -5,6 +5,7 @@ import Select from '../ui/Select'
 import Modal from '../ui/Modal'
 import ImageCropper from './ImageCropper'
 import { useImageUpload } from '../../hooks/useImageUpload'
+import { getDeviceImageUrl } from '../../hooks/useDevices'
 import type { Device, DeviceCategory } from '../../types'
 import { getRackPanelAspect, normalizeRackUnits, RACK_PANEL_WIDTH_UNITS, RACK_HALF_PANEL_WIDTH_UNITS } from '../../lib/rackVisual'
 
@@ -70,6 +71,14 @@ export default function DeviceForm({
   const handleFileSelect = (side: 'front' | 'rear', file: File) => {
     setCropSide(side)
     setCropSrc(URL.createObjectURL(file))
+  }
+
+  const handleEditExistingCrop = (side: 'front' | 'rear') => {
+    const imagePath = side === 'front' ? frontPath : rearPath
+    const imageUrl = getDeviceImageUrl(imagePath)
+    if (!imageUrl) return
+    setCropSide(side)
+    setCropSrc(imageUrl)
   }
 
   const handleCropComplete = async (blob: Blob) => {
@@ -219,7 +228,7 @@ export default function DeviceForm({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Front Image</label>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <input
               ref={frontInputRef}
               type="file"
@@ -238,13 +247,22 @@ export default function DeviceForm({
             >
               {frontPath ? 'Replace image' : 'Choose image'}
             </Button>
+            {frontPath && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => handleEditExistingCrop('front')}
+              >
+                Edit crop
+              </Button>
+            )}
             {frontPath && <span className="text-xs text-green-600">Uploaded</span>}
           </div>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Rear Image</label>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <input
               ref={rearInputRef}
               type="file"
@@ -263,6 +281,15 @@ export default function DeviceForm({
             >
               {rearPath ? 'Replace image' : 'Choose image'}
             </Button>
+            {rearPath && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => handleEditExistingCrop('rear')}
+              >
+                Edit crop
+              </Button>
+            )}
             {rearPath && <span className="text-xs text-green-600">Uploaded</span>}
           </div>
         </div>

@@ -6,19 +6,25 @@ import { TouchBackend } from 'react-dnd-touch-backend'
 import { supabase } from '../lib/supabase'
 import { useLayoutItems } from '../hooks/useLayoutItems'
 import { ALL_BRAND, filterDevicesByBrand, filterDevicesByCategory, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
+import { usePanelLayouts } from '../hooks/usePanelLayouts'
 import { useLayouts } from '../hooks/useLayouts'
 import { useRacks } from '../hooks/useRacks'
-import { hasDepthConflict, isWithinBounds } from '../lib/overlap'
+import { useConnectors } from '../hooks/useConnectors'
+import { findDepthConflict, isWithinBounds } from '../lib/overlap'
 import {
-  buildSlotAssignments,
   canPlaceAtPosition,
+  findPositionConflict,
   getItemSlot,
   getSlotStyle,
+  type ItemSlot,
   preferenceToSlot,
 } from '../lib/rackPositions'
 import type { DeviceFacing, LayoutItemWithDevice, Project, RackWidth } from '../types'
+import { buildPanelThumbnailDataUrl } from '../lib/panelThumbnail'
+import { buildRackFaceViewModel, selectFacingImagePath } from '../lib/rackViewModel'
 import DevicePalette from '../components/editor/DevicePalette'
 import RackGrid from '../components/editor/RackGrid'
+import RackSideDepthView from '../components/editor/RackSideDepthView'
 import DeviceNotes from '../components/editor/DeviceNotes'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -71,6 +77,64 @@ function computeMobileColumnRange(
   const spanCols = Math.round(widthPct / colWidth)
   const endCol = startCol + spanCols - 1
   return { startCol, endCol, spanCols }
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : null
+}
+
+function resolvePlacementImageUrl(item: LayoutItemWithDevice, facing: DeviceFacing): string | null {
+  return getDeviceImageUrl(selectFacingImagePath(item, facing))
+}
+
+function describeSlot(slot: ItemSlot, rackWidth: RackWidth): string {
+  if (rackWidth === 'single') {
+    if (slot.outer === null) return 'full width'
+    return slot.outer === 0 ? 'left half' : 'right half'
+  }
+  if (slot.inner === null) return slot.outer === 0 ? 'left bay' : 'right bay'
+  const bayLabel = slot.outer === 0 ? 'left bay' : 'right bay'
+  const halfLabel = slot.inner === 0 ? 'left half' : 'right half'
+  return `${bayLabel} / ${halfLabel}`
+}
+
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message
+  if (error && typeof error === 'object') {
+    const maybeMessage = 'message' in error && typeof error.message === 'string' ? error.message : ''
+    const maybeDetails = 'details' in error && typeof error.details === 'string' ? error.details : ''
+    const maybeHint = 'hint' in error && typeof error.hint === 'string' ? error.hint : ''
+    const parts = [maybeMessage, maybeDetails, maybeHint].filter(Boolean)
+    if (parts.length > 0) return parts.join(' ')
+  }
+  return 'Unknown backend error.'
+}
+
+const PANEL_LIBRARY_CATEGORY_ID = '__panel_layouts__'
+const PANEL_LIBRARY_CATEGORY_NAME = 'Panel Layouts'
+const PANEL_LIBRARY_BRAND = 'Panel Layouts'
+
+function panelTemplateDeviceId(panelLayoutId: string): string {
+  return `panel:${panelLayoutId}`
+}
+
+function parsePanelTemplateId(deviceId: string): string | null {
+  if (!deviceId.startsWith('panel:')) return null
+  return deviceId.slice('panel:'.length)
+}
+
+type RackViewMode = DeviceFacing | 'left' | 'right'
+
+const VIEW_MODE_OPTIONS: Array<{ value: RackViewMode; label: string; shortLabel: string }> = [
+  { value: 'front', label: 'Front', shortLabel: 'Fr' },
+  { value: 'rear', label: 'Rear', shortLabel: 'Re' },
+  { value: 'left', label: 'Left', shortLabel: 'Lt' },
+  { value: 'right', label: 'Right', shortLabel: 'Rt' },
+]
+
+function isSideViewMode(mode: RackViewMode): mode is 'left' | 'right' {
+  return mode === 'left' || mode === 'right'
 }
 
 
@@ -126,6 +190,7 @@ export default function LayoutEditorPage() {
   const navigate = useNavigate()
 
   const [facing, setFacing] = useState<DeviceFacing>('front')
+  const [viewMode, setViewMode] = useState<RackViewMode>('front')
   const [notesItem, setNotesItem] = useState<LayoutItemWithDevice | null>(null)
   const [activeTab, setActiveTab] = useState<'devices' | 'rack'>('devices')
   const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -139,6 +204,13 @@ export default function LayoutEditorPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
   const [selectedBrand, setSelectedBrand] = useState(ALL_BRAND)
   const [selectedItemToMove, setSelectedItemToMove] = useState<string | null>(null)
+  const [mobileOffsetDraft, setMobileOffsetDraft] = useState('0')
+  const [mobileNameDraft, setMobileNameDraft] = useState('')
+  const [mobileNotesDraft, setMobileNotesDraft] = useState('')
+  const [mobileEditorError, setMobileEditorError] = useState<string | null>(null)
+  const [hoverPlacementHint, setHoverPlacementHint] = useState<string | null>(null)
+  const [placementErrorHint, setPlacementErrorHint] = useState<string | null>(null)
+  const placementHint = placementErrorHint ?? hoverPlacementHint
 
   const [createLayoutOpen, setCreateLayoutOpen] = useState(false)
   const [renameLayoutOpen, setRenameLayoutOpen] = useState(false)
@@ -156,7 +228,9 @@ export default function LayoutEditorPage() {
     deleteLayout,
   } = useLayouts(projectId)
   const { racks, loading: racksLoading } = useRacks()
+  const { connectorById } = useConnectors()
   const { devices, categories, loading: devicesLoading } = useDevices()
+  const { panelLayouts } = usePanelLayouts(projectId)
 
   const activeLayoutId = searchParams.get('layout')
   const activeLayout = useMemo(
@@ -170,7 +244,7 @@ export default function LayoutEditorPage() {
     return rackMap.get(activeLayout.rack_id) ?? null
   }, [activeLayout, rackMap])
 
-  const { items, addItem, removeItem, moveItem, updateItemDetails } = useLayoutItems(
+  const { items, addItem, addPanelLayoutItem, removeItem, moveItem, updateItemDetails } = useLayoutItems(
     activeLayout?.id,
     rack?.rack_units ?? 0,
   )
@@ -234,14 +308,106 @@ export default function LayoutEditorPage() {
     setSearchParams(next)
   }, [searchParams, setSearchParams])
 
+  const setRackViewMode = useCallback((nextViewMode: RackViewMode) => {
+    setViewMode(nextViewMode)
+    if (nextViewMode === 'front' || nextViewMode === 'rear') {
+      setFacing(nextViewMode)
+    }
+  }, [])
+
+  const cycleRackViewMode = useCallback(() => {
+    const options = VIEW_MODE_OPTIONS.map((option) => option.value)
+    const currentIndex = options.indexOf(viewMode)
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % options.length
+    setRackViewMode(options[nextIndex])
+  }, [setRackViewMode, viewMode])
+
+  const isSideView = isSideViewMode(viewMode)
+  const activeViewOption = VIEW_MODE_OPTIONS.find((option) => option.value === viewMode) ?? VIEW_MODE_OPTIONS[0]
+
+  useEffect(() => {
+    if (!isSideView) return
+    if (selectedDeviceTemplate) setSelectedDeviceTemplate(null)
+    if (selectedItemToMove) setSelectedItemToMove(null)
+  }, [isSideView, selectedDeviceTemplate, selectedItemToMove])
+
+  useEffect(() => {
+    if (!isSideView) return
+    if (hoverPlacementHint) setHoverPlacementHint(null)
+    if (placementErrorHint) setPlacementErrorHint(null)
+  }, [hoverPlacementHint, isSideView, placementErrorHint])
+
+  useEffect(() => {
+    if (!selectedItemToMove) {
+      setMobileOffsetDraft('0')
+      setMobileNameDraft('')
+      setMobileNotesDraft('')
+      setMobileEditorError(null)
+      return
+    }
+
+    const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
+    if (!selectedItem) return
+
+    setMobileOffsetDraft(String(selectedItem.rack_ear_offset_mm ?? 0))
+    setMobileNameDraft(selectedItem.custom_name ?? '')
+    setMobileNotesDraft(selectedItem.notes ?? '')
+    setMobileEditorError(null)
+  }, [items, selectedItemToMove])
+
+  const panelLibraryDevices = useMemo(() => panelLayouts.map((panel) => ({
+    id: panelTemplateDeviceId(panel.id),
+    brand: PANEL_LIBRARY_BRAND,
+    model: panel.name,
+    rack_units: panel.height_ru,
+    depth_mm: panel.depth_mm,
+    weight_kg: panel.weight_kg,
+    power_w: 0,
+    is_half_rack: false,
+    category_id: PANEL_LIBRARY_CATEGORY_ID,
+    category: {
+      id: PANEL_LIBRARY_CATEGORY_ID,
+      name: PANEL_LIBRARY_CATEGORY_NAME,
+      created_at: panel.created_at,
+      updated_at: panel.updated_at,
+    },
+    front_image_path: buildPanelThumbnailDataUrl(panel, 'front', connectorById),
+    rear_image_path: buildPanelThumbnailDataUrl(panel, 'rear', connectorById),
+    created_at: panel.created_at,
+    updated_at: panel.updated_at,
+  })), [connectorById, panelLayouts])
+
+  const libraryDevices = useMemo(
+    () => [...devices, ...panelLibraryDevices],
+    [devices, panelLibraryDevices],
+  )
+
+  const panelCategory = useMemo(
+    () => panelLayouts.length > 0
+      ? [{
+        id: PANEL_LIBRARY_CATEGORY_ID,
+        name: PANEL_LIBRARY_CATEGORY_NAME,
+        created_at: panelLayouts[0].created_at,
+        updated_at: panelLayouts[0].updated_at,
+      }]
+      : [],
+    [panelLayouts],
+  )
+
+  const libraryCategories = useMemo(
+    () => [...categories, ...panelCategory],
+    [categories, panelCategory],
+  )
+
   const brands = useMemo(
-    () => [...new Set(devices.map((d) => d.brand))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
-    [devices],
+    () => [...new Set(libraryDevices.map((d) => d.brand))]
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+    [libraryDevices],
   )
 
   const filteredDevices = useMemo(
-    () => filterDevicesByBrand(filterDevicesByCategory(devices, selectedCategoryId), selectedBrand),
-    [devices, selectedCategoryId, selectedBrand],
+    () => filterDevicesByBrand(filterDevicesByCategory(libraryDevices, selectedCategoryId), selectedBrand),
+    [libraryDevices, selectedCategoryId, selectedBrand],
   )
 
   useEffect(() => {
@@ -250,6 +416,11 @@ export default function LayoutEditorPage() {
     setSelectedDeviceTemplate(null)
   }, [filteredDevices, selectedDeviceTemplate])
 
+  const showBackendPlacementReject = useCallback((actionLabel: string, error: unknown) => {
+    const message = toErrorMessage(error)
+    setPlacementErrorHint(`${actionLabel} rejected by backend: ${message}`)
+  }, [])
+
   const handleDropNew = async (
     deviceId: string,
     startU: number,
@@ -257,69 +428,222 @@ export default function LayoutEditorPage() {
     preferredLane?: 0 | 1,
     preferredSubLane?: 0 | 1,
   ) => {
+    setPlacementErrorHint(null)
     try {
-      const device = devices.find((d) => d.id === deviceId)
-      const allowOverlap = rack?.width === 'dual' || (device?.is_half_rack ?? false)
-      await addItem(deviceId, startU, facing, rackUnits, preferredLane, allowOverlap, preferredSubLane)
+      const panelLayoutId = parsePanelTemplateId(deviceId)
+      if (panelLayoutId) {
+        const panelLayout = panelLayouts.find((entry) => entry.id === panelLayoutId)
+        if (!panelLayout) return
+        await addPanelLayoutItem(
+          panelLayoutId,
+          startU,
+          facing,
+          panelLayout.height_ru,
+          preferredLane,
+          preferredSubLane,
+        )
+        setPlacementErrorHint(null)
+        return
+      }
+      await addItem(deviceId, startU, facing, rackUnits, preferredLane, preferredSubLane)
+      setPlacementErrorHint(null)
     } catch (err) {
       console.error('Drop failed:', err)
+      showBackendPlacementReject('Placement', err)
     }
   }
 
   const handleDropMove = async (itemId: string, newStartU: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => {
+    setPlacementErrorHint(null)
     try {
-      const item = items.find((i) => i.id === itemId)
-      const allowOverlap = rack?.width === 'dual' || (item?.device.is_half_rack ?? false)
-      await moveItem(itemId, newStartU, facing, preferredLane, allowOverlap, preferredSubLane)
+      await moveItem(itemId, newStartU, facing, preferredLane, preferredSubLane)
+      setPlacementErrorHint(null)
     } catch (err) {
       console.error('Move failed:', err)
+      showBackendPlacementReject('Move', err)
     }
   }
 
-  const mobileItems = useMemo(() => items.filter((item) => item.facing === facing), [items, facing])
   const oppositeFacingItems = useMemo(
     () => items.filter((item) => item.facing !== facing),
     [items, facing],
   )
-  const showOppositePreview = mobileItems.length === 0 && oppositeFacingItems.length > 0
-  const mobileVisibleItems = showOppositePreview ? oppositeFacingItems : mobileItems
-
-  const mobileSlotAssignments = useMemo(
-    () => rack ? buildSlotAssignments(mobileVisibleItems, rack.width) : new Map<string, ReturnType<typeof getItemSlot>>(),
-    [mobileVisibleItems, rack],
+  const oppositeFacingSlotAssignments = useMemo(
+    () => rack
+      ? new Map(oppositeFacingItems.map((item) => [item.id, getItemSlot(item, rack.width)]))
+      : new Map<string, ReturnType<typeof getItemSlot>>(),
+    [oppositeFacingItems, rack],
   )
+  const mobileRackView = useMemo(
+    () => rack ? buildRackFaceViewModel(items, facing, rack.width) : null,
+    [facing, items, rack],
+  )
+  const mobileItems = mobileRackView?.activeItems ?? []
+  const mobileSlotAssignments =
+    mobileRackView?.activeSlotByItemId ?? new Map<string, ReturnType<typeof getItemSlot>>()
+  const mobileGhostItems = mobileRackView?.ghostItems ?? []
+  const mobileGhostSlotAssignments =
+    mobileRackView?.ghostSlotByItemId ?? new Map<string, ReturnType<typeof getItemSlot>>()
+
+  const getPlacementIssue = useCallback((
+    slotU: number,
+    rackUnits: number,
+    isHalfRack: boolean,
+    forceFullWidth: boolean,
+    depthMm: number,
+    rackEarOffsetMm = 0,
+    excludeItemId?: string,
+    preferredLane?: 0 | 1,
+    preferredSubLane?: 0 | 1,
+  ): string | null => {
+    if (!rack) return 'Rack is not available.'
+
+    const normalizedSlotU = toFiniteNumber(slotU)
+    const normalizedRackUnits = toFiniteNumber(rackUnits)
+    if (
+      normalizedSlotU === null
+      || normalizedRackUnits === null
+      || !isWithinBounds(normalizedSlotU, normalizedRackUnits, rack.rack_units)
+    ) {
+      return `Out of rack bounds: U${slotU} with ${rackUnits}U in a ${rack.rack_units}U rack.`
+    }
+
+    const targetSlot = preferenceToSlot(rack.width, isHalfRack && !forceFullWidth, preferredLane, preferredSubLane)
+    const overlap = findPositionConflict(
+      normalizedSlotU,
+      normalizedRackUnits,
+      targetSlot,
+      mobileItems,
+      rack.width,
+      excludeItemId,
+    )
+    if (overlap) {
+      const endU = overlap.startU + overlap.rackUnits - 1
+      const conflictEndU = overlap.conflictingStartU + overlap.conflictingRackUnits - 1
+      return `Same-side overlap in ${describeSlot(targetSlot, rack.width)}: U${overlap.startU}-U${endU} conflicts with ${overlap.conflictingItemName} at U${overlap.conflictingStartU}-U${conflictEndU}.`
+    }
+
+    const depthConflict = findDepthConflict(
+      normalizedSlotU,
+      normalizedRackUnits,
+      facing,
+      depthMm,
+      rackEarOffsetMm,
+      items,
+      rack.depth_mm,
+      excludeItemId,
+      targetSlot,
+      rack.width,
+      oppositeFacingSlotAssignments,
+    )
+    if (depthConflict) {
+      return `Depth conflict: ${depthConflict.currentDepthMm}mm + ${depthConflict.oppositeDepthMm}mm = ${depthConflict.combinedDepthMm}mm exceeds rack depth ${depthConflict.rackDepthMm}mm (${depthConflict.conflictingItemName}).`
+    }
+
+    return null
+  }, [facing, items, mobileItems, oppositeFacingSlotAssignments, rack])
 
   const getDeviceAtU = useCallback((slotU: number, visualSlotIndex: number) => {
     if (!rack) return undefined
-    return mobileVisibleItems.find((item) => {
-      if (slotU < item.start_u || slotU > getTopU(item)) return false
-      const slot = mobileSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
-      const { left, width } = getSlotStyle(slot, rack.width, facing)
-      const { startCol, endCol } = computeMobileColumnRange(left, width, rack.width)
-      return visualSlotIndex >= startCol && visualSlotIndex <= endCol
-    })
-  }, [mobileVisibleItems, mobileSlotAssignments, rack, facing])
+
+    const findAtPosition = (
+      candidateItems: LayoutItemWithDevice[],
+      slotById: Map<string, ReturnType<typeof getItemSlot>>,
+      isGhost: boolean,
+    ) => {
+      const matched = candidateItems.find((item) => {
+        if (slotU < item.start_u || slotU > getTopU(item)) return false
+        const slot = slotById.get(item.id) ?? getItemSlot(item, rack.width)
+        const { left, width } = getSlotStyle(slot, rack.width, facing)
+        const { startCol, endCol } = computeMobileColumnRange(left, width, rack.width)
+        return visualSlotIndex >= startCol && visualSlotIndex <= endCol
+      })
+      if (!matched) return undefined
+      return { item: matched, isGhost }
+    }
+
+    return (
+      findAtPosition(mobileItems, mobileSlotAssignments, false)
+      ?? findAtPosition(mobileGhostItems, mobileGhostSlotAssignments, true)
+    )
+  }, [facing, mobileGhostItems, mobileGhostSlotAssignments, mobileItems, mobileSlotAssignments, rack])
 
   const handleMobileSlotClick = async (slotU: number, colIndex: number) => {
     if (!selectedDeviceTemplate || !rack) return
+    const panelTemplateId = parsePanelTemplateId(selectedDeviceTemplate)
+    if (panelTemplateId) {
+      const panelLayout = panelLayouts.find((entry) => entry.id === panelTemplateId)
+      if (!panelLayout) return
+      const panelDepthMm = panelLayout.depth_mm
+      if (!isWithinBounds(slotU, panelLayout.height_ru, rack.rack_units)) {
+        setPlacementErrorHint(`Out of rack bounds: U${slotU} with ${panelLayout.height_ru}U in a ${rack.rack_units}U rack.`)
+        return
+      }
+
+      const { preferredLane, preferredSubLane } = visualColToLanePreference(
+        colIndex, rack.width, facing, false,
+      )
+      const issue = getPlacementIssue(
+        slotU,
+        panelLayout.height_ru,
+        false,
+        false,
+        panelDepthMm,
+        0,
+        undefined,
+        preferredLane,
+        preferredSubLane,
+      )
+      if (issue) {
+        setPlacementErrorHint(issue)
+        return
+      }
+
+      try {
+        await addPanelLayoutItem(panelTemplateId, slotU, facing, panelLayout.height_ru, preferredLane, preferredSubLane)
+        setSelectedDeviceTemplate(null)
+        setPlacementErrorHint(null)
+      } catch (err) {
+        console.error('Tap placement failed:', err)
+        showBackendPlacementReject('Placement', err)
+      }
+      return
+    }
+
     const device = devices.find((entry) => entry.id === selectedDeviceTemplate)
     if (!device) return
 
-    if (!isWithinBounds(slotU, device.rack_units, rack.rack_units)) return
-    if (hasDepthConflict(slotU, device.rack_units, facing, device.depth_mm, items, rack.depth_mm)) return
+    if (!isWithinBounds(slotU, device.rack_units, rack.rack_units)) {
+      setPlacementErrorHint(`Out of rack bounds: U${slotU} with ${device.rack_units}U in a ${rack.rack_units}U rack.`)
+      return
+    }
 
     const { preferredLane, preferredSubLane } = visualColToLanePreference(
       colIndex, rack.width, facing, device.is_half_rack,
     )
-    const targetSlot = preferenceToSlot(rack.width, device.is_half_rack, preferredLane, preferredSubLane)
-    if (!canPlaceAtPosition(slotU, device.rack_units, targetSlot, mobileItems, rack.width)) return
+    const issue = getPlacementIssue(
+      slotU,
+      device.rack_units,
+      device.is_half_rack,
+      false,
+      device.depth_mm,
+      0,
+      undefined,
+      preferredLane,
+      preferredSubLane,
+    )
+    if (issue) {
+      setPlacementErrorHint(issue)
+      return
+    }
 
     try {
-      const allowOverlap = rack.width === 'dual' || device.is_half_rack
-      await addItem(device.id, slotU, facing, device.rack_units, preferredLane, allowOverlap, preferredSubLane)
+      await addItem(device.id, slotU, facing, device.rack_units, preferredLane, preferredSubLane)
       setSelectedDeviceTemplate(null)
+      setPlacementErrorHint(null)
     } catch (err) {
       console.error('Tap placement failed:', err)
+      showBackendPlacementReject('Placement', err)
     }
   }
 
@@ -328,22 +652,97 @@ export default function LayoutEditorPage() {
     const item = items.find((i) => i.id === selectedItemToMove)
     if (!item) return
 
-    if (!isWithinBounds(slotU, item.device.rack_units, rack.rack_units)) return
-    if (hasDepthConflict(slotU, item.device.rack_units, facing, item.device.depth_mm, items, rack.depth_mm, selectedItemToMove)) return
+    if (!isWithinBounds(slotU, item.device.rack_units, rack.rack_units)) {
+      setPlacementErrorHint(`Out of rack bounds: U${slotU} with ${item.device.rack_units}U in a ${rack.rack_units}U rack.`)
+      return
+    }
 
     const { preferredLane, preferredSubLane } = visualColToLanePreference(
       colIndex, rack.width, facing, item.device.is_half_rack,
     )
-    const targetSlot = preferenceToSlot(rack.width, item.device.is_half_rack, preferredLane, preferredSubLane)
-    const otherItems = mobileItems.filter((i) => i.id !== selectedItemToMove)
-    if (!canPlaceAtPosition(slotU, item.device.rack_units, targetSlot, otherItems, rack.width)) return
+    const issue = getPlacementIssue(
+      slotU,
+      item.device.rack_units,
+      item.device.is_half_rack,
+      item.force_full_width,
+      item.device.depth_mm,
+      item.rack_ear_offset_mm,
+      selectedItemToMove,
+      preferredLane,
+      preferredSubLane,
+    )
+    if (issue) {
+      setPlacementErrorHint(issue)
+      return
+    }
 
     try {
-      const allowOverlap = rack.width === 'dual' || item.device.is_half_rack
-      await moveItem(selectedItemToMove, slotU, facing, preferredLane, allowOverlap, preferredSubLane)
+      await moveItem(selectedItemToMove, slotU, facing, preferredLane, preferredSubLane)
       setSelectedItemToMove(null)
+      setPlacementErrorHint(null)
     } catch (err) {
       console.error('Tap move failed:', err)
+      showBackendPlacementReject('Move', err)
+    }
+  }
+
+
+  const handleMobileOffsetSave = async () => {
+    if (!selectedItemToMove) return
+
+    const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
+    if (!selectedItem) return
+
+    const offset = Number(mobileOffsetDraft)
+    if (!Number.isFinite(offset)) {
+      setMobileEditorError('Rack ear offset must be a valid number.')
+      return
+    }
+    if (offset < 0) {
+      setMobileEditorError('Rack ear offset cannot be negative.')
+      return
+    }
+
+    const normalizedOffset = Math.round(offset * 10) / 10
+    const issue = getPlacementIssue(
+      selectedItem.start_u,
+      selectedItem.device.rack_units,
+      selectedItem.device.is_half_rack,
+      selectedItem.force_full_width,
+      selectedItem.device.depth_mm,
+      normalizedOffset,
+      selectedItem.id,
+      selectedItem.preferred_lane ?? undefined,
+      selectedItem.preferred_sub_lane ?? undefined,
+    )
+    if (issue) {
+      setMobileEditorError(issue)
+      return
+    }
+
+    try {
+      await updateItemDetails(selectedItemToMove, {
+        custom_name: mobileNameDraft.trim() || null,
+        notes: mobileNotesDraft,
+        rack_ear_offset_mm: normalizedOffset,
+      })
+      setMobileEditorError(null)
+      setPlacementErrorHint(null)
+    } catch (err) {
+      console.error('Save failed:', err)
+      setMobileEditorError(toErrorMessage(err))
+    }
+  }
+
+  const handleMobileDeleteItem = async () => {
+    if (!selectedItemToMove) return
+    try {
+      await removeItem(selectedItemToMove)
+      setSelectedItemToMove(null)
+      setMobileEditorError(null)
+    } catch (err) {
+      console.error('Delete failed:', err)
+      setMobileEditorError(toErrorMessage(err))
     }
   }
 
@@ -429,19 +828,34 @@ export default function LayoutEditorPage() {
 
   const handleSaveNotes = async (
     itemId: string,
-    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean }>,
+    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean; rack_ear_offset_mm: number }>,
   ) => {
+    const item = items.find((i) => i.id === itemId)
+
     // When a half-rack device is being widened to full-column, verify it won't conflict
-    if (updates.force_full_width === true && rack) {
-      const item = items.find((i) => i.id === itemId)
-      if (item?.device.is_half_rack) {
-        const widenedSlot = getItemSlot({ ...item, force_full_width: true }, rack.width)
-        const sameFacing = items.filter((i) => i.id !== itemId && i.facing === item.facing)
-        if (!canPlaceAtPosition(item.start_u, item.device.rack_units, widenedSlot, sameFacing, rack.width)) {
-          throw new Error('Cannot span full width: another device occupies the adjacent half-rack slot at this position.')
-        }
+    if (updates.force_full_width === true && rack && item?.device.is_half_rack) {
+      const widenedSlot = getItemSlot({ ...item, force_full_width: true }, rack.width)
+      const sameFacing = items.filter((i) => i.id !== itemId && i.facing === item.facing)
+      if (!canPlaceAtPosition(item.start_u, item.device.rack_units, widenedSlot, sameFacing, rack.width)) {
+        throw new Error('Cannot span full width: another device occupies the adjacent half-rack slot at this position.')
       }
     }
+
+    if (item && typeof updates.rack_ear_offset_mm === 'number' && updates.rack_ear_offset_mm !== item.rack_ear_offset_mm) {
+      const issue = getPlacementIssue(
+        item.start_u,
+        item.device.rack_units,
+        item.device.is_half_rack,
+        updates.force_full_width ?? item.force_full_width,
+        item.device.depth_mm,
+        updates.rack_ear_offset_mm,
+        item.id,
+        item.preferred_lane ?? undefined,
+        item.preferred_sub_lane ?? undefined,
+      )
+      if (issue) throw new Error(issue)
+    }
+
     return updateItemDetails(itemId, updates)
   }
 
@@ -465,7 +879,7 @@ export default function LayoutEditorPage() {
         <div className="flex h-screen bg-gray-100">
           <DevicePalette
             devices={filteredDevices}
-            categories={categories}
+            categories={libraryCategories}
             selectedCategoryId={selectedCategoryId}
             onCategoryChange={setSelectedCategoryId}
             brands={brands}
@@ -497,24 +911,27 @@ export default function LayoutEditorPage() {
                   </Button>
                   <Button
                     variant="secondary"
+                    onClick={() => navigate(`/editor/project/${project.id}/panels`)}
+                  >
+                    Panel Layouts
+                  </Button>
+                  <Button
+                    variant="secondary"
                     onClick={() => navigate(`/editor/project/${project.id}/print/all`)}
                     disabled={layouts.length <= 1}
                     title={layouts.length <= 1 ? 'Add more layouts to print the full project' : undefined}
                   >
                     Print Full Project
                   </Button>
-                  <Button
-                    variant={facing === 'front' ? 'primary' : 'secondary'}
-                    onClick={() => setFacing('front')}
-                  >
-                    Front
-                  </Button>
-                  <Button
-                    variant={facing === 'rear' ? 'primary' : 'secondary'}
-                    onClick={() => setFacing('rear')}
-                  >
-                    Rear
-                  </Button>
+                  {VIEW_MODE_OPTIONS.map((option) => (
+                    <Button
+                      key={option.value}
+                      variant={viewMode === option.value ? 'primary' : 'secondary'}
+                      onClick={() => setRackViewMode(option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
                   <Button
                     variant={showDeviceNames ? 'primary' : 'secondary'}
                     onClick={() => setShowDeviceNames((prev) => !prev)}
@@ -542,19 +959,42 @@ export default function LayoutEditorPage() {
                   Delete
                 </Button>
               </div>
+
+
+        {placementHint && !isSideView && (
+                <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  {placementHint}
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-auto flex items-start justify-center p-10">
-              <RackGrid
-                rack={rack}
-                items={items}
-                facing={facing}
-                showDeviceDetails={showDeviceNames}
-                onDropNew={handleDropNew}
-                onDropMove={handleDropMove}
-                onRemove={removeItem}
-                onEditNotes={setNotesItem}
-              />
+              {placementHint && !isSideView && (
+                <div className="fixed left-1/2 top-24 z-20 w-[min(60rem,calc(100%-4rem))] -translate-x-1/2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 shadow-lg">
+                  {placementHint}
+                </div>
+              )}
+              {isSideView ? (
+                <RackSideDepthView
+                  rack={rack}
+                  items={items}
+                  side={viewMode}
+                  showDeviceDetails={showDeviceNames}
+                />
+              ) : (
+                <RackGrid
+                  rack={rack}
+                  items={items}
+                  connectorById={connectorById}
+                  facing={facing}
+                  showDeviceDetails={showDeviceNames}
+                  onPlacementHint={setHoverPlacementHint}
+                  onDropNew={handleDropNew}
+                  onDropMove={handleDropMove}
+                  onRemove={removeItem}
+                  onEditNotes={setNotesItem}
+                />
+              )}
             </div>
           </div>
 
@@ -660,21 +1100,77 @@ export default function LayoutEditorPage() {
       <main className="flex-1 overflow-y-auto relative bg-slate-950">
         <div className="fixed right-4 z-20 flex flex-col gap-2" style={{ top: 'calc(7rem + env(safe-area-inset-top))' }}>
           <button
-            onClick={() => setFacing(facing === 'front' ? 'rear' : 'front')}
+            onClick={cycleRackViewMode}
             className="w-12 h-12 rounded-full bg-indigo-600 shadow-xl flex items-center justify-center border border-indigo-400 text-xs font-bold uppercase"
+            title={`Current view: ${activeViewOption.label}`}
           >
-            {facing === 'front' ? 'F' : 'R'}
+            {activeViewOption.shortLabel}
           </button>
         </div>
 
-        {(selectedDeviceTemplate || selectedItemToMove) && (
+        {!isSideView && (selectedDeviceTemplate || selectedItemToMove) && (
           <div className="fixed left-1/2 -translate-x-1/2 z-20 bg-indigo-600 px-4 py-2 rounded-full shadow-2xl border border-indigo-400 flex items-center gap-2" style={{ top: 'calc(7rem + env(safe-area-inset-top))' }}>
             <span className="text-xs font-bold">{selectedItemToMove ? 'Tap a slot to move' : 'Tap a slot to place'}</span>
-            <button onClick={() => { setSelectedDeviceTemplate(null); setSelectedItemToMove(null) }} className="text-xs">✕</button>
+            <button onClick={() => { setSelectedDeviceTemplate(null); setSelectedItemToMove(null); setMobileOffsetDraft('0') }} className="text-xs">✕</button>
           </div>
         )}
 
-        {isDualRack && (
+        {!isSideView && selectedItemToMove && (() => {
+          const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
+          if (!selectedItem) return null
+          const selectedLabel = selectedItem.custom_name?.trim() || `${selectedItem.device.brand} ${selectedItem.device.model}`
+          return (
+            <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-xl border border-indigo-400 bg-slate-900/95 px-3 py-2 shadow-2xl" style={{ top: 'calc(10rem + env(safe-area-inset-top))' }}>
+              <div className="mb-2 text-[11px] font-semibold text-indigo-100 truncate">Edit · {selectedLabel}</div>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={mobileNameDraft}
+                  onChange={(e) => { setMobileNameDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
+                  placeholder="Custom name"
+                  className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"
+                />
+                <textarea
+                  value={mobileNotesDraft}
+                  onChange={(e) => { setMobileNotesDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
+                  placeholder="Notes"
+                  className="w-full h-16 rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-xs text-slate-100"
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={mobileOffsetDraft}
+                    onChange={(e) => { setMobileOffsetDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
+                    className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"
+                    placeholder="Offset (mm)"
+                  />
+                  <button
+                    onClick={() => void handleMobileOffsetSave()}
+                    className="min-h-9 rounded-md border border-indigo-300 bg-indigo-600 px-3 text-xs font-semibold text-white"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => void handleMobileDeleteItem()}
+                    className="min-h-9 rounded-md border border-red-500/70 bg-red-700/70 px-3 text-xs font-semibold text-white"
+                  >
+                    Delete
+                  </button>
+                </div>
+                {mobileEditorError && <p className="text-[11px] text-amber-300">{mobileEditorError}</p>}
+              </div>
+            </div>
+          )
+        })()}
+
+        {placementHint && !isSideView && (
+          <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-lg border border-amber-400 bg-amber-100 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-lg" style={{ top: 'calc(20rem + env(safe-area-inset-top))' }}>
+            {placementHint}
+          </div>
+        )}
+
+        {isDualRack && !isSideView && (
           <div className="px-5 pt-3 pb-1">
             <div className="max-w-[360px] mx-auto flex items-center justify-between gap-2 text-xs">
               <button
@@ -703,126 +1199,137 @@ export default function LayoutEditorPage() {
         )}
 
         <div className="flex justify-center p-5 min-h-full" style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}>
-          <div className="relative w-full max-w-[360px]">
-            <div className="bg-slate-900 rounded-t-xl border-x-[10px] border-t-[10px] border-slate-800 shadow-2xl">
-              {slots.map((u) => (
-                <div
-                  key={u}
-                  className="h-10 border-b border-slate-800/70 relative flex items-center transition-colors"
-                >
-                  <div className="w-8 text-[10px] font-mono text-slate-500 flex items-center justify-center border-r border-slate-800 bg-slate-900/50 h-full">
-                    {u}
-                  </div>
-
-                  <div className="flex-1 h-full relative">
-                    {Array.from({ length: mobileColumnCount }, (_, colIndex) => {
-                      const visualColIndex = mobileLaneOffset + colIndex
-                      const item = getDeviceAtU(u, visualColIndex)
-                      const topU = item ? getTopU(item) : null
-                      const isTop = item && topU === u
-
-                      // Compute which column this device's slot starts in (for multi-column spanning)
-                      const itemSlot = item && rack
-                        ? (mobileSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width))
-                        : null
-                      const colWidthPct = 100 / mobileColumnCount
-                      const { startCol, spanCols } = itemSlot && rack
-                        ? (() => {
-                          const { left, width } = getSlotStyle(itemSlot, rack.width, facing)
-                          return computeMobileColumnRange(left, width, rack.width)
-                        })()
-                        : { startCol: visualColIndex, spanCols: 1 }
-                      const isLeadCol = visualColIndex === startCol
-                      const visibleSpanCols = Math.max(0, Math.min(spanCols, mobileColumnCount - colIndex))
-
-                      const isSelectableEmpty = !item && (!!selectedDeviceTemplate || !!selectedItemToMove)
-                      const colBaseClass = isSelectableEmpty ? 'bg-indigo-500/15 active:bg-indigo-500/30' : ''
-                      const colLeft = `${colIndex * colWidthPct}%`
-                      const colWidth = `${colWidthPct}%`
-
-                      const handleColClick = isSelectableEmpty
-                        ? () => void (selectedItemToMove ? handleMobileMoveToSlot(u, visualColIndex) : handleMobileSlotClick(u, visualColIndex))
-                        : item && !showOppositePreview
-                          ? () => {
-                              if (selectedItemToMove === item.id) {
-                                setSelectedItemToMove(null)
-                              } else {
-                                setSelectedItemToMove(item.id)
-                                setSelectedDeviceTemplate(null)
-                              }
-                            }
-                          : undefined
-
-                      return (
-                        <div
-                          key={`${u}-${colIndex}`}
-                          className={`absolute top-0 h-full border-r border-slate-800/60 ${colBaseClass}`}
-                          style={{ left: colLeft, width: colWidth }}
-                          onClick={handleColClick}
-                        >
-                          {isTop && item && isLeadCol && visibleSpanCols > 0 && (
-                            <div
-                              className="absolute z-10 p-1"
-                              style={{
-                                height: `${item.device.rack_units * 40 - 1}px`,
-                                top: '0px',
-                                left: 0,
-                                width: `${visibleSpanCols * 100}%`,
-                              }}
-                            >
-                              <div
-                                className={`relative w-full h-full rounded overflow-hidden bg-slate-700 border-2 transition-colors ${selectedItemToMove === item.id ? 'border-amber-400 opacity-70' : 'border-indigo-300/70'}`}
-                                style={{ WebkitTouchCallout: 'none', userSelect: 'none' }}
-                                onContextMenu={(e) => e.preventDefault()}
-                              >
-                                {(() => {
-                                  const imagePath = facing === 'front'
-                                    ? item.device.front_image_path
-                                    : item.device.rear_image_path
-                                  const imageUrl = getDeviceImageUrl(imagePath)
-                                  return imageUrl ? (
-                                    <img
-                                      src={imageUrl}
-                                      alt={item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
-                                      className="w-full h-full object-fill"
-                                      draggable={false}
-                                      onContextMenu={(e) => e.preventDefault()}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full bg-indigo-500/80" />
-                                  )
-                                })()}
-
-                                {showDeviceNames && (
-                                  <div className="absolute inset-0 bg-black/35 p-2 flex flex-col justify-end pointer-events-none">
-                                    <p className="text-[9px] uppercase font-black text-indigo-100 truncate">
-                                      {item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
-                                    </p>
-                                    {item.custom_name && (
-                                      <p className="text-[10px] text-indigo-100 truncate">{item.device.brand} {item.device.model}</p>
-                                    )}
-                                    {item.notes && <p className="text-[10px] text-indigo-100/90 truncate">{item.notes}</p>}
-                                  </div>
-                                )}
-
-                                {!showOppositePreview && (
-                                  <div className="absolute top-1 right-1 flex gap-1 text-[10px]">
-                                    <button onClick={(e) => { e.stopPropagation(); setNotesItem(item) }} className="bg-black/45 px-1.5 py-0.5 rounded">N</button>
-                                    <button onClick={(e) => { e.stopPropagation(); void removeItem(item.id) }} className="bg-black/45 px-1.5 py-0.5 rounded">✕</button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
+          {isSideView ? (
+            <div className="w-full max-w-[360px]">
+              <RackSideDepthView
+                rack={rack}
+                items={items}
+                side={viewMode}
+                showDeviceDetails={showDeviceNames}
+                compact
+              />
+              <p className="mt-3 text-[11px] text-slate-500 text-center">
+                Side views are read-only. Switch to Front or Rear to place or move devices.
+              </p>
             </div>
-            <div className="h-4 w-full bg-slate-800 rounded-b-xl" />
-          </div>
+          ) : (
+            <div className="relative w-full max-w-[360px]">
+              <div className="bg-slate-900 rounded-t-xl border-x-[10px] border-t-[10px] border-slate-800 shadow-2xl">
+                {slots.map((u) => (
+                  <div
+                    key={u}
+                    className="h-10 border-b border-slate-800/70 relative flex items-center transition-colors"
+                  >
+                    <div className="w-8 text-[10px] font-mono text-slate-500 flex items-center justify-center border-r border-slate-800 bg-slate-900/50 h-full">
+                      {u}
+                    </div>
+
+                    <div className="flex-1 h-full relative">
+                      {Array.from({ length: mobileColumnCount }, (_, colIndex) => {
+                        const visualColIndex = mobileLaneOffset + colIndex
+                        const cellEntry = getDeviceAtU(u, visualColIndex)
+                        const item = cellEntry?.item
+                        const isGhost = cellEntry?.isGhost ?? false
+                        const topU = item ? getTopU(item) : null
+                        const isTop = item && topU === u
+
+                        // Compute which column this device's slot starts in (for multi-column spanning)
+                        const itemSlot = item && rack
+                          ? (
+                            isGhost
+                              ? (mobileGhostSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width))
+                              : (mobileSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width))
+                          )
+                          : null
+                        const colWidthPct = 100 / mobileColumnCount
+                        const { startCol, spanCols } = itemSlot && rack
+                          ? (() => {
+                            const { left, width } = getSlotStyle(itemSlot, rack.width, facing)
+                            return computeMobileColumnRange(left, width, rack.width)
+                          })()
+                          : { startCol: visualColIndex, spanCols: 1 }
+                        const isLeadCol = visualColIndex === startCol
+                        const visibleSpanCols = Math.max(0, Math.min(spanCols, mobileColumnCount - colIndex))
+
+                        const isSelectableEmpty = (!item || isGhost) && (!!selectedDeviceTemplate || !!selectedItemToMove)
+                        const colBaseClass = isSelectableEmpty ? 'bg-indigo-500/15 active:bg-indigo-500/30' : ''
+                        const colLeft = `${colIndex * colWidthPct}%`
+                        const colWidth = `${colWidthPct}%`
+
+                        const handleColClick = isSelectableEmpty
+                          ? () => void (selectedItemToMove ? handleMobileMoveToSlot(u, visualColIndex) : handleMobileSlotClick(u, visualColIndex))
+                          : item && !isGhost
+                            ? () => {
+                                if (selectedItemToMove === item.id) {
+                                  setSelectedItemToMove(null)
+                                } else {
+                                  setSelectedItemToMove(item.id)
+                                  setSelectedDeviceTemplate(null)
+                                }
+                              }
+                            : undefined
+
+                        return (
+                          <div
+                            key={`${u}-${colIndex}`}
+                            className={`absolute top-0 h-full border-r border-slate-800/60 ${colBaseClass}`}
+                            style={{ left: colLeft, width: colWidth }}
+                            onClick={handleColClick}
+                          >
+                            {isTop && item && isLeadCol && visibleSpanCols > 0 && (
+                              <div
+                                className="absolute z-10 p-1"
+                                style={{
+                                  height: `${item.device.rack_units * 40 - 1}px`,
+                                  top: '0px',
+                                  left: 0,
+                                  width: `${visibleSpanCols * 100}%`,
+                                }}
+                              >
+                                <div
+                                  className={`relative w-full h-full rounded overflow-hidden bg-slate-700 border-2 transition-colors ${isGhost ? 'border-slate-400/50 opacity-55 saturate-75' : selectedItemToMove === item.id ? 'border-amber-400 opacity-70' : 'border-indigo-300/70'}`}
+                                  style={{ WebkitTouchCallout: 'none', userSelect: 'none' }}
+                                  onContextMenu={(e) => e.preventDefault()}
+                                >
+                                  {(() => {
+                                    const imageUrl = resolvePlacementImageUrl(item, facing)
+                                    return imageUrl ? (
+                                      <img
+                                        src={imageUrl}
+                                        alt={item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
+                                        className="w-full h-full object-fill"
+                                        draggable={false}
+                                        onContextMenu={(e) => e.preventDefault()}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full bg-indigo-500/80" />
+                                    )
+                                  })()}
+
+                                  {showDeviceNames && (
+                                    <div className="absolute inset-0 bg-black/35 p-2 flex flex-col justify-end pointer-events-none">
+                                      <p className="text-[9px] uppercase font-black text-indigo-100 truncate">
+                                        {item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`}
+                                      </p>
+                                      {item.custom_name && (
+                                        <p className="text-[10px] text-indigo-100 truncate">{item.device.brand} {item.device.model}</p>
+                                      )}
+                                      {item.notes && <p className="text-[10px] text-indigo-100/90 truncate">{item.notes}</p>}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="h-4 w-full bg-slate-800 rounded-b-xl" />
+            </div>
+          )}
         </div>
       </main>
 
@@ -878,7 +1385,7 @@ export default function LayoutEditorPage() {
                       className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm"
                     >
                       <option value="all">All categories</option>
-                      {categories.map((category) => (
+                      {libraryCategories.map((category) => (
                         <option key={category.id} value={category.id}>{category.name}</option>
                       ))}
                     </select>
@@ -947,24 +1454,21 @@ export default function LayoutEditorPage() {
                       Delete
                     </button>
                   </div>
-                  <p className="text-xs text-slate-500 uppercase font-bold">Facing</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setFacing('front')}
-                      className={`flex-1 py-2 rounded-lg border text-sm ${
-                        facing === 'front' ? 'border-indigo-400 bg-indigo-500/20' : 'border-slate-700 bg-slate-800'
-                      }`}
-                    >
-                      Front
-                    </button>
-                    <button
-                      onClick={() => setFacing('rear')}
-                      className={`flex-1 py-2 rounded-lg border text-sm ${
-                        facing === 'rear' ? 'border-indigo-400 bg-indigo-500/20' : 'border-slate-700 bg-slate-800'
-                      }`}
-                    >
-                      Rear
-                    </button>
+                  <p className="text-xs text-slate-500 uppercase font-bold">View</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {VIEW_MODE_OPTIONS.map((option) => (
+                      <button
+                        key={`mobile-view-${option.value}`}
+                        onClick={() => setRackViewMode(option.value)}
+                        className={`py-2 rounded-lg border text-sm ${
+                          viewMode === option.value
+                            ? 'border-indigo-400 bg-indigo-500/20'
+                            : 'border-slate-700 bg-slate-800'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                   </div>
                   <button
                     onClick={() => setShowDeviceNames((prev) => !prev)}
@@ -987,6 +1491,12 @@ export default function LayoutEditorPage() {
                     title={layouts.length <= 1 ? 'Add more layouts to print the full project' : undefined}
                   >
                     Print Full Project
+                  </button>
+                  <button
+                    onClick={() => navigate(`/editor/project/${project.id}/panels`)}
+                    className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
+                  >
+                    Panel Layouts
                   </button>
                   <p className="text-xs text-slate-500">Rack: {rack.name} ({rack.rack_units}U, {rack.width})</p>
                   <p className="text-xs text-slate-500">Total load: {rackTotals.weightKg.toFixed(2)} kg</p>

@@ -1,0 +1,93 @@
+import { useNavigate } from 'react-router-dom'
+import { useProjects } from '../hooks/useProjects'
+import { usePanelLayoutCounts } from '../hooks/usePanelLayoutCounts'
+import PageHeader from '../components/layout/PageHeader'
+import Button from '../components/ui/Button'
+
+export default function PanelLayoutsOverviewPage() {
+  const { projects, loading: projectsLoading } = useProjects()
+  const { counts, loading: countsLoading } = usePanelLayoutCounts()
+  const navigate = useNavigate()
+
+  const loading = projectsLoading || countsLoading
+
+  if (loading) {
+    return <div className="text-gray-500">Loading...</div>
+  }
+
+  if (projects.length === 0) {
+    return (
+      <div>
+        <PageHeader title="Panel Layouts" />
+        <p className="text-gray-500 text-sm">
+          No projects yet. Create a project first to start designing panel layouts.
+        </p>
+        <Button className="mt-3" onClick={() => navigate('/projects')}>
+          Go to Projects
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <PageHeader title="Panel Layouts" />
+      <p className="text-sm text-gray-500 mb-4">
+        Select a project to view and manage its connector panel layouts.
+      </p>
+
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {projects.map((project) => {
+          const panelCount = counts.get(project.id) ?? 0
+          return (
+            <article key={project.id} className="rounded-lg border bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-gray-900">{project.name}</h2>
+              <p className="mt-1 text-xs text-gray-500">
+                {panelCount} panel layout{panelCount !== 1 ? 's' : ''}
+                {project.owner ? ` · ${project.owner}` : ''}
+              </p>
+              <Button
+                className="mt-3 w-full"
+                onClick={() => navigate(`/editor/project/${project.id}/panels`)}
+              >
+                {panelCount > 0 ? 'Open Panel Layouts' : 'Create Panel Layout'}
+              </Button>
+            </article>
+          )
+        })}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-gray-500">
+              <th className="pb-2 font-medium">Project</th>
+              <th className="pb-2 font-medium">Owner</th>
+              <th className="pb-2 font-medium">Panel Layouts</th>
+              <th className="pb-2 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {projects.map((project) => {
+              const panelCount = counts.get(project.id) ?? 0
+              return (
+                <tr key={project.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <td className="py-3 font-medium text-gray-900">{project.name}</td>
+                  <td className="py-3 text-gray-500">{project.owner ?? '—'}</td>
+                  <td className="py-3">{panelCount}</td>
+                  <td className="py-3 text-right">
+                    <Button onClick={() => navigate(`/editor/project/${project.id}/panels`)}>
+                      {panelCount > 0 ? 'Open Panel Layouts' : 'Create Panel Layout'}
+                    </Button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}

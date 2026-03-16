@@ -4,12 +4,14 @@ const navItems = [
   { to: '/', label: 'Devices' },
   { to: '/racks', label: 'Racks' },
   { to: '/projects', label: 'Projects' },
+  { to: '/connectors', label: 'Connectors' },
+  { to: '/panels', label: 'Panel Layouts' },
 ]
 
 export default function AppShell() {
   return (
-    <div className="flex min-h-screen bg-gray-50 overflow-x-hidden">
-      <nav className="hidden md:flex md:w-56 bg-gray-900 text-white flex-col shrink-0">
+    <div className="flex min-h-screen bg-gray-50 overflow-x-hidden md:h-screen md:overflow-hidden">
+      <nav className="hidden md:sticky md:top-0 md:flex md:h-screen md:w-56 bg-gray-900 text-white flex-col shrink-0">
         <div className="px-4 py-5 border-b border-gray-700">
           <h1 className="text-lg font-bold tracking-tight">Rack Builder</h1>
         </div>
@@ -34,7 +36,7 @@ export default function AppShell() {
         </ul>
       </nav>
 
-      <div className="flex-1 flex min-h-screen flex-col">
+      <div className="flex-1 flex min-h-screen flex-col md:min-h-0">
         <header
           className="md:hidden sticky top-0 z-20 bg-gray-900 text-white border-b border-gray-700 px-4 py-3"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
