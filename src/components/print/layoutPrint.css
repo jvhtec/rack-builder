@@ -34,6 +34,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 16px;
   padding: calc(14px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 14px calc(18px + env(safe-area-inset-left));
   border-bottom: 1px solid #b7c1d0;
@@ -74,6 +75,20 @@
 
 .dark .layout-print-toolbar-meta {
   color: #64748b;
+}
+
+.layout-print-toolbar-status {
+  margin: 0;
+  width: 100%;
+  font-size: 12px;
+  color: #1d4ed8;
+}
+
+.layout-print-toolbar-error {
+  margin: 0;
+  width: 100%;
+  font-size: 12px;
+  color: #b91c1c;
 }
 
 .layout-print-stage {
@@ -412,7 +427,7 @@
 
 .print-rack-device-simplified-layout {
   position: absolute;
-  inset: 2px 4px;
+  inset: 1px 2px;
   overflow: hidden;
 }
 
@@ -420,10 +435,10 @@
   position: absolute;
   top: 0;
   left: 0;
-  max-width: 40%;
+  max-width: 44%;
   z-index: 1;
   color: #111;
-  font-size: 7px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -437,10 +452,10 @@
   position: absolute;
   bottom: 0;
   left: 0;
-  max-width: 40%;
+  max-width: 44%;
   z-index: 1;
   color: #555;
-  font-size: 7px;
+  font-size: 9px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -454,7 +469,10 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: #333;
+  color: #1f2937;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0 3px;
   white-space: pre-line;
   overflow: hidden;
   overflow-wrap: break-word;
@@ -465,10 +483,10 @@
   position: absolute;
   bottom: 0;
   right: 0;
-  max-width: 50%;
+  max-width: 56%;
   z-index: 1;
-  color: #1a56db;
-  font-size: 7px;
+  color: #1d4ed8;
+  font-size: 9.5px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -526,6 +544,7 @@
   font-size: 38px;
   line-height: 1.2;
   font-weight: 700;
+  color: #111827;
 }
 
 .project-print-cover-owner,
@@ -552,6 +571,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  color: #111827;
 }
 
 .project-print-index-table-wrap {
@@ -606,6 +626,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #111827;
 }
 
 .project-print-index-table th {
@@ -734,6 +755,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #111827;
 }
 
 .panel-print-connector-table th {
@@ -943,6 +965,45 @@
     font-size: 6px;
     padding: 0 12px 6px;
   }
+}
+
+html.layout-print-force-light .layout-print-page {
+  background: #dce2eb;
+  color: #0f1726;
+}
+
+html.layout-print-force-light .layout-print-toolbar {
+  background: #f7f9fc;
+  border-color: #b7c1d0;
+}
+
+html.layout-print-force-light .layout-print-toolbar-label,
+html.layout-print-force-light .layout-print-toolbar-meta {
+  color: #374155;
+}
+
+html.layout-print-force-light .layout-print-toolbar-status {
+  color: #1d4ed8;
+}
+
+html.layout-print-force-light .layout-print-toolbar-error {
+  color: #b91c1c;
+}
+
+.layout-print-exporting .layout-print-sheet {
+  width: 1400px !important;
+  height: 990px !important;
+  max-width: none !important;
+  aspect-ratio: auto !important;
+}
+
+.layout-print-exporting .layout-print-stage {
+  overflow: visible !important;
+}
+
+.layout-print-exporting .layout-print-toolbar {
+  opacity: 0.2;
+  pointer-events: none;
 }
 
 @page {

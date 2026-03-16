@@ -958,7 +958,7 @@ export default function LayoutEditorPage() {
                     variant="secondary"
                     onClick={() => navigate(`/editor/project/${project.id}/print/${activeLayout.id}`)}
                   >
-                    Print A3 / PDF
+                    Export A3 PDF
                   </Button>
                   <Button
                     variant="secondary"
@@ -970,9 +970,9 @@ export default function LayoutEditorPage() {
                     variant="secondary"
                     onClick={() => navigate(`/editor/project/${project.id}/print/all`)}
                     disabled={layouts.length <= 1}
-                    title={layouts.length <= 1 ? 'Add more layouts to print the full project' : undefined}
+                    title={layouts.length <= 1 ? 'Add more layouts to export the full project PDF' : undefined}
                   >
-                    Print Full Project
+                    Export Full Project PDF
                   </Button>
                   {VIEW_MODE_OPTIONS.map((option) => (
                     <Button
@@ -1604,15 +1604,15 @@ export default function LayoutEditorPage() {
                     onClick={() => navigate(`/editor/project/${project.id}/print/${activeLayout.id}`)}
                     className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
                   >
-                    Print A3 / PDF
+                    Export A3 PDF
                   </button>
                   <button
                     onClick={() => navigate(`/editor/project/${project.id}/print/all`)}
                     disabled={layouts.length <= 1}
                     className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800 disabled:opacity-40"
-                    title={layouts.length <= 1 ? 'Add more layouts to print the full project' : undefined}
+                    title={layouts.length <= 1 ? 'Add more layouts to export the full project PDF' : undefined}
                   >
-                    Print Full Project
+                    Export Full Project PDF
                   </button>
                   <button
                     onClick={() => navigate(`/editor/project/${project.id}/panels`)}

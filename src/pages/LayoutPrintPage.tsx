@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
 import type { Layout, LayoutItemWithDevice, Project, Rack } from '../types'
@@ -9,11 +9,13 @@ import ThemeToggle from '../components/ui/ThemeToggle'
 import { getDeviceImageUrl } from '../hooks/useDevices'
 import { useConnectors } from '../hooks/useConnectors'
 import { LAYOUT_ITEM_SELECT, mapLayoutItemRows, type LayoutItemRow } from '../lib/layoutItemMapper'
+import { exportPrintSheetsToPdf } from '../lib/printPdfExport'
 import '../components/print/layoutPrint.css'
 
 function preloadImage(url: string): Promise<void> {
   return new Promise((resolve) => {
     const image = new Image()
+    image.crossOrigin = 'anonymous'
     image.onload = () => resolve()
     image.onerror = () => resolve()
     image.src = url
@@ -22,7 +24,6 @@ function preloadImage(url: string): Promise<void> {
 
 export default function LayoutPrintPage() {
   const { projectId, layoutId } = useParams<{ projectId: string; layoutId: string }>()
-  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { isDark, toggle } = useTheme()
 
@@ -36,13 +37,14 @@ export default function LayoutPrintPage() {
   const [imagesReady, setImagesReady] = useState(false)
   const [scale, setScale] = useState(1)
   const [includeSimplified, setIncludeSimplified] = useState(false)
-  const [autoPrintDone, setAutoPrintDone] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportStatus, setExportStatus] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
   const [generatedAt] = useState(() => new Date())
+  const exportRootRef = useRef<HTMLDivElement | null>(null)
 
   const drawingFrameRef = useRef<HTMLDivElement | null>(null)
   const drawingContentRef = useRef<HTMLDivElement | null>(null)
-
-  const autoPrintRequested = searchParams.get('autoprint') === '1'
 
   const scaleLabel = useMemo(() => `Fit (shared) ${scale.toFixed(2)}x`, [scale])
   const rackTotals = useMemo(() => {
@@ -208,14 +210,31 @@ export default function LayoutPrintPage() {
     return () => window.cancelAnimationFrame(frameId)
   }, [recalculateScale, items, imagesReady])
 
-  useEffect(() => {
-    if (!autoPrintRequested || autoPrintDone || loading || error || !layout || !rack || !imagesReady) return
-    const timer = window.setTimeout(() => {
-      setAutoPrintDone(true)
-      window.print()
-    }, 250)
-    return () => window.clearTimeout(timer)
-  }, [autoPrintRequested, autoPrintDone, loading, error, layout, rack, imagesReady])
+  const handleExportPdf = useCallback(async () => {
+    if (!exportRootRef.current || !layout || !rack) return
+
+    setExportingPdf(true)
+    setExportError(null)
+    setExportStatus('Preparing export...')
+
+    try {
+      await exportPrintSheetsToPdf({
+        rootElement: exportRootRef.current,
+        fileName: `${project?.name ?? 'project'}-${layout.name}.pdf`,
+        format: 'a3',
+        orientation: 'landscape',
+        qualityMode: 'balanced',
+        onProgress: (progress) => setExportStatus(progress.message),
+      })
+      setExportStatus('PDF download started.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to export PDF.'
+      setExportError(message)
+      setExportStatus(null)
+    } finally {
+      setExportingPdf(false)
+    }
+  }, [layout, project?.name, rack])
 
   if (error) {
     return (
@@ -231,19 +250,21 @@ export default function LayoutPrintPage() {
   if (loading || !layout || !rack) {
     return (
       <div className="layout-print-loading">
-        <p>Preparing A3 print preview...</p>
+        <p>Preparing A3 PDF preview...</p>
       </div>
     )
   }
 
   return (
-    <div className="layout-print-page">
+    <div ref={exportRootRef} className="layout-print-page">
       <header className="layout-print-toolbar">
         <div className="layout-print-toolbar-actions">
           <Button variant="secondary" onClick={() => navigate(`/editor/project/${projectId}?layout=${layoutId}`)}>
             Back
           </Button>
-          <Button onClick={() => window.print()}>Print</Button>
+          <Button onClick={() => void handleExportPdf()} disabled={exportingPdf || loading || !imagesReady}>
+            {exportingPdf ? 'Exporting...' : exportError ? 'Retry Export PDF' : 'Export PDF'}
+          </Button>
           <label className="layout-print-toolbar-label">
             <input
               type="checkbox"
@@ -259,6 +280,8 @@ export default function LayoutPrintPage() {
         <p className="layout-print-toolbar-meta">
           {layout.name} | {rack.name} | {rackTotals.weightKg.toFixed(2)} kg | {rackTotals.powerW} W | {imagesReady ? 'Ready' : 'Loading images'}
         </p>
+        {exportStatus && <p className="layout-print-toolbar-status">{exportStatus}</p>}
+        {exportError && <p className="layout-print-toolbar-error">{exportError}</p>}
       </header>
 
       <main className={`layout-print-stage ${includeSimplified ? 'layout-print-stage--project' : ''}`}>

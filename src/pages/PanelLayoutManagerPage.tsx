@@ -171,7 +171,7 @@ export default function PanelLayoutManagerPage() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button onClick={() => navigate(`/editor/project/${project.id}/panels/${panel.id}`)}>Open Editor</Button>
                 <Button variant="secondary" onClick={() => navigate(`/editor/project/${project.id}/panels/${panel.id}/print`)}>
-                  Print
+                  Export PDF
                 </Button>
                 <Button variant="secondary" onClick={() => void handleDuplicate(panel.id)} disabled={saving}>
                   Duplicate

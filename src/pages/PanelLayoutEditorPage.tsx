@@ -879,7 +879,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
                       onClick={() => navigate(`/editor/project/${projectId}/panels/${panel.id}/print`)}
                       className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2.5 text-xs text-slate-300 min-h-11"
                     >
-                      Print Layout
+                      Export PDF
                     </button>
                   </div>
                 )}
@@ -922,7 +922,7 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
             onClick={() => navigate(`/editor/project/${projectId}/panels/${panel.id}/print`)}
             className="rounded-md border border-slate-700 bg-slate-800 px-5 py-2.5 text-base font-medium text-slate-300 transition hover:bg-slate-700 hover:text-white"
           >
-            Print
+            Export PDF
           </button>
           <button
             onClick={() => void handleSave()}

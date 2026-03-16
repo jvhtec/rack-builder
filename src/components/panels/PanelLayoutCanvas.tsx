@@ -50,6 +50,7 @@ function PortVisual({ port, connectorById }: { port: PanelLayoutPort; connectorB
             alt={label}
             className="h-full w-full object-contain p-1"
             draggable={false}
+            crossOrigin="anonymous"
           />
         </div>
       ) : null}

@@ -53,7 +53,7 @@ export default function PrintCartouche({
         </div>
       ))}
       <div className="print-cartouche-cell print-cartouche-logo">
-        <img src={logoSrc} alt={logoAlt} className="print-cartouche-logo-image" />
+        <img src={logoSrc} alt={logoAlt} className="print-cartouche-logo-image" crossOrigin="anonymous" />
       </div>
       <div className="print-cartouche-cell">
         <p className="print-cartouche-label">Page</p>

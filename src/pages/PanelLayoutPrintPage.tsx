@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import type { DeviceFacing, PanelLayout, Project } from '../types'
@@ -7,6 +7,7 @@ import { normalizeActiveColumnMap, toHoleCount } from '../lib/panelGrid'
 import PanelPrintSheet from '../components/print/PanelPrintSheet'
 import { useTheme } from '../hooks/useTheme'
 import ThemeToggle from '../components/ui/ThemeToggle'
+import { exportPrintSheetsToPdf } from '../lib/printPdfExport'
 import '../components/print/layoutPrint.css'
 
 interface PanelLayoutRecord extends Omit<PanelLayout, 'rows' | 'ports'> {
@@ -85,7 +86,11 @@ export default function PanelLayoutPrintPage() {
   const [panel, setPanel] = useState<PanelLayout | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportStatus, setExportStatus] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
   const [generatedAt] = useState(() => new Date())
+  const exportRootRef = useRef<HTMLDivElement | null>(null)
 
   const facing = useMemo<DeviceFacing>(() => {
     const queryFacing = searchParams.get('facing')
@@ -142,7 +147,33 @@ export default function PanelLayoutPrintPage() {
     setSearchParams(next)
   }
 
-  if (loading) return <div className="layout-print-loading"><p>Preparing panel print preview...</p></div>
+  const handleExportPdf = async () => {
+    if (!exportRootRef.current || !project || !panel) return
+
+    setExportingPdf(true)
+    setExportError(null)
+    setExportStatus('Preparing export...')
+
+    try {
+      await exportPrintSheetsToPdf({
+        rootElement: exportRootRef.current,
+        fileName: `${project.name}-${panel.name}-${facing}.pdf`,
+        format: 'a3',
+        orientation: 'landscape',
+        qualityMode: 'balanced',
+        onProgress: (progress) => setExportStatus(progress.message),
+      })
+      setExportStatus('PDF download started.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to export PDF.'
+      setExportError(message)
+      setExportStatus(null)
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
+  if (loading) return <div className="layout-print-loading"><p>Preparing panel PDF preview...</p></div>
 
   if (error || !panel || !project) {
     return (
@@ -156,7 +187,7 @@ export default function PanelLayoutPrintPage() {
   }
 
   return (
-    <div className="layout-print-page">
+    <div ref={exportRootRef} className="layout-print-page">
       <header className="layout-print-toolbar">
         <div className="layout-print-toolbar-actions">
           <Button variant="secondary" onClick={() => navigate(`/editor/project/${projectId}/panels/${panel.id}`)}>
@@ -168,7 +199,9 @@ export default function PanelLayoutPrintPage() {
           <Button variant={facing === 'rear' ? 'primary' : 'secondary'} onClick={() => setFacing('rear')}>
             Rear
           </Button>
-          <Button onClick={() => window.print()}>Print</Button>
+          <Button onClick={() => void handleExportPdf()} disabled={exportingPdf || loading}>
+            {exportingPdf ? 'Exporting...' : exportError ? 'Retry Export PDF' : 'Export PDF'}
+          </Button>
           <div className="ml-2 pl-4 border-l border-gray-300 dark:border-slate-700">
             <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
           </div>
@@ -176,6 +209,8 @@ export default function PanelLayoutPrintPage() {
         <p className="layout-print-toolbar-meta">
           {project.name} | {panel.name} | {panel.height_ru}U
         </p>
+        {exportStatus && <p className="layout-print-toolbar-status">{exportStatus}</p>}
+        {exportError && <p className="layout-print-toolbar-error">{exportError}</p>}
       </header>
 
       <main className="layout-print-stage">

@@ -8,12 +8,20 @@ import { buildRackFaceViewModel, selectFacingImagePath } from '../../lib/rackVie
 import AutoScaleText from '../shared/AutoScaleText'
 
 function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
+  const minNoteFontPx = item.device.rack_units <= 1 ? 9.5 : 11
+  const maxNoteFontPx = item.device.rack_units <= 1 ? 14 : 18
+
   return (
     <div className="print-rack-device-simplified-layout">
       <span className="print-rack-device-simplified-brand">{item.device.brand}</span>
       <span className="print-rack-device-simplified-model">{item.device.model}</span>
       {item.notes && (
-        <AutoScaleText className="print-rack-device-simplified-notes" text={item.notes} />
+        <AutoScaleText
+          className="print-rack-device-simplified-notes"
+          text={item.notes}
+          minFontPx={minNoteFontPx}
+          maxFontPx={maxNoteFontPx}
+        />
       )}
       <span className="print-rack-device-simplified-name">{item.custom_name?.trim() || ''}</span>
     </div>
@@ -132,7 +140,7 @@ export default function RackPrintView({
                         <>
                           <div className="print-rack-device-media">
                             {imageUrl ? (
-                              <img src={imageUrl} alt={label} />
+                              <img src={imageUrl} alt={label} crossOrigin="anonymous" />
                             ) : (
                               <div className="print-rack-device-fallback">
                                 <span>{label}</span>
@@ -183,7 +191,7 @@ export default function RackPrintView({
                         <>
                           <div className="print-rack-device-media">
                             {imageUrl ? (
-                              <img src={imageUrl} alt={label} />
+                              <img src={imageUrl} alt={label} crossOrigin="anonymous" />
                             ) : (
                               <div className="print-rack-device-fallback">
                                 <span>{label}</span>
