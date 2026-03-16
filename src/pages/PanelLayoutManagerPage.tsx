@@ -154,7 +154,7 @@ export default function PanelLayoutManagerPage() {
       {operationError && <p className="text-sm text-red-600">{operationError}</p>}
 
       {panelLayouts.length === 0 ? (
-        <div className="rounded-lg border bg-white p-4 text-sm text-gray-600">
+        <div className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4 text-sm text-gray-600 dark:text-gray-400">
           No panel layouts yet. Create one to start designing connector panels.
         </div>
       ) : (
