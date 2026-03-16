@@ -27,6 +27,7 @@ interface RackGridProps {
   items: LayoutItemWithDevice[]
   connectorById: Map<string, ConnectorDefinition>
   facing: DeviceFacing
+  zoom?: number
   showDeviceDetails?: boolean
   simplifiedView?: boolean
   lanePreferenceByItemId?: Map<string, 0 | 1>
@@ -58,6 +59,7 @@ export default function RackGrid({
   items,
   connectorById,
   facing,
+  zoom = 1,
   showDeviceDetails = true,
   simplifiedView = false,
   onDropNew,
@@ -80,7 +82,9 @@ export default function RackGrid({
   const laneCount = isDualRack ? 2 : 1
   const rackRef = useRef<HTMLDivElement | null>(null)
   const [slotHeight, setSlotHeight] = useState(RACK_SLOT_HEIGHT_PX)
-  const rackWidth = isDualRack ? RACK_DUAL_WIDTH : RACK_SINGLE_WIDTH
+  const safeZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
+  const baseRackWidth = isDualRack ? RACK_DUAL_WIDTH : RACK_SINGLE_WIDTH
+  const rackWidth = `calc((${baseRackWidth}) * ${safeZoom})`
 
   useEffect(() => {
     const node = rackRef.current

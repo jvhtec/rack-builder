@@ -136,6 +136,28 @@ const VIEW_MODE_OPTIONS: Array<{ value: RackViewMode; label: string; shortLabel:
   { value: 'right', label: 'Right', shortLabel: 'Rt' },
 ]
 
+const LAYOUT_EDITOR_ZOOM_STORAGE_KEY = 'layout-editor-zoom-percent'
+const MIN_ZOOM_PERCENT = 60
+const MAX_ZOOM_PERCENT = 180
+const DEFAULT_ZOOM_PERCENT = 100
+const ZOOM_STEP_PERCENT = 10
+
+function normalizeZoomPercent(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_ZOOM_PERCENT
+  const stepped = Math.round(value / ZOOM_STEP_PERCENT) * ZOOM_STEP_PERCENT
+  return Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, stepped))
+}
+
+function getInitialZoomPercent(): number {
+  try {
+    const storedValue = localStorage.getItem(LAYOUT_EDITOR_ZOOM_STORAGE_KEY)
+    if (storedValue === null) return DEFAULT_ZOOM_PERCENT
+    return normalizeZoomPercent(Number(storedValue))
+  } catch {
+    return DEFAULT_ZOOM_PERCENT
+  }
+}
+
 function isSideViewMode(mode: RackViewMode): mode is 'left' | 'right' {
   return mode === 'left' || mode === 'right'
 }
@@ -201,6 +223,7 @@ export default function LayoutEditorPage() {
   const [selectedDeviceTemplate, setSelectedDeviceTemplate] = useState<string | null>(null)
   const [showDeviceNames, setShowDeviceNames] = useState(true)
   const [simplifiedView, setSimplifiedView] = useState(false)
+  const [zoomPercent, setZoomPercent] = useState<number>(getInitialZoomPercent)
   const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768)
   const [isTouchLikeDevice, setIsTouchLikeDevice] = useState<boolean>(
     () => window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window,
@@ -282,6 +305,14 @@ export default function LayoutEditorPage() {
     return () => coarsePointerQuery.removeEventListener('change', updateTouchLike)
   }, [])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAYOUT_EDITOR_ZOOM_STORAGE_KEY, String(zoomPercent))
+    } catch {
+      // ignore
+    }
+  }, [zoomPercent])
+
   const dndBackend = isTouchLikeDevice ? TouchBackend : HTML5Backend
   const dndOptions = isTouchLikeDevice
     ? {
@@ -327,8 +358,23 @@ export default function LayoutEditorPage() {
     setRackViewMode(options[nextIndex])
   }, [setRackViewMode, viewMode])
 
+  const handleZoomOut = useCallback(() => {
+    setZoomPercent((prev) => normalizeZoomPercent(prev - ZOOM_STEP_PERCENT))
+  }, [])
+
+  const handleZoomIn = useCallback(() => {
+    setZoomPercent((prev) => normalizeZoomPercent(prev + ZOOM_STEP_PERCENT))
+  }, [])
+
+  const handleZoomReset = useCallback(() => {
+    setZoomPercent(DEFAULT_ZOOM_PERCENT)
+  }, [])
+
   const isSideView = isSideViewMode(viewMode)
   const activeViewOption = VIEW_MODE_OPTIONS.find((option) => option.value === viewMode) ?? VIEW_MODE_OPTIONS[0]
+  const zoomFactor = zoomPercent / 100
+  const canZoomOut = zoomPercent > MIN_ZOOM_PERCENT
+  const canZoomIn = zoomPercent < MAX_ZOOM_PERCENT
 
   useEffect(() => {
     if (!isSideView) return
@@ -943,12 +989,43 @@ export default function LayoutEditorPage() {
                   >
                     Labels {showDeviceNames ? 'On' : 'Off'}
                   </Button>
-                    <Button
-                      variant={simplifiedView ? 'primary' : 'secondary'}
-                      onClick={() => setSimplifiedView((prev) => !prev)}
-                    >
-                      Simplified {simplifiedView ? 'On' : 'Off'}
-                    </Button>
+                  <Button
+                    variant={simplifiedView ? 'primary' : 'secondary'}
+                    onClick={() => setSimplifiedView((prev) => !prev)}
+                  >
+                    Simplified {simplifiedView ? 'On' : 'Off'}
+                  </Button>
+                    <div className="inline-flex items-center overflow-hidden rounded-md border border-gray-300 dark:border-gray-600">
+                      <button
+                        type="button"
+                        onClick={handleZoomOut}
+                        disabled={!canZoomOut}
+                        className="h-11 w-9 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={`Zoom out (${MIN_ZOOM_PERCENT}% min)`}
+                        aria-label="Zoom out"
+                      >
+                        -
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleZoomReset}
+                        className="h-11 min-w-16 border-x border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 text-xs font-semibold text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600"
+                        title="Reset zoom to 100%"
+                        aria-label="Reset zoom"
+                      >
+                        {zoomPercent}%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleZoomIn}
+                        disabled={!canZoomIn}
+                        className="h-11 w-9 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={`Zoom in (${MAX_ZOOM_PERCENT}% max)`}
+                        aria-label="Zoom in"
+                      >
+                        +
+                      </button>
+                    </div>
                     <div className="ml-2 pl-4 border-l border-gray-200 dark:border-gray-700">
                       <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" />
                     </div>
@@ -993,6 +1070,7 @@ export default function LayoutEditorPage() {
                   rack={rack}
                   items={items}
                   side={viewMode}
+                  zoom={zoomFactor}
                   showDeviceDetails={showDeviceNames}
                 />
               ) : (
@@ -1001,6 +1079,7 @@ export default function LayoutEditorPage() {
                   items={items}
                   connectorById={connectorById}
                   facing={facing}
+                  zoom={zoomFactor}
                   showDeviceDetails={showDeviceNames}
                   simplifiedView={simplifiedView}
                   onPlacementHint={setHoverPlacementHint}

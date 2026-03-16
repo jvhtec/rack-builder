@@ -15,6 +15,7 @@ interface RackSideDepthViewProps {
   rack: Rack
   items: LayoutItemWithDevice[]
   side: 'left' | 'right'
+  zoom?: number
   showDeviceDetails?: boolean
   compact?: boolean
 }
@@ -40,6 +41,7 @@ export default function RackSideDepthView({
   rack,
   items,
   side,
+  zoom = 1,
   showDeviceDetails = true,
   compact = false,
 }: RackSideDepthViewProps) {
@@ -71,7 +73,8 @@ export default function RackSideDepthView({
     return () => observer.disconnect()
   }, [laneCountForSizing])
 
-  const rackWidth = compact ? '100%' : RACK_SINGLE_WIDTH
+  const safeZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
+  const rackWidth = compact ? '100%' : `calc((${RACK_SINGLE_WIDTH}) * ${safeZoom})`
   const rackStyle = {
     width: rackWidth,
     '--rack-slot-height': `${slotHeight}px`,
