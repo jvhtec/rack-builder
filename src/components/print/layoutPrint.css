@@ -389,6 +389,7 @@
 .print-rack-device-simplified-layout {
   position: absolute;
   inset: 2px 4px;
+  height: calc(100% - 4px);
   display: flex;
   gap: 4px;
   overflow: hidden;
