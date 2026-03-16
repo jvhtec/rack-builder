@@ -39,6 +39,7 @@ interface RackSlotProps {
     excludeItemId?: string,
     preferredLane?: 0 | 1,
     preferredSubLane?: 0 | 1,
+    earOffsetMm?: number,
   ) => string | null
   onPlacementHint?: (message: string | null) => void
   onDropNew: (deviceId: string, startU: number, rackUnits: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => void
@@ -200,6 +201,7 @@ export default function RackSlot({
       excludeId,
       preferredLane,
       preferredSubLane,
+      'earOffsetMm' in dragItem ? (dragItem as { earOffsetMm: number }).earOffsetMm : undefined,
     )
     onPlacementHint(issue ?? 'Placement blocked at this slot.')
   }, [canDrop, clientOffset, dragItem, getPlacementIssue, getPreferredPosition, isOver, onPlacementHint, slotU])

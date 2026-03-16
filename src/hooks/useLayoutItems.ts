@@ -17,6 +17,12 @@ function isMissingCustomNameColumn(error: unknown): boolean {
   return message.includes('custom_name')
 }
 
+function isMissingEarOffsetColumn(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : ''
+  return message.includes('ear_offset_mm')
+}
+
 function isLayoutItemStartUConstraintError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
   const code = 'code' in error && typeof error.code === 'string' ? error.code : ''
@@ -196,12 +202,21 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
 
   const updateItemDetails = async (
     itemId: string,
-    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean }>,
+    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean; ear_offset_mm: number }>,
   ) => {
     let { error: err } = await supabase
       .from('layout_items')
       .update(updates)
       .eq('id', itemId)
+
+    if (err && isMissingEarOffsetColumn(err) && 'ear_offset_mm' in updates) {
+      const { ear_offset_mm: _dropped, ...rest } = updates
+      const fallback = await supabase
+        .from('layout_items')
+        .update(rest)
+        .eq('id', itemId)
+      err = fallback.error
+    }
 
     if (err && isMissingCustomNameColumn(err) && 'custom_name' in updates) {
       const fallback = await supabase

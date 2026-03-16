@@ -474,6 +474,7 @@ export default function LayoutEditorPage() {
     excludeItemId?: string,
     preferredLane?: 0 | 1,
     preferredSubLane?: 0 | 1,
+    earOffsetMm?: number,
   ): string | null => {
     if (!rack) return 'Rack is not available.'
 
@@ -513,6 +514,7 @@ export default function LayoutEditorPage() {
       targetSlot,
       rack.width,
       oppositeFacingSlotAssignments,
+      earOffsetMm,
     )
     if (depthConflict) {
       return `Depth conflict: ${depthConflict.currentDepthMm}mm + ${depthConflict.oppositeDepthMm}mm = ${depthConflict.combinedDepthMm}mm exceeds rack depth ${depthConflict.rackDepthMm}mm (${depthConflict.conflictingItemName}).`
@@ -645,6 +647,7 @@ export default function LayoutEditorPage() {
       selectedItemToMove,
       preferredLane,
       preferredSubLane,
+      item.ear_offset_mm,
     )
     if (issue) {
       setPlacementErrorHint(issue)
@@ -743,7 +746,7 @@ export default function LayoutEditorPage() {
 
   const handleSaveNotes = async (
     itemId: string,
-    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean }>,
+    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean; ear_offset_mm: number }>,
   ) => {
     // When a half-rack device is being widened to full-column, verify it won't conflict
     if (updates.force_full_width === true && rack) {
@@ -1020,6 +1023,33 @@ export default function LayoutEditorPage() {
             <button onClick={() => { setSelectedDeviceTemplate(null); setSelectedItemToMove(null) }} className="text-xs">✕</button>
           </div>
         )}
+
+        {!isSideView && selectedItemToMove && (() => {
+          const moveItem = items.find((i) => i.id === selectedItemToMove)
+          if (!moveItem) return null
+          return (
+            <div
+              className="fixed left-1/2 -translate-x-1/2 z-20 bg-indigo-600/90 px-3 py-1.5 rounded-full shadow-2xl border border-indigo-400 flex items-center gap-1.5"
+              style={{ top: 'calc(9.5rem + env(safe-area-inset-top))' }}
+            >
+              <span className="text-[10px] font-semibold text-indigo-200">Ears</span>
+              <input
+                type="number"
+                className="w-14 bg-indigo-900/60 border border-indigo-400/50 rounded px-1.5 py-0.5 text-xs text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                defaultValue={moveItem.ear_offset_mm ?? 0}
+                onBlur={(e) => {
+                  const val = Number(e.target.value) || 0
+                  if (val !== (moveItem.ear_offset_mm ?? 0)) {
+                    void updateItemDetails(moveItem.id, { ear_offset_mm: val })
+                  }
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <span className="text-[10px] text-indigo-200">mm</span>
+            </div>
+          )
+        })()}
 
         {placementHint && !isSideView && (
           <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-lg border border-amber-400 bg-amber-100 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-lg" style={{ top: 'calc(10rem + env(safe-area-inset-top))' }}>

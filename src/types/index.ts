@@ -128,6 +128,7 @@ export interface LayoutItem {
   force_full_width: boolean
   custom_name: string | null
   notes: string | null
+  ear_offset_mm: number
 }
 
 export interface LayoutItemWithDevice extends LayoutItem {

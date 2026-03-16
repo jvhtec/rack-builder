@@ -121,6 +121,7 @@ export default function RackGrid({
     excludeItemId?: string,
     preferredLane?: 0 | 1,
     preferredSubLane?: 0 | 1,
+    earOffsetMm?: number,
   ): string | null => {
     const targetSlot = preferenceToSlot(rack.width, isHalfRack && !forceFullWidth, preferredLane, preferredSubLane)
     const normalizedSlotU = toFiniteNumber(slotU)
@@ -158,6 +159,7 @@ export default function RackGrid({
       targetSlot,
       rack.width,
       oppositeDepthSlotAssignments,
+      earOffsetMm,
     )
     if (depthConflict) {
       return `Depth conflict: ${depthConflict.currentDepthMm}mm + ${depthConflict.oppositeDepthMm}mm = ${depthConflict.combinedDepthMm}mm exceeds rack depth ${depthConflict.rackDepthMm}mm (${depthConflict.conflictingItemName}).`
@@ -175,6 +177,7 @@ export default function RackGrid({
     excludeItemId?: string,
     preferredLane?: 0 | 1,
     preferredSubLane?: 0 | 1,
+    earOffsetMm?: number,
   ): boolean => {
     return getPlacementIssue(
       slotU,
@@ -185,6 +188,7 @@ export default function RackGrid({
       excludeItemId,
       preferredLane,
       preferredSubLane,
+      earOffsetMm,
     ) === null
   }
 
