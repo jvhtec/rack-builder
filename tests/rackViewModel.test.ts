@@ -22,6 +22,7 @@ function makeItem(args: {
     preferred_lane: args.preferredLane,
     preferred_sub_lane: null,
     force_full_width: false,
+    rack_ear_offset_mm: 0,
     custom_name: null,
     notes: null,
     device: {

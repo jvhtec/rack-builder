@@ -196,7 +196,7 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
 
   const updateItemDetails = async (
     itemId: string,
-    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean }>,
+    updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean; rack_ear_offset_mm: number }>,
   ) => {
     let { error: err } = await supabase
       .from('layout_items')
@@ -204,9 +204,11 @@ export function useLayoutItems(layoutId: string | undefined, totalRackUnits: num
       .eq('id', itemId)
 
     if (err && isMissingCustomNameColumn(err) && 'custom_name' in updates) {
+      const retryUpdates = { ...updates }
+      delete retryUpdates.custom_name
       const fallback = await supabase
         .from('layout_items')
-        .update({ notes: updates.notes })
+        .update(retryUpdates)
         .eq('id', itemId)
       err = fallback.error
     }

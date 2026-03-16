@@ -45,6 +45,7 @@ export default function PlacedDevice({
       isHalfRack: item.device.is_half_rack,
       forceFullWidth: item.force_full_width,
       depthMm: item.device.depth_mm,
+      rackEarOffsetMm: item.rack_ear_offset_mm,
     },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   })
