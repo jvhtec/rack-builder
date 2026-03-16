@@ -1,4 +1,5 @@
 import { getItemSlot, type ItemSlot, slotsConflict } from './rackPositions'
+import { inwardDepthMm } from './deviceDepth'
 import type { DeviceFacing, LayoutItemWithDevice, RackWidth } from '../types'
 
 function toFiniteNumber(value: unknown): number | null {
@@ -62,6 +63,7 @@ export function hasDepthConflict(
   targetSlot?: ItemSlot,
   rackWidth?: RackWidth,
   oppositeSlotByItemId?: Map<string, ItemSlot>,
+  earOffsetMm?: number,
 ): boolean {
   return (
     findDepthConflict(
@@ -75,6 +77,7 @@ export function hasDepthConflict(
       targetSlot,
       rackWidth,
       oppositeSlotByItemId,
+      earOffsetMm,
     ) !== null
   )
 }
@@ -90,6 +93,7 @@ export function findDepthConflict(
   targetSlot?: ItemSlot,
   rackWidth?: RackWidth,
   oppositeSlotByItemId?: Map<string, ItemSlot>,
+  earOffsetMm?: number,
 ): DepthConflictDetail | null {
   const normalizedStartU = toFiniteNumber(startU)
   const normalizedRackUnits = toFiniteNumber(rackUnits)
@@ -97,6 +101,7 @@ export function findDepthConflict(
   const rackDepth = toFiniteNumber(rackDepthMm)
   if (normalizedStartU === null || normalizedRackUnits === null || currentDepth === null || rackDepth === null) return null
 
+  const currentInward = Math.max(0, currentDepth - (earOffsetMm ?? 0))
   const newTop = normalizedStartU + normalizedRackUnits - 1
   const oppositeFacing: DeviceFacing = facing === 'front' ? 'rear' : 'front'
 
@@ -115,17 +120,16 @@ export function findDepthConflict(
       if (!slotsConflict(targetSlot, oppositeSlot)) continue
     }
 
-    const oppositeDepth = toFiniteNumber(item.device.depth_mm)
-    if (oppositeDepth === null) continue
+    const oppositeInward = inwardDepthMm(item)
 
-    const combinedDepth = currentDepth + oppositeDepth
+    const combinedDepth = currentInward + oppositeInward
     if (combinedDepth <= rackDepth) continue
 
     return {
       conflictingItemId: item.id,
       conflictingItemName: item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`,
-      currentDepthMm: currentDepth,
-      oppositeDepthMm: oppositeDepth,
+      currentDepthMm: currentInward,
+      oppositeDepthMm: oppositeInward,
       combinedDepthMm: combinedDepth,
       rackDepthMm: rackDepth,
     }

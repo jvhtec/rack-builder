@@ -23,6 +23,7 @@ export interface PlacedDeviceDragItem {
   isHalfRack: boolean
   forceFullWidth: boolean
   depthMm: number
+  earOffsetMm: number
 }
 
 interface DraggableDeviceProps {

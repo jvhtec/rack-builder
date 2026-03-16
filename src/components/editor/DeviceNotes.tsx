@@ -6,7 +6,7 @@ import type { LayoutItemWithDevice } from '../../types'
 
 interface DeviceNotesProps {
   item: LayoutItemWithDevice | null
-  onSave: (itemId: string, updates: { notes: string; custom_name: string | null; force_full_width?: boolean }) => Promise<void>
+  onSave: (itemId: string, updates: { notes: string; custom_name: string | null; force_full_width?: boolean; ear_offset_mm?: number }) => Promise<void>
   onClose: () => void
 }
 
@@ -14,6 +14,7 @@ export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps)
   const [customName, setCustomName] = useState(item?.custom_name ?? '')
   const [notes, setNotes] = useState(item?.notes ?? '')
   const [forceFullWidth, setForceFullWidth] = useState(item?.force_full_width ?? false)
+  const [earOffset, setEarOffset] = useState(item?.ear_offset_mm ?? 0)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -23,6 +24,7 @@ export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps)
       custom_name: customName.trim() || null,
       notes,
       ...(item.device.is_half_rack ? { force_full_width: forceFullWidth } : {}),
+      ear_offset_mm: earOffset,
     })
     setSaving(false)
     onClose()
@@ -62,6 +64,16 @@ export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps)
             </span>
           </label>
         )}
+        <div>
+          <Input
+            label="Ear offset (mm)"
+            type="number"
+            value={earOffset}
+            onChange={(e) => setEarOffset(Number(e.target.value) || 0)}
+            placeholder="0"
+          />
+          <p className="text-xs text-gray-400 mt-0.5">+ front / − rear</p>
+        </div>
       </div>
       <div className="flex justify-end gap-3 mt-4">
         <Button variant="secondary" onClick={onClose}>Cancel</Button>

@@ -12,6 +12,7 @@ function makeItem(args: {
   preferredLane: 0 | 1 | null
   preferredSubLane?: 0 | 1 | null
   isHalfRack?: boolean
+  earOffsetMm?: number
 }): LayoutItemWithDevice {
   return {
     id: args.id,
@@ -25,6 +26,7 @@ function makeItem(args: {
     preferred_sub_lane: args.preferredSubLane ?? null,
     force_full_width: false,
     custom_name: null,
+    ear_offset_mm: args.earOffsetMm ?? 0,
     notes: null,
     device: {
       id: args.id,
@@ -86,5 +88,52 @@ describe('depth overlap rules', () => {
       oppositeSlots,
     )
     expect(differentFootprintConflict).toBeNull()
+  })
+
+  it('positive ear offsets reduce inward depth and can resolve conflicts', () => {
+    // Front 500mm + Rear 400mm = 900mm > 800mm rack → conflict without offsets
+    const frontItem = makeItem({
+      id: 'front-1',
+      facing: 'front',
+      startU: 10,
+      rackUnits: 2,
+      depthMm: 500,
+      preferredLane: 0,
+      earOffsetMm: 100, // inward depth = 500 - 100 = 400
+    })
+
+    // With front offset 100 and rear offset 100:
+    // inward front = 400, inward rear = 400 - 100 = 300, combined = 700 < 800 → no conflict
+    const conflict = findDepthConflict(
+      10, 2, 'rear', 400,
+      [frontItem], 800,
+      undefined, undefined, undefined, undefined,
+      100, // rear device ear offset
+    )
+    expect(conflict).toBeNull()
+  })
+
+  it('negative ear offsets increase inward depth and can cause conflicts', () => {
+    // Front 300mm + Rear 400mm = 700mm < 800mm rack → no conflict without offsets
+    const frontItem = makeItem({
+      id: 'front-1',
+      facing: 'front',
+      startU: 10,
+      rackUnits: 2,
+      depthMm: 300,
+      preferredLane: null,
+      earOffsetMm: -100, // inward depth = 300 - (-100) = 400
+    })
+
+    // With front offset -100 and rear offset -100:
+    // inward front = 400, inward rear = 400 - (-100) = 500, combined = 900 > 800 → conflict
+    const conflict = findDepthConflict(
+      10, 2, 'rear', 400,
+      [frontItem], 800,
+      undefined, undefined, undefined, undefined,
+      -100, // rear device ear offset
+    )
+    expect(conflict).not.toBeNull()
+    expect(conflict?.combinedDepthMm).toBe(900)
   })
 })

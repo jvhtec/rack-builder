@@ -92,9 +92,22 @@ export default function RackSideDepthView({
       const lane: 0 | 1 = rack.width === 'dual' ? ((slot.outer ?? 0) as 0 | 1) : 0
       const depthPctRaw = ratioBase > 0 ? item.device.depth_mm * ratioBase : 100
       const depthPct = clamp(depthPctRaw, 5, 100)
-      const frontOffset = side === 'left' ? 0 : 100 - depthPct
-      const rearOffset = side === 'left' ? 100 - depthPct : 0
-      const offsetPct = item.facing === 'front' ? frontOffset : rearOffset
+      const earOffsetPct = ratioBase > 0 ? (item.ear_offset_mm ?? 0) * ratioBase : 0
+
+      // Ear offset shifts the device along its mounting axis:
+      // positive = toward its face (outward), negative = away (inward).
+      // Left side view: front is left edge, rear is right edge.
+      // Right side view: rear is left edge, front is right edge.
+      let offsetPct: number
+      if (item.facing === 'front') {
+        // Front-facing: anchored at front face. Positive offset pushes toward front.
+        const baseOffset = side === 'left' ? 0 : 100 - depthPct
+        offsetPct = side === 'left' ? baseOffset - earOffsetPct : baseOffset + earOffsetPct
+      } else {
+        // Rear-facing: anchored at rear face. Positive offset pushes toward rear.
+        const baseOffset = side === 'left' ? 100 - depthPct : 0
+        offsetPct = side === 'left' ? baseOffset + earOffsetPct : baseOffset - earOffsetPct
+      }
 
       return {
         id: item.id,
@@ -117,6 +130,7 @@ export default function RackSideDepthView({
           slot,
           rack.width,
           slotByItemId,
+          item.ear_offset_mm,
         ),
       }
     })

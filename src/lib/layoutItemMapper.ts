@@ -14,6 +14,7 @@ export interface LayoutItemRow {
   force_full_width?: boolean | null
   custom_name?: string | null
   notes: string | null
+  ear_offset_mm?: number | null
   device: Record<string, unknown> | null
   panel_layout?: {
     id: string
@@ -180,6 +181,7 @@ export function mapLayoutItemRows(rows: LayoutItemRow[], connectorById: Map<stri
       force_full_width: row.force_full_width === true,
       custom_name: row.custom_name ?? null,
       notes: row.notes,
+      ear_offset_mm: toNumber(row.ear_offset_mm, 0),
       device,
       panel_layout: panelLayout,
     }
