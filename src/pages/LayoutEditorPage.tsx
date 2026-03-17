@@ -28,6 +28,7 @@ import RackSideDepthView from '../components/editor/RackSideDepthView'
 import DeviceNotes from '../components/editor/DeviceNotes'
 import AutoScaleText from '../components/shared/AutoScaleText'
 import Button from '../components/ui/Button'
+import { useHaptic } from '../contexts/HapticContext'
 import Modal from '../components/ui/Modal'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
 import Input from '../components/ui/Input'
@@ -239,6 +240,7 @@ export default function LayoutEditorPage() {
   const [hoverPlacementHint, setHoverPlacementHint] = useState<string | null>(null)
   const [placementErrorHint, setPlacementErrorHint] = useState<string | null>(null)
   const placementHint = placementErrorHint ?? hoverPlacementHint
+  const { trigger: haptic } = useHaptic()
 
   const [createLayoutOpen, setCreateLayoutOpen] = useState(false)
   const [renameLayoutOpen, setRenameLayoutOpen] = useState(false)
@@ -469,8 +471,9 @@ export default function LayoutEditorPage() {
 
   const showBackendPlacementReject = useCallback((actionLabel: string, error: unknown) => {
     const message = toErrorMessage(error)
+    haptic('error')
     setPlacementErrorHint(`${actionLabel} rejected by backend: ${message}`)
-  }, [])
+  }, [haptic])
 
   const handleDropNew = async (
     deviceId: string,
@@ -627,6 +630,7 @@ export default function LayoutEditorPage() {
       if (!panelLayout) return
       const panelDepthMm = panelLayout.depth_mm
       if (!isWithinBounds(slotU, panelLayout.height_ru, rack.rack_units)) {
+        haptic('error')
         setPlacementErrorHint(`Out of rack bounds: U${slotU} with ${panelLayout.height_ru}U in a ${rack.rack_units}U rack.`)
         return
       }
@@ -646,12 +650,14 @@ export default function LayoutEditorPage() {
         preferredSubLane,
       )
       if (issue) {
+        haptic('error')
         setPlacementErrorHint(issue)
         return
       }
 
       try {
         await addPanelLayoutItem(panelTemplateId, slotU, facing, panelLayout.height_ru, preferredLane, preferredSubLane)
+        haptic('success')
         setSelectedDeviceTemplate(null)
         setPlacementErrorHint(null)
       } catch (err) {
@@ -665,6 +671,7 @@ export default function LayoutEditorPage() {
     if (!device) return
 
     if (!isWithinBounds(slotU, device.rack_units, rack.rack_units)) {
+      haptic('error')
       setPlacementErrorHint(`Out of rack bounds: U${slotU} with ${device.rack_units}U in a ${rack.rack_units}U rack.`)
       return
     }
@@ -684,12 +691,14 @@ export default function LayoutEditorPage() {
       preferredSubLane,
     )
     if (issue) {
+      haptic('error')
       setPlacementErrorHint(issue)
       return
     }
 
     try {
       await addItem(device.id, slotU, facing, device.rack_units, preferredLane, preferredSubLane)
+      haptic('success')
       setSelectedDeviceTemplate(null)
       setPlacementErrorHint(null)
     } catch (err) {
@@ -704,6 +713,7 @@ export default function LayoutEditorPage() {
     if (!item) return
 
     if (!isWithinBounds(slotU, item.device.rack_units, rack.rack_units)) {
+      haptic('error')
       setPlacementErrorHint(`Out of rack bounds: U${slotU} with ${item.device.rack_units}U in a ${rack.rack_units}U rack.`)
       return
     }
@@ -723,12 +733,14 @@ export default function LayoutEditorPage() {
       preferredSubLane,
     )
     if (issue) {
+      haptic('error')
       setPlacementErrorHint(issue)
       return
     }
 
     try {
       await moveItem(selectedItemToMove, slotU, facing, preferredLane, preferredSubLane)
+      haptic('success')
       setSelectedItemToMove(null)
       setPlacementErrorHint(null)
     } catch (err) {
@@ -1354,6 +1366,7 @@ export default function LayoutEditorPage() {
                           ? () => void (selectedItemToMove ? handleMobileMoveToSlot(u, visualColIndex) : handleMobileSlotClick(u, visualColIndex))
                           : item && !isGhost
                             ? () => {
+                                haptic('nudge')
                                 if (selectedItemToMove === item.id) {
                                   setSelectedItemToMove(null)
                                 } else {

@@ -1,5 +1,6 @@
-import { useCallback, useMemo, type LegacyRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type LegacyRef } from 'react'
 import { useDrag, useDrop } from 'react-dnd'
+import { useHaptic } from '../../contexts/HapticContext'
 import { buildRowCellGeometry, getActiveColumns, getPunchedAreaRatio } from '../../lib/panelGrid'
 import type { ConnectorDefinition, DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
@@ -98,6 +99,8 @@ function DraggablePort({
 }: DraggablePortProps) {
   const connector = connectorById.get(port.connector_id)
   const label = port.label?.trim() || connector?.name || 'Connector'
+  const { trigger } = useHaptic()
+  const wasDraggingRef = useRef(false)
 
   const [{ isDragging }, dragRef] = useDrag<PlacedPortDragItem, unknown, { isDragging: boolean }>({
     type: PLACED_PORT_TYPE,
@@ -110,6 +113,11 @@ function DraggablePort({
     },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   })
+
+  useEffect(() => {
+    if (isDragging && !wasDraggingRef.current) trigger('nudge')
+    wasDraggingRef.current = isDragging
+  }, [isDragging, trigger])
 
   return (
     <button
@@ -246,6 +254,8 @@ function DroppableRow({
   canDropInRow,
 }: DroppableRowProps) {
   const rowTopPct = rowIndex * rowHeightPct
+  const { trigger } = useHaptic()
+  const prevDropStateRef = useRef<'none' | 'valid' | 'invalid'>('none')
 
   const canDropFn = useCallback(
     (item: ConnectorDragItem | PlacedPortDragItem) => {
@@ -262,13 +272,14 @@ function DroppableRow({
   const dropFn = useCallback(
     (item: ConnectorDragItem | PlacedPortDragItem) => {
       if (!interactive || !onRowDrop) return
+      trigger('success')
       const isPortMove = item.type === PLACED_PORT_TYPE
       const transferId = isPortMove
         ? (item as PlacedPortDragItem).portId
         : (item as ConnectorDragItem).connectorId
       onRowDrop(rowIndex, transferId, isPortMove)
     },
-    [interactive, onRowDrop, rowIndex],
+    [interactive, onRowDrop, rowIndex, trigger],
   )
 
   const [{ isOver, canDrop }, dropRef] = useDrop<
@@ -284,6 +295,15 @@ function DroppableRow({
       canDrop: monitor.canDrop(),
     }),
   })
+
+  useEffect(() => {
+    const newState = !isOver ? 'none' : canDrop ? 'valid' : 'invalid'
+    if (newState !== prevDropStateRef.current) {
+      if (newState === 'valid') trigger('nudge')
+      else if (newState === 'invalid') trigger('error')
+    }
+    prevDropStateRef.current = newState
+  }, [isOver, canDrop, trigger])
 
   const validDrop = isOver && canDrop
   const invalidDrop = isOver && !canDrop

@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { HapticProvider } from './contexts/HapticContext'
 import AppShell from './components/layout/AppShell'
 import DeviceManagerPage from './pages/DeviceManagerPage'
 import RackManagerPage from './pages/RackManagerPage'
@@ -16,6 +17,7 @@ import ConnectorManagerPage from './pages/ConnectorManagerPage'
 
 export default function App() {
   return (
+    <HapticProvider>
     <BrowserRouter basename={import.meta.env.BASE_URL || '/'}>
       <Routes>
         <Route element={<AppShell />}>
@@ -37,5 +39,6 @@ export default function App() {
         <Route path="/editor/:layoutId/print" element={<LegacyLayoutPrintRedirectPage />} />
       </Routes>
     </BrowserRouter>
+    </HapticProvider>
   )
 }
