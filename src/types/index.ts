@@ -30,6 +30,7 @@ export interface Device {
   power_w: number
   is_half_rack: boolean
   category_id: string
+  fav: boolean
   category?: DeviceCategory | null
   front_image_path: string | null
   rear_image_path: string | null

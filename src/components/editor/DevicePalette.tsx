@@ -49,6 +49,7 @@ export default function DevicePalette({
           value={selectedCategoryId}
           onChange={(e) => onCategoryChange(e.target.value)}
           options={[
+            { value: 'favorites', label: 'Favorites' },
             { value: 'all', label: 'All categories' },
             ...categories.map((category) => ({ value: category.id, label: category.name })),
           ]}

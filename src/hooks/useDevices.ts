@@ -12,6 +12,7 @@ interface DeviceRow {
   power_w: number
   is_half_rack?: boolean
   category_id: string
+  fav: boolean
   front_image_path: string | null
   rear_image_path: string | null
   created_at: string
@@ -52,6 +53,26 @@ function compareDevice(a: Device, b: Device, key: DeviceSortKey): number {
   return compareNumber(a.depth_mm, b.depth_mm)
 }
 
+function mapDeviceRow(row: DeviceRow): Device {
+  return {
+    id: row.id,
+    brand: row.brand,
+    model: row.model,
+    rack_units: row.rack_units,
+    depth_mm: row.depth_mm,
+    weight_kg: row.weight_kg,
+    power_w: row.power_w,
+    is_half_rack: row.is_half_rack === true,
+    category_id: row.category_id,
+    fav: row.fav === true,
+    front_image_path: row.front_image_path,
+    rear_image_path: row.rear_image_path,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    category: (row.category as DeviceCategory | null) ?? null,
+  }
+}
+
 export function sortDevices(devices: Device[], options: DeviceSortOption[]): Device[] {
   return [...devices].sort((a, b) => {
     for (const option of options) {
@@ -66,6 +87,7 @@ export function sortDevices(devices: Device[], options: DeviceSortOption[]): Dev
 
 export function filterDevicesByCategory(devices: Device[], categoryId: string): Device[] {
   if (categoryId === 'all') return devices
+  if (categoryId === 'favorites') return devices.filter((device) => device.fav)
   return devices.filter((device) => device.category_id === categoryId)
 }
 
@@ -176,24 +198,7 @@ export function useDevices() {
     }
 
     const rows = (deviceData ?? []) as DeviceRow[]
-    const mappedDevices: Device[] = rows.map((row) => ({
-      id: row.id,
-      brand: row.brand,
-      model: row.model,
-      rack_units: row.rack_units,
-      depth_mm: row.depth_mm,
-      weight_kg: row.weight_kg,
-      power_w: row.power_w,
-      is_half_rack: row.is_half_rack === true,
-      category_id: row.category_id,
-      front_image_path: row.front_image_path,
-      rear_image_path: row.rear_image_path,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      category: (row.category as DeviceCategory | null) ?? null,
-    }))
-
-    setDevices(mappedDevices)
+    setDevices(rows.map(mapDeviceRow))
     setCategories((categoryData as DeviceCategory[]) ?? [])
     setError(null)
     setLoading(false)
@@ -218,6 +223,7 @@ export function useDevices() {
     power_w: number
     is_half_rack?: boolean
     category_id: string
+    fav?: boolean
     front_image_path?: string | null
     rear_image_path?: string | null
   }) => {
@@ -237,16 +243,21 @@ export function useDevices() {
       power_w: number
       is_half_rack: boolean
       category_id: string
+      fav: boolean
       front_image_path: string | null
       rear_image_path: string | null
     }>,
   ) => {
-    const { error: err } = await supabase
+    const { data, error: err } = await supabase
       .from('devices')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
+      .select('*, category:device_categories(*)')
+      .single()
     if (err) throw err
-    await fetchDevices()
+
+    const updatedDevice = mapDeviceRow(data as DeviceRow)
+    setDevices((previous) => previous.map((device) => (device.id === id ? updatedDevice : device)))
   }
 
   const deleteDevice = async (id: string) => {
