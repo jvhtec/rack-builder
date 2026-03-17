@@ -76,6 +76,17 @@ export function filterDevicesByBrand(devices: Device[], brand: string): Device[]
   return devices.filter((device) => device.brand === brand)
 }
 
+export function filterDevicesBySearch(devices: Device[], query: string): Device[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return devices
+  return devices.filter(
+    (device) =>
+      device.brand.toLowerCase().includes(q) ||
+      device.model.toLowerCase().includes(q) ||
+      (device.category?.name ?? '').toLowerCase().includes(q),
+  )
+}
+
 export async function listCategories(): Promise<DeviceCategory[]> {
   const { data, error } = await supabase
     .from('device_categories')
