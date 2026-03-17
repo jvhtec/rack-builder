@@ -452,7 +452,7 @@ export default function PanelLayoutCanvas({
   }, [facing, rowByIndex, safeHeightRu])
 
   return (
-    <div className={`rounded-xl border border-slate-700 bg-slate-900/40 p-3 shadow-2xl ${className}`.trim()}>
+    <div className={`flex flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900/40 p-3 shadow-2xl ${className}`.trim()}>
       {showScaleMarker && (
         <div className="mb-3 flex items-center justify-center gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500">
           <span className="h-px w-14 bg-slate-700" />
@@ -461,7 +461,7 @@ export default function PanelLayoutCanvas({
         </div>
       )}
 
-      <div className="relative mx-auto w-full" style={{ aspectRatio: `${19 / (1.75 * safeHeightRu)}` }}>
+      <div className="relative w-full max-h-full" style={{ aspectRatio: `${19 / (1.75 * safeHeightRu)}` }}>
         {/* Left ear */}
         <div className="absolute inset-y-0 left-0 z-10" style={{ width: `${PANEL_EAR_WIDTH_PCT}%` }}>
           <div className="absolute inset-0 rounded-l-lg border-y border-l border-slate-700 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-800" />
