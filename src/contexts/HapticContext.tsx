@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useWebHaptics } from 'web-haptics/react'
 import type { HapticInput, TriggerOptions } from 'web-haptics'
 
@@ -53,21 +53,24 @@ export function HapticProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('pointerdown', handler)
   }, [])
 
+  const value = useMemo(
+    () => ({ trigger, cancel, isSupported }),
+    [trigger, cancel, isSupported],
+  )
+
   return (
-    <HapticContext.Provider value={{ trigger, cancel, isSupported }}>
+    <HapticContext.Provider value={value}>
       {children}
     </HapticContext.Provider>
   )
 }
 
+const NOOP_HAPTIC: HapticContextValue = {
+  trigger: () => {},
+  cancel: () => {},
+  isSupported: false,
+}
+
 export function useHaptic() {
-  const ctx = useContext(HapticContext)
-  if (!ctx) {
-    return {
-      trigger: () => {},
-      cancel: () => {},
-      isSupported: false,
-    }
-  }
-  return ctx
+  return useContext(HapticContext) ?? NOOP_HAPTIC
 }
