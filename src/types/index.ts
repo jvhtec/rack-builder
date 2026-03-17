@@ -99,6 +99,7 @@ export interface Project {
   id: string
   name: string
   owner: string | null
+  password: string | null
   created_at: string
   updated_at: string
 }

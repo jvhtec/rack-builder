@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useProjectAuth } from '../hooks/useProjectAuth'
+import PasswordPrompt from '../components/ui/PasswordPrompt'
 import Button from '../components/ui/Button'
 import type { DeviceFacing, PanelLayout, Project } from '../types'
 import { supabase } from '../lib/supabase'
@@ -92,6 +94,8 @@ export default function PanelLayoutPrintPage() {
   const [generatedAt] = useState(() => new Date())
   const exportRootRef = useRef<HTMLDivElement | null>(null)
 
+  const { isAuthenticated, showPrompt, handleSubmit: handleAuthSubmit, handleCancel: handleAuthCancel } = useProjectAuth(project)
+
   const facing = useMemo<DeviceFacing>(() => {
     const queryFacing = searchParams.get('facing')
     if (queryFacing === 'front' || queryFacing === 'rear') return queryFacing
@@ -174,6 +178,18 @@ export default function PanelLayoutPrintPage() {
   }
 
   if (loading) return <div className="layout-print-loading"><p>Preparing panel PDF preview...</p></div>
+
+  if (!isAuthenticated) {
+    return (
+      <PasswordPrompt
+        isOpen={showPrompt}
+        onSubmit={handleAuthSubmit}
+        onCancel={() => { handleAuthCancel(); navigate('/projects') }}
+        title="Password Required"
+        description="This project is password-protected."
+      />
+    )
+  }
 
   if (error || !panel || !project) {
     return (

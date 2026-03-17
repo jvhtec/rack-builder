@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type LegacyRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useProjectAuth } from '../hooks/useProjectAuth'
+import PasswordPrompt from '../components/ui/PasswordPrompt'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
@@ -13,7 +16,7 @@ import {
   getActiveColumns,
 } from '../lib/panelGrid'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
-import type { ConnectorDefinition, DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../types'
+import type { ConnectorDefinition, DeviceFacing, PanelLayoutPort, PanelLayoutRow, Project } from '../types'
 import { useTheme } from '../hooks/useTheme'
 import ThemeToggle from '../components/ui/ThemeToggle'
 import PanelLayoutCanvas from '../components/panels/PanelLayoutCanvas'
@@ -188,6 +191,20 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
   const { projectId, panelLayoutId } = useParams<{ projectId: string; panelLayoutId: string }>()
   const navigate = useNavigate()
   const { isDark, toggle } = useTheme()
+
+  // Fetch project for password auth
+  const [project, setProject] = useState<Project | null>(null)
+  useEffect(() => {
+    if (!projectId) return
+    let active = true
+    void supabase.from('projects').select('*').eq('id', projectId).single().then(({ data }) => {
+      if (active && data) setProject(data as Project)
+    })
+    return () => { active = false }
+  }, [projectId])
+
+  const { isAuthenticated, showPrompt, handleSubmit: handleAuthSubmit, handleCancel: handleAuthCancel } = useProjectAuth(project)
+
   const {
     panelLayouts,
     loading,
@@ -521,6 +538,20 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-amber-500" />
           Loading panel editor…
         </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <PasswordPrompt
+          isOpen={showPrompt}
+          onSubmit={handleAuthSubmit}
+          onCancel={() => { handleAuthCancel(); navigate('/projects') }}
+          title="Password Required"
+          description="This project is password-protected."
+        />
       </div>
     )
   }

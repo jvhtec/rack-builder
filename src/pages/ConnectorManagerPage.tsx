@@ -6,11 +6,23 @@ import ConfirmDialog from '../components/ui/ConfirmDialog'
 import Select from '../components/ui/Select'
 import ConnectorList from '../components/connectors/ConnectorList'
 import ConnectorForm from '../components/connectors/ConnectorForm'
+import PasswordPrompt from '../components/ui/PasswordPrompt'
 import { useConnectors } from '../hooks/useConnectors'
+import { useLibraryAuth } from '../hooks/useLibraryAuth'
 import type { ConnectorDefinition } from '../types'
 
 export default function ConnectorManagerPage() {
   const { connectors, loading, createConnector, updateConnector, deleteConnector } = useConnectors()
+  const {
+    loaded: libraryLoaded,
+    requireAuth,
+    showPrompt,
+    showSetPrompt,
+    handleSubmit: handleLibrarySubmit,
+    handleSetSubmit,
+    handleCancel: handleLibraryCancel,
+  } = useLibraryAuth()
+
   const [formOpen, setFormOpen] = useState(false)
   const [editingConnector, setEditingConnector] = useState<ConnectorDefinition | undefined>()
   const [deletingConnector, setDeletingConnector] = useState<ConnectorDefinition | undefined>()
@@ -52,7 +64,18 @@ export default function ConnectorManagerPage() {
     setFormOpen(false)
   }
 
-  if (loading) return <div className="text-gray-500">Loading...</div>
+  const handleEdit = (connector: ConnectorDefinition) => {
+    requireAuth(() => {
+      setEditingConnector(connector)
+      setFormOpen(true)
+    })
+  }
+
+  const handleDelete = (connector: ConnectorDefinition) => {
+    requireAuth(() => setDeletingConnector(connector))
+  }
+
+  if (loading || !libraryLoaded) return <div className="text-gray-500">Loading...</div>
 
   return (
     <div>
@@ -85,8 +108,8 @@ export default function ConnectorManagerPage() {
 
       <ConnectorList
         connectors={filteredConnectors}
-        onEdit={(connector) => { setEditingConnector(connector); setFormOpen(true) }}
-        onDelete={setDeletingConnector}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
       />
 
       <Modal
@@ -111,6 +134,23 @@ export default function ConnectorManagerPage() {
         }}
         title="Delete Connector"
         message={`Are you sure you want to delete "${deletingConnector?.name}"?`}
+      />
+
+      <PasswordPrompt
+        isOpen={showPrompt}
+        onSubmit={handleLibrarySubmit}
+        onCancel={handleLibraryCancel}
+        title="Library Password Required"
+        description="Enter the library password to make changes."
+      />
+
+      <PasswordPrompt
+        isOpen={showSetPrompt}
+        onSubmit={handleSetSubmit}
+        onCancel={handleLibraryCancel}
+        title="Set Library Password"
+        description="No library password has been set yet. Create one now to protect the library from unwanted changes."
+        submitLabel="Set Password"
       />
     </div>
   )

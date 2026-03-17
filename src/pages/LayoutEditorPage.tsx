@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useProjectAuth } from '../hooks/useProjectAuth'
+import PasswordPrompt from '../components/ui/PasswordPrompt'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
@@ -251,6 +253,7 @@ export default function LayoutEditorPage() {
   const [layoutSaving, setLayoutSaving] = useState(false)
 
   const { project, loading: projectLoading, error: projectError } = useProject(projectId)
+  const { isAuthenticated, showPrompt, handleSubmit: handleAuthSubmit, handleCancel: handleAuthCancel } = useProjectAuth(project)
   const {
     layouts,
     loading: layoutsLoading,
@@ -876,6 +879,20 @@ export default function LayoutEditorPage() {
           <p className="text-red-600 mb-4">{projectError}</p>
           <Button onClick={() => navigate('/projects')}>Back to Projects</Button>
         </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <PasswordPrompt
+          isOpen={showPrompt}
+          onSubmit={handleAuthSubmit}
+          onCancel={() => { handleAuthCancel(); navigate('/projects') }}
+          title="Password Required"
+          description="This project is password-protected."
+        />
       </div>
     )
   }

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { HOLE_COUNT_OPTIONS, type HoleCount } from '../lib/panelGrid'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
+import { useProjectAuth } from '../hooks/useProjectAuth'
 import type { DeviceFacing, Project } from '../types'
 import PageHeader from '../components/layout/PageHeader'
 import Button from '../components/ui/Button'
@@ -10,6 +11,7 @@ import Modal from '../components/ui/Modal'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
 import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
+import PasswordPrompt from '../components/ui/PasswordPrompt'
 
 function rowsSummary(heightRu: number, rowHoleCounts: number[]): string {
   const values = Array.from({ length: heightRu }, (_, rowIndex) => rowHoleCounts[rowIndex] ?? 16)
@@ -126,6 +128,8 @@ export default function PanelLayoutManagerPage() {
     }
   }
 
+  const { isAuthenticated, showPrompt, handleSubmit: handleAuthSubmit, handleCancel: handleAuthCancel } = useProjectAuth(project)
+
   if (projectLoading || loading) return <div className="text-gray-500">Loading panel layouts...</div>
 
   if (projectError || !project) {
@@ -134,6 +138,20 @@ export default function PanelLayoutManagerPage() {
         <p className="text-red-600">{projectError ?? 'Project not found.'}</p>
         <Button onClick={() => navigate('/projects')}>Back to projects</Button>
       </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <PasswordPrompt
+          isOpen={showPrompt}
+          onSubmit={handleAuthSubmit}
+          onCancel={() => { handleAuthCancel(); navigate('/projects') }}
+          title="Password Required"
+          description="This project is password-protected."
+        />
+      </>
     )
   }
 

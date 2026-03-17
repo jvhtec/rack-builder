@@ -1,5 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useProjectAuth } from '../hooks/useProjectAuth'
+import PasswordPrompt from '../components/ui/PasswordPrompt'
 import Button from '../components/ui/Button'
 import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
 import ProjectPrintCover from '../components/print/ProjectPrintCover'
@@ -52,6 +54,8 @@ export default function ProjectPrintPage() {
   const [exportError, setExportError] = useState<string | null>(null)
   const [generatedAt] = useState(() => new Date())
   const exportRootRef = useRef<HTMLDivElement | null>(null)
+
+  const { isAuthenticated, showPrompt, handleSubmit: handleAuthSubmit, handleCancel: handleAuthCancel } = useProjectAuth(project)
 
   const loadData = useCallback(async () => {
     if (!projectId) {
@@ -268,6 +272,18 @@ export default function ProjectPrintPage() {
       setExportingPdf(false)
     }
   }, [project])
+
+  if (!isAuthenticated && !loading) {
+    return (
+      <PasswordPrompt
+        isOpen={showPrompt}
+        onSubmit={handleAuthSubmit}
+        onCancel={() => { handleAuthCancel(); navigate('/projects') }}
+        title="Password Required"
+        description="This project is password-protected."
+      />
+    )
+  }
 
   if (error) {
     return (

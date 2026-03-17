@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ALL_BRAND, ensureCategoryByName, filterDevicesByBrand, filterDevicesByCategory, filterDevicesBySearch, sortDevices, useDevices } from '../hooks/useDevices'
+import { useLibraryAuth } from '../hooks/useLibraryAuth'
 import PageHeader from '../components/layout/PageHeader'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -7,10 +8,21 @@ import ConfirmDialog from '../components/ui/ConfirmDialog'
 import Select from '../components/ui/Select'
 import DeviceList from '../components/devices/DeviceList'
 import DeviceForm from '../components/devices/DeviceForm'
+import PasswordPrompt from '../components/ui/PasswordPrompt'
 import type { Device } from '../types'
 
 export default function DeviceManagerPage() {
   const { devices, categories, loading, createDevice, updateDevice, deleteDevice, refetch } = useDevices()
+  const {
+    loaded: libraryLoaded,
+    requireAuth,
+    showPrompt,
+    showSetPrompt,
+    handleSubmit: handleLibrarySubmit,
+    handleSetSubmit,
+    handleCancel: handleLibraryCancel,
+  } = useLibraryAuth()
+
   const [formOpen, setFormOpen] = useState(false)
   const [editingDevice, setEditingDevice] = useState<Device | undefined>()
   const [deletingDevice, setDeletingDevice] = useState<Device | undefined>()
@@ -72,13 +84,18 @@ export default function DeviceManagerPage() {
   }
 
   const handleEdit = (device: Device) => {
-    setEditingDevice(device)
-    setFormOpen(true)
+    requireAuth(() => {
+      setEditingDevice(device)
+      setFormOpen(true)
+    })
   }
 
+  const handleDelete = (device: Device) => {
+    requireAuth(() => setDeletingDevice(device))
+  }
 
-  const handleToggleFavorite = async (device: Device) => {
-    await updateDevice(device.id, { fav: !device.fav })
+  const handleToggleFavorite = (device: Device) => {
+    requireAuth(() => void updateDevice(device.id, { fav: !device.fav }))
   }
 
   const handleEnsureCategory = async (name: string) => {
@@ -92,7 +109,7 @@ export default function DeviceManagerPage() {
     setEditingDevice(undefined)
   }
 
-  if (loading) {
+  if (loading || !libraryLoaded) {
     return <div className="text-gray-500">Loading...</div>
   }
 
@@ -155,7 +172,7 @@ export default function DeviceManagerPage() {
         </div>
       </div>
 
-      <DeviceList devices={sortedDevices} onEdit={handleEdit} onDelete={setDeletingDevice} onToggleFavorite={handleToggleFavorite} />
+      <DeviceList devices={sortedDevices} onEdit={handleEdit} onDelete={handleDelete} onToggleFavorite={handleToggleFavorite} />
 
       <Modal
         isOpen={formOpen}
@@ -177,6 +194,23 @@ export default function DeviceManagerPage() {
         onConfirm={() => deletingDevice && deleteDevice(deletingDevice.id)}
         title="Delete Device"
         message={`Are you sure you want to delete "${deletingDevice?.brand} ${deletingDevice?.model}"?`}
+      />
+
+      <PasswordPrompt
+        isOpen={showPrompt}
+        onSubmit={handleLibrarySubmit}
+        onCancel={handleLibraryCancel}
+        title="Library Password Required"
+        description="Enter the library password to make changes."
+      />
+
+      <PasswordPrompt
+        isOpen={showSetPrompt}
+        onSubmit={handleSetSubmit}
+        onCancel={handleLibraryCancel}
+        title="Set Library Password"
+        description="No library password has been set yet. Create one now to protect the library from unwanted changes."
+        submitLabel="Set Password"
       />
     </div>
   )
