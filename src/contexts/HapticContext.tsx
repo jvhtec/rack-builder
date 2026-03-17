@@ -16,20 +16,34 @@ export function HapticProvider({ children }: { children: ReactNode }) {
   const { trigger, cancel, isSupported } = useWebHaptics({ showSwitch: true })
   const triggerRef = useRef(trigger)
   triggerRef.current = trigger
+  const labelHiddenRef = useRef(false)
 
   // The library uses display:none when showSwitch is false, which prevents
   // iOS from triggering native haptics on the hidden switch checkbox.
   // We pass showSwitch:true to avoid display:none, then visually hide the
   // element off-screen so it remains accessible to iOS haptic internals.
+  // The library only creates the DOM element on the first trigger() call,
+  // so we hide it lazily via a MutationObserver.
   useEffect(() => {
-    const label = document.querySelector<HTMLElement>('label[for^="web-haptics-"]')
-    if (label) {
-      label.style.position = 'fixed'
-      label.style.left = '-9999px'
-      label.style.top = '-9999px'
-      label.style.opacity = '0'
-      label.style.pointerEvents = 'none'
+    const hideLabel = () => {
+      const label = document.querySelector<HTMLElement>('label[for^="web-haptics-"]')
+      if (label) {
+        label.style.position = 'fixed'
+        label.style.left = '-9999px'
+        label.style.top = '-9999px'
+        label.style.opacity = '0'
+        label.style.pointerEvents = 'none'
+        labelHiddenRef.current = true
+        return true
+      }
+      return false
     }
+    if (hideLabel()) return
+    const observer = new MutationObserver(() => {
+      if (hideLabel()) observer.disconnect()
+    })
+    observer.observe(document.body, { childList: true })
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
