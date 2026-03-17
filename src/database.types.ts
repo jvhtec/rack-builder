@@ -71,6 +71,7 @@ export interface Database {
           power_w: number
           is_half_rack: boolean
           category_id: string
+          fav: boolean
           front_image_path: string | null
           rear_image_path: string | null
           created_at: string
@@ -86,6 +87,7 @@ export interface Database {
           power_w?: number
           is_half_rack?: boolean
           category_id: string
+          fav?: boolean
           front_image_path?: string | null
           rear_image_path?: string | null
           created_at?: string
@@ -101,6 +103,7 @@ export interface Database {
           power_w?: number
           is_half_rack?: boolean
           category_id?: string
+          fav?: boolean
           front_image_path?: string | null
           rear_image_path?: string | null
           created_at?: string

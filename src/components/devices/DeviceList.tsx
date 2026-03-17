@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react'
 import type { Device } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import Button from '../ui/Button'
@@ -6,9 +7,10 @@ interface DeviceListProps {
   devices: Device[]
   onEdit: (device: Device) => void
   onDelete: (device: Device) => void
+  onToggleFavorite: (device: Device) => void
 }
 
-export default function DeviceList({ devices, onEdit, onDelete }: DeviceListProps) {
+export default function DeviceList({ devices, onEdit, onDelete, onToggleFavorite }: DeviceListProps) {
   if (devices.length === 0) {
     return <p className="text-gray-500 text-sm">No devices defined yet. Create one to get started.</p>
   }
@@ -31,7 +33,18 @@ export default function DeviceList({ devices, onEdit, onDelete }: DeviceListProp
                 No image
               </div>
             )}
-            <div className="mb-1 font-medium text-gray-900 dark:text-white">{device.brand} {device.model}</div>
+            <div className="mb-1 flex items-start justify-between gap-2">
+              <div className="font-medium text-gray-900 dark:text-white">{device.brand} {device.model}</div>
+              <button
+                type="button"
+                onClick={() => onToggleFavorite(device)}
+                className="rounded p-1 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                aria-label={device.fav ? 'Remove from favorites' : 'Add to favorites'}
+                title={device.fav ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Star size={16} fill={device.fav ? 'currentColor' : 'none'} />
+              </button>
+            </div>
             <div className="text-xs text-blue-700 dark:text-blue-400 mb-1">{device.category?.name ?? 'Uncategorized'}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               {device.rack_units}U &middot; {device.depth_mm}mm &middot; {device.weight_kg}kg &middot; {device.power_w}W

@@ -60,6 +60,7 @@ export default function DeviceManagerPage() {
     category_id: string
     front_image_path?: string | null
     rear_image_path?: string | null
+    fav?: boolean
   }) => {
     if (editingDevice) {
       await updateDevice(editingDevice.id, data)
@@ -73,6 +74,11 @@ export default function DeviceManagerPage() {
   const handleEdit = (device: Device) => {
     setEditingDevice(device)
     setFormOpen(true)
+  }
+
+
+  const handleToggleFavorite = async (device: Device) => {
+    await updateDevice(device.id, { fav: !device.fav })
   }
 
   const handleEnsureCategory = async (name: string) => {
@@ -148,7 +154,7 @@ export default function DeviceManagerPage() {
         </div>
       </div>
 
-      <DeviceList devices={sortedDevices} onEdit={handleEdit} onDelete={setDeletingDevice} />
+      <DeviceList devices={sortedDevices} onEdit={handleEdit} onDelete={setDeletingDevice} onToggleFavorite={handleToggleFavorite} />
 
       <Modal
         isOpen={formOpen}

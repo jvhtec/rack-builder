@@ -12,6 +12,7 @@ interface DeviceRow {
   power_w: number
   is_half_rack?: boolean
   category_id: string
+  fav: boolean
   front_image_path: string | null
   rear_image_path: string | null
   created_at: string
@@ -66,6 +67,7 @@ export function sortDevices(devices: Device[], options: DeviceSortOption[]): Dev
 
 export function filterDevicesByCategory(devices: Device[], categoryId: string): Device[] {
   if (categoryId === 'all') return devices
+  if (categoryId === 'favorites') return devices.filter((device) => device.fav)
   return devices.filter((device) => device.category_id === categoryId)
 }
 
@@ -186,6 +188,7 @@ export function useDevices() {
       power_w: row.power_w,
       is_half_rack: row.is_half_rack === true,
       category_id: row.category_id,
+      fav: row.fav === true,
       front_image_path: row.front_image_path,
       rear_image_path: row.rear_image_path,
       created_at: row.created_at,
@@ -218,6 +221,7 @@ export function useDevices() {
     power_w: number
     is_half_rack?: boolean
     category_id: string
+    fav?: boolean
     front_image_path?: string | null
     rear_image_path?: string | null
   }) => {
@@ -237,6 +241,7 @@ export function useDevices() {
       power_w: number
       is_half_rack: boolean
       category_id: string
+      fav: boolean
       front_image_path: string | null
       rear_image_path: string | null
     }>,

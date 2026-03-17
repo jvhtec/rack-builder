@@ -230,7 +230,7 @@ export default function LayoutEditorPage() {
     () => window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window,
   )
   const [mobileDualLane, setMobileDualLane] = useState<0 | 1>(0)
-  const [selectedCategoryId, setSelectedCategoryId] = useState('all')
+  const [selectedCategoryId, setSelectedCategoryId] = useState('favorites')
   const [selectedBrand, setSelectedBrand] = useState(ALL_BRAND)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedItemToMove, setSelectedItemToMove] = useState<string | null>(null)
@@ -419,6 +419,7 @@ export default function LayoutEditorPage() {
     power_w: 0,
     is_half_rack: false,
     category_id: PANEL_LIBRARY_CATEGORY_ID,
+    fav: false,
     category: {
       id: PANEL_LIBRARY_CATEGORY_ID,
       name: PANEL_LIBRARY_CATEGORY_NAME,
