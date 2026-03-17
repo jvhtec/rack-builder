@@ -1,7 +1,6 @@
 import { useMemo, type CSSProperties } from 'react'
-import type { DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
+import type { ConnectorDefinition, DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
-import { useConnectors } from '../../hooks/useConnectors'
 import { buildSlots, getSlotTopPx } from '../editor/rackGeometry'
 import { getRackPanelAspect } from '../../lib/rackVisual'
 import { getItemSlot, getSlotStyle } from '../../lib/rackPositions'
@@ -48,6 +47,7 @@ interface RackPrintViewProps {
   rack: Rack
   items: LayoutItemWithDevice[]
   facing: DeviceFacing
+  connectorById: Map<string, ConnectorDefinition>
   showDeviceDetails?: boolean
   simplifiedView?: boolean
 }
@@ -56,10 +56,10 @@ export default function RackPrintView({
   rack,
   items,
   facing,
+  connectorById,
   showDeviceDetails = true,
   simplifiedView = false,
 }: RackPrintViewProps) {
-  const { connectorById } = useConnectors()
   const laneCount = rack.width === 'dual' ? 2 : 1
   const slotHeight = useMemo(() => getPrintSlotHeight(rack.width), [rack.width])
   const labelOffsetPx = PRINT_CASING_HEIGHT_PX + PRINT_HEADER_HEIGHT_PX
@@ -91,10 +91,12 @@ export default function RackPrintView({
       return (
         <>
           {panelSvg && (
-            <div
-              className="print-rack-device-media"
-              dangerouslySetInnerHTML={{ __html: panelSvg }}
-            />
+            <div className="print-rack-device-media">
+              <div
+                style={{ width: '100%', height: '100%' }}
+                dangerouslySetInnerHTML={{ __html: panelSvg }}
+              />
+            </div>
           )}
           <SimplifiedDeviceContent item={item} />
         </>
