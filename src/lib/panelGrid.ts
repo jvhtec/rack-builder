@@ -365,26 +365,29 @@ function distributeEvenly(
   const freeSpace = holeCount - totalSpanWidth
   const gapCount = sorted.length + 1
 
-  // Compute gap sizes using largest-remainder method
-  const idealGap = freeSpace / gapCount
-  const gaps: number[] = new Array(gapCount)
-  const floors: number[] = new Array(gapCount)
-  let floorSum = 0
-
-  for (let i = 0; i < gapCount; i++) {
-    floors[i] = Math.floor(idealGap)
-    floorSum += floors[i]
-  }
-
-  // Distribute remaining units to positions with largest fractional remainders
-  const remaining = freeSpace - floorSum
-  const remainders = floors.map((f, i) => ({ index: i, remainder: idealGap - f }))
-  remainders.sort((a, b) => b.remainder - a.remainder)
-  for (let i = 0; i < remaining; i++) {
-    floors[remainders[i].index] += 1
-  }
-  for (let i = 0; i < gapCount; i++) {
-    gaps[i] = floors[i]
+  // Distribute gap units symmetrically from outside-in so layout is centered
+  const baseGap = Math.floor(freeSpace / gapCount)
+  let remaining = freeSpace - baseGap * gapCount
+  const gaps: number[] = new Array(gapCount).fill(baseGap)
+  let lo = 0
+  let hi = gapCount - 1
+  while (remaining > 0) {
+    if (lo < hi && remaining >= 2) {
+      gaps[lo] += 1
+      gaps[hi] += 1
+      remaining -= 2
+      lo++
+      hi--
+    } else if (lo === hi) {
+      gaps[lo] += 1
+      remaining--
+      lo++
+      hi--
+    } else {
+      // lo < hi but remaining === 1: place the last unit at the center gap
+      gaps[Math.floor((lo + hi) / 2)] += 1
+      remaining--
+    }
   }
 
   // Assign hole_index positions
