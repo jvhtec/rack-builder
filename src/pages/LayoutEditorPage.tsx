@@ -5,7 +5,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
 import { supabase } from '../lib/supabase'
 import { useLayoutItems } from '../hooks/useLayoutItems'
-import { ALL_BRAND, filterDevicesByBrand, filterDevicesByCategory, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
+import { ALL_BRAND, filterDevicesByBrand, filterDevicesByCategory, filterDevicesBySearch, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
 import { useLayouts } from '../hooks/useLayouts'
 import { useRacks } from '../hooks/useRacks'
@@ -232,6 +232,7 @@ export default function LayoutEditorPage() {
   const [mobileDualLane, setMobileDualLane] = useState<0 | 1>(0)
   const [selectedCategoryId, setSelectedCategoryId] = useState('all')
   const [selectedBrand, setSelectedBrand] = useState(ALL_BRAND)
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedItemToMove, setSelectedItemToMove] = useState<string | null>(null)
   const [mobileOffsetDraft, setMobileOffsetDraft] = useState('0')
   const [mobileNameDraft, setMobileNameDraft] = useState('')
@@ -459,8 +460,8 @@ export default function LayoutEditorPage() {
   )
 
   const filteredDevices = useMemo(
-    () => filterDevicesByBrand(filterDevicesByCategory(libraryDevices, selectedCategoryId), selectedBrand),
-    [libraryDevices, selectedCategoryId, selectedBrand],
+    () => filterDevicesBySearch(filterDevicesByBrand(filterDevicesByCategory(libraryDevices, selectedCategoryId), selectedBrand), searchQuery),
+    [libraryDevices, selectedCategoryId, selectedBrand, searchQuery],
   )
 
   useEffect(() => {
@@ -948,6 +949,8 @@ export default function LayoutEditorPage() {
             brands={brands}
             selectedBrand={selectedBrand}
             onBrandChange={setSelectedBrand}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
             loading={devicesLoading}
           />
 
@@ -1492,6 +1495,16 @@ export default function LayoutEditorPage() {
             <div className="flex-1 overflow-y-auto p-4">
               {activeTab === 'devices' ? (
                 <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs uppercase text-slate-500 mb-1 font-bold">Search</label>
+                    <input
+                      type="search"
+                      placeholder="Brand, model or category…"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
                   <div>
                     <label className="block text-xs uppercase text-slate-500 mb-1 font-bold">Category</label>
                     <select

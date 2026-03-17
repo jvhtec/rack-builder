@@ -11,6 +11,8 @@ interface DevicePaletteProps {
   brands: string[]
   selectedBrand: string
   onBrandChange: (value: string) => void
+  searchQuery: string
+  onSearchChange: (value: string) => void
   loading: boolean
 }
 
@@ -22,6 +24,8 @@ export default function DevicePalette({
   brands,
   selectedBrand,
   onBrandChange,
+  searchQuery,
+  onSearchChange,
   loading,
 }: DevicePaletteProps) {
   return (
@@ -30,6 +34,16 @@ export default function DevicePalette({
         Device Library
       </div>
       <div className="p-3 border-b dark:border-gray-800 space-y-2">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Search</label>
+          <input
+            type="search"
+            placeholder="Brand, model or category…"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         <Select
           label="Category"
           value={selectedCategoryId}

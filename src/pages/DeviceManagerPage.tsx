@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ALL_BRAND, ensureCategoryByName, filterDevicesByBrand, filterDevicesByCategory, sortDevices, useDevices } from '../hooks/useDevices'
+import { ALL_BRAND, ensureCategoryByName, filterDevicesByBrand, filterDevicesByCategory, filterDevicesBySearch, sortDevices, useDevices } from '../hooks/useDevices'
 import PageHeader from '../components/layout/PageHeader'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -19,7 +19,7 @@ export default function DeviceManagerPage() {
   const [sortField, setSortField] = useState<
     'default' | 'brand' | 'model' | 'rack_units' | 'depth_mm' | 'weight_kg' | 'power_w'
   >('default')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const brands = useMemo(
     () => [...new Set(devices.map((d) => d.brand))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
@@ -30,8 +30,8 @@ export default function DeviceManagerPage() {
   const effectiveBrand = selectedBrand !== ALL_BRAND && !brands.includes(selectedBrand) ? ALL_BRAND : selectedBrand
 
   const filteredDevices = useMemo(
-    () => filterDevicesByBrand(filterDevicesByCategory(devices, selectedCategoryId), effectiveBrand),
-    [devices, selectedCategoryId, effectiveBrand],
+    () => filterDevicesBySearch(filterDevicesByBrand(filterDevicesByCategory(devices, selectedCategoryId), effectiveBrand), searchQuery),
+    [devices, selectedCategoryId, effectiveBrand, searchQuery],
   )
 
   const sortedDevices = useMemo(() => {
@@ -44,11 +44,11 @@ export default function DeviceManagerPage() {
     }
 
     return sortDevices(filteredDevices, [
-      { key: sortField, direction: sortDirection },
+      { key: sortField, direction: 'asc' },
       { key: 'brand', direction: 'asc' },
       { key: 'model', direction: 'asc' },
     ])
-  }, [filteredDevices, sortDirection, sortField])
+  }, [filteredDevices, sortField])
 
   const handleSubmit = async (data: {
     brand: string
@@ -135,16 +135,16 @@ export default function DeviceManagerPage() {
               { value: 'power_w', label: 'Power (W)' },
             ]}
           />
-          <Select
-            label="Direction"
-            value={sortDirection}
-            onChange={(e) => setSortDirection(e.target.value as 'asc' | 'desc')}
-            options={[
-              { value: 'asc', label: 'Ascending' },
-              { value: 'desc', label: 'Descending' },
-            ]}
-            disabled={sortField === 'default'}
-          />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Search</label>
+            <input
+              type="search"
+              placeholder="Brand, model or category…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
       </div>
 
