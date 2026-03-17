@@ -550,6 +550,9 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
       : null
 
     const zoomPercent = Math.round(mobileZoom * 100)
+    const zoomOutDisabled = mobileZoom <= 0.6
+    const zoomInDisabled = mobileZoom >= 1.8
+    const zoomResetDisabled = mobileZoom === 1
 
     return (
       <div className="flex flex-col h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 overflow-hidden">
@@ -619,7 +622,13 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
               <button
                 type="button"
                 onClick={() => setMobileZoom((prev) => Math.max(0.6, +(prev - 0.1).toFixed(2)))}
-                className="min-h-9 min-w-9 rounded-md border border-slate-700 bg-slate-900/70 px-2 text-sm font-bold text-slate-200"
+                disabled={zoomOutDisabled}
+                aria-disabled={zoomOutDisabled}
+                className={`min-h-9 min-w-9 rounded-md border px-2 text-sm font-bold transition ${
+                  zoomOutDisabled
+                    ? 'cursor-not-allowed border-slate-800 bg-slate-900/30 text-slate-600'
+                    : 'border-slate-700 bg-slate-900/70 text-slate-200'
+                }`}
                 aria-label="Zoom out panel"
               >
                 −
@@ -627,7 +636,13 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
               <button
                 type="button"
                 onClick={() => setMobileZoom(1)}
-                className="rounded-md border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-[11px] font-semibold text-slate-300"
+                disabled={zoomResetDisabled}
+                aria-disabled={zoomResetDisabled}
+                className={`rounded-md border px-3 py-1.5 text-[11px] font-semibold transition ${
+                  zoomResetDisabled
+                    ? 'cursor-not-allowed border-slate-800 bg-slate-900/30 text-slate-600'
+                    : 'border-slate-700 bg-slate-900/60 text-slate-300'
+                }`}
                 aria-label="Reset panel zoom"
               >
                 Zoom {zoomPercent}%
@@ -635,7 +650,13 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
               <button
                 type="button"
                 onClick={() => setMobileZoom((prev) => Math.min(1.8, +(prev + 0.1).toFixed(2)))}
-                className="min-h-9 min-w-9 rounded-md border border-slate-700 bg-slate-900/70 px-2 text-sm font-bold text-slate-200"
+                disabled={zoomInDisabled}
+                aria-disabled={zoomInDisabled}
+                className={`min-h-9 min-w-9 rounded-md border px-2 text-sm font-bold transition ${
+                  zoomInDisabled
+                    ? 'cursor-not-allowed border-slate-800 bg-slate-900/30 text-slate-600'
+                    : 'border-slate-700 bg-slate-900/70 text-slate-200'
+                }`}
                 aria-label="Zoom in panel"
               >
                 +
@@ -661,7 +682,6 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
                 className="mx-auto"
                 style={{
                   width: `${mobileZoom * 100}%`,
-                  minWidth: `${mobileZoom * 100}%`,
                 }}
               >
                 <PanelLayoutCanvas
