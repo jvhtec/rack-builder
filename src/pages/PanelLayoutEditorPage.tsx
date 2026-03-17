@@ -210,6 +210,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
   const [ports, setPorts] = useState<PanelLayoutPort[]>([])
   const [selectedConnectorId, setSelectedConnectorId] = useState<string | null>(null)
   const [selectedPortId, setSelectedPortId] = useState<string | null>(null)
+  const [mobileZoom, setMobileZoom] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -548,6 +549,11 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
       ? connectorById.get(selectedPort.connector_id) ?? null
       : null
 
+    const zoomPercent = Math.round(mobileZoom * 100)
+    const zoomOutDisabled = mobileZoom <= 0.6
+    const zoomInDisabled = mobileZoom >= 1.8
+    const zoomResetDisabled = mobileZoom === 1
+
     return (
       <div className="flex flex-col h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 overflow-hidden">
         {/* Mobile header */}
@@ -612,6 +618,51 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
           }}
         >
           <div className="p-4 flex flex-col items-center gap-3">
+            <div className="w-full max-w-lg flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileZoom((prev) => Math.max(0.6, +(prev - 0.1).toFixed(2)))}
+                disabled={zoomOutDisabled}
+                aria-disabled={zoomOutDisabled}
+                className={`min-h-9 min-w-9 rounded-md border px-2 text-sm font-bold transition ${
+                  zoomOutDisabled
+                    ? 'cursor-not-allowed border-slate-800 bg-slate-900/30 text-slate-600'
+                    : 'border-slate-700 bg-slate-900/70 text-slate-200'
+                }`}
+                aria-label="Zoom out panel"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileZoom(1)}
+                disabled={zoomResetDisabled}
+                aria-disabled={zoomResetDisabled}
+                className={`rounded-md border px-3 py-1.5 text-[11px] font-semibold transition ${
+                  zoomResetDisabled
+                    ? 'cursor-not-allowed border-slate-800 bg-slate-900/30 text-slate-600'
+                    : 'border-slate-700 bg-slate-900/60 text-slate-300'
+                }`}
+                aria-label="Reset panel zoom"
+              >
+                Zoom {zoomPercent}%
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileZoom((prev) => Math.min(1.8, +(prev + 0.1).toFixed(2)))}
+                disabled={zoomInDisabled}
+                aria-disabled={zoomInDisabled}
+                className={`min-h-9 min-w-9 rounded-md border px-2 text-sm font-bold transition ${
+                  zoomInDisabled
+                    ? 'cursor-not-allowed border-slate-800 bg-slate-900/30 text-slate-600'
+                    : 'border-slate-700 bg-slate-900/70 text-slate-200'
+                }`}
+                aria-label="Zoom in panel"
+              >
+                +
+              </button>
+            </div>
+
             {/* Row usage summary */}
             <div className="w-full max-w-lg flex flex-wrap gap-1.5 justify-center">
               {rows.map((row) => {
@@ -626,24 +677,31 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
               })}
             </div>
 
-            <div className="w-full max-w-lg">
-              <PanelLayoutCanvas
-                connectorById={connectorById}
-                heightRu={panel.height_ru}
-                rows={rows}
-                ports={ports}
-                facing={facing}
-                hasLacingBar={hasLacingBar}
-                selectedPortId={selectedPortId}
-                onRowClick={(rowIndex) => placeConnector(rowIndex)}
-                onRowDrop={handleRowDrop}
-                canDropInRow={canDropInRow}
-                onPortClick={(portId) => {
-                  setSelectedPortId(portId === selectedPortId ? null : portId)
-                  setSelectedConnectorId(null)
+            <div className="w-full self-stretch overflow-x-auto -mx-4 px-4">
+              <div
+                className="mx-auto"
+                style={{
+                  width: `${mobileZoom * 100}%`,
                 }}
-                interactive
-              />
+              >
+                <PanelLayoutCanvas
+                  connectorById={connectorById}
+                  heightRu={panel.height_ru}
+                  rows={rows}
+                  ports={ports}
+                  facing={facing}
+                  hasLacingBar={hasLacingBar}
+                  selectedPortId={selectedPortId}
+                  onRowClick={(rowIndex) => placeConnector(rowIndex)}
+                  onRowDrop={handleRowDrop}
+                  canDropInRow={canDropInRow}
+                  onPortClick={(portId) => {
+                    setSelectedPortId(portId === selectedPortId ? null : portId)
+                    setSelectedConnectorId(null)
+                  }}
+                  interactive
+                />
+              </div>
             </div>
 
             <p className="text-[10px] text-slate-600 max-w-xs text-center">
