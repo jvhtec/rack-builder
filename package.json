@@ -21,7 +21,8 @@
     "react-dnd-touch-backend": "^16.0.1",
     "react-dom": "^19.2.4",
     "react-image-crop": "^11.0.10",
-    "react-router-dom": "^7.13.1"
+    "react-router-dom": "^7.13.1",
+    "web-haptics": "^0.0.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

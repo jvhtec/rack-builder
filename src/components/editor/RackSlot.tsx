@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type RefCallback } from 'react'
+import { useHaptic } from '../../contexts/HapticContext'
 import { useDrop } from 'react-dnd'
 import {
   DEVICE_TYPE,
@@ -62,6 +63,8 @@ export default function RackSlot({
 }: RackSlotProps) {
   const slotRef = useRef<HTMLDivElement | null>(null)
   const wasOverRef = useRef(false)
+  const prevDropStateRef = useRef<'none' | 'valid' | 'invalid'>('none')
+  const { trigger } = useHaptic()
 
   /**
    * Detect which preferred lane/sub-lane the user is hovering over.
@@ -152,6 +155,7 @@ export default function RackSlot({
         monitor.getClientOffset(),
         dragItem.isHalfRack && !dragItem.forceFullWidth,
       )
+      trigger('success')
       if (dragItem.type === PLACED_DEVICE_TYPE) {
         onDropMove(dragItem.itemId, slotU, preferredLane, preferredSubLane)
       } else {
@@ -165,6 +169,15 @@ export default function RackSlot({
       clientOffset: monitor.getClientOffset(),
     }),
   })
+
+  useEffect(() => {
+    const newState = !isOver ? 'none' : canDrop ? 'valid' : 'invalid'
+    if (newState !== prevDropStateRef.current) {
+      if (newState === 'valid') trigger('nudge')
+      else if (newState === 'invalid') trigger('error')
+      prevDropStateRef.current = newState
+    }
+  }, [isOver, canDrop, trigger])
 
   useEffect(() => {
     if (!onPlacementHint) return

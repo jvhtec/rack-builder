@@ -1,7 +1,8 @@
-import type { LegacyRef } from 'react'
+import { useEffect, useRef, type LegacyRef } from 'react'
 import { useDrag } from 'react-dnd'
 import type { Device } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
+import { useHaptic } from '../../contexts/HapticContext'
 
 export const DEVICE_TYPE = 'DEVICE'
 export const PLACED_DEVICE_TYPE = 'PLACED_DEVICE'
@@ -32,6 +33,9 @@ interface DraggableDeviceProps {
 }
 
 export default function DraggableDevice({ device }: DraggableDeviceProps) {
+  const { trigger } = useHaptic()
+  const wasDraggingRef = useRef(false)
+
   const [{ isDragging }, dragRef] = useDrag<DeviceDragItem, unknown, { isDragging: boolean }>({
     type: DEVICE_TYPE,
     item: {
@@ -45,6 +49,11 @@ export default function DraggableDevice({ device }: DraggableDeviceProps) {
     },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   })
+
+  useEffect(() => {
+    if (isDragging && !wasDraggingRef.current) trigger('nudge')
+    wasDraggingRef.current = isDragging
+  }, [isDragging, trigger])
 
   const thumbUrl = getDeviceImageUrl(device.front_image_path)
 

@@ -1,5 +1,6 @@
 import Modal from './Modal'
 import Button from './Button'
+import { useHaptic } from '../../contexts/HapticContext'
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -16,6 +17,8 @@ export default function ConfirmDialog({
   title,
   message,
 }: ConfirmDialogProps) {
+  const { trigger } = useHaptic()
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <p className="text-sm text-gray-600 mb-6">{message}</p>
@@ -27,6 +30,7 @@ export default function ConfirmDialog({
           variant="danger"
           className="w-full sm:w-auto"
           onClick={() => {
+            trigger('error')
             onConfirm()
             onClose()
           }}
