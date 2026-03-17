@@ -119,7 +119,24 @@ function toErrorMessage(error: unknown): string {
   return 'Failed to export PDF.'
 }
 
-function triggerPdfDownload(blob: Blob, fileName: string) {
+async function triggerPdfDownload(blob: Blob, fileName: string): Promise<void> {
+  // Use Web Share API on mobile for native "Save to Files/Downloads" dialog
+  const file = new File([blob], fileName, { type: 'application/pdf' })
+  if (
+    typeof navigator.share === 'function' &&
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare({ files: [file] })
+  ) {
+    try {
+      await navigator.share({ files: [file], title: fileName })
+      return
+    } catch (error) {
+      // User cancelled — do not fall through to anchor download
+      if (error instanceof Error && error.name === 'AbortError') return
+      // Other errors fall through to anchor-based download
+    }
+  }
+
   const objectUrl = URL.createObjectURL(blob)
   const canUseDownloadAttribute = 'download' in HTMLAnchorElement.prototype
   const isIosSafariLike = /iP(ad|hone|od)/i.test(navigator.userAgent)
@@ -285,7 +302,7 @@ export async function exportPrintSheetsToPdf({
           message: 'Downloading PDF...',
         })
 
-        triggerPdfDownload(pdfBlob, normalizedFileName)
+        await triggerPdfDownload(pdfBlob, normalizedFileName)
         return
       } catch (error) {
         lastError = error
