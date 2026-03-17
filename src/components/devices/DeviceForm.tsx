@@ -8,6 +8,7 @@ import { useImageUpload } from '../../hooks/useImageUpload'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import type { Device, DeviceCategory } from '../../types'
 import { getRackPanelAspect, normalizeRackUnits, RACK_PANEL_WIDTH_UNITS, RACK_HALF_PANEL_WIDTH_UNITS } from '../../lib/rackVisual'
+import { useHaptic } from '../../contexts/HapticContext'
 
 interface DeviceFormProps {
   initialData?: Device
@@ -58,6 +59,7 @@ export default function DeviceForm({
   const cropOutputHeight = Math.round(cropOutputWidth / cropAspect)
 
   const { uploadImage, uploading } = useImageUpload()
+  const { trigger } = useHaptic()
 
   const frontInputRef = useRef<HTMLInputElement>(null)
   const rearInputRef = useRef<HTMLInputElement>(null)
@@ -123,6 +125,9 @@ export default function DeviceForm({
         front_image_path: frontPath,
         rear_image_path: rearPath,
       })
+      trigger('success')
+    } catch {
+      trigger('error')
     } finally {
       setSaving(false)
     }
