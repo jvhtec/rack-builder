@@ -6,6 +6,10 @@ export function useProjectAuth(project: Project | null) {
   const [showPrompt, setShowPrompt] = useState(false)
 
   useEffect(() => {
+    // Reset on every project change so stale auth never leaks across projects
+    setIsAuthenticated(false)
+    setShowPrompt(false)
+
     if (!project) return
     if (!project.password) {
       setIsAuthenticated(true)

@@ -240,18 +240,6 @@ export default function LayoutPrintPage() {
     }
   }, [layout, project?.name, rack])
 
-  if (!isAuthenticated && !loading) {
-    return (
-      <PasswordPrompt
-        isOpen={showPrompt}
-        onSubmit={handleAuthSubmit}
-        onCancel={() => { handleAuthCancel(); navigate('/projects') }}
-        title="Password Required"
-        description="This project is password-protected."
-      />
-    )
-  }
-
   if (error) {
     return (
       <div className="layout-print-error">
@@ -268,6 +256,18 @@ export default function LayoutPrintPage() {
       <div className="layout-print-loading">
         <p>Preparing A3 PDF preview...</p>
       </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <PasswordPrompt
+        isOpen={showPrompt}
+        onSubmit={handleAuthSubmit}
+        onCancel={() => { handleAuthCancel(); navigate('/projects') }}
+        title="Password Required"
+        description="This project is password-protected."
+      />
     )
   }
 

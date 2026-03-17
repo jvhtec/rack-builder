@@ -179,6 +179,17 @@ export default function PanelLayoutPrintPage() {
 
   if (loading) return <div className="layout-print-loading"><p>Preparing panel PDF preview...</p></div>
 
+  if (error || !panel || !project) {
+    return (
+      <div className="layout-print-error">
+        <p>{error ?? 'Panel layout not found.'}</p>
+        <Button variant="secondary" onClick={() => navigate('/projects')}>
+          Back to projects
+        </Button>
+      </div>
+    )
+  }
+
   if (!isAuthenticated) {
     return (
       <PasswordPrompt
@@ -188,17 +199,6 @@ export default function PanelLayoutPrintPage() {
         title="Password Required"
         description="This project is password-protected."
       />
-    )
-  }
-
-  if (error || !panel || !project) {
-    return (
-      <div className="layout-print-error">
-        <p>{error ?? 'Panel layout not found.'}</p>
-        <Button variant="secondary" onClick={() => navigate('/projects')}>
-          Back to projects
-        </Button>
-      </div>
     )
   }
 
