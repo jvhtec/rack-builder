@@ -183,7 +183,7 @@ function DraggableConnectorButton({
 
 // ─── Main Editor ─────────────────────────────────────────────────────────────
 
-function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
+function PanelLayoutEditorInner({ isMobile, isPortrait }: { isMobile: boolean; isPortrait: boolean }) {
   const { projectId, panelLayoutId } = useParams<{ projectId: string; panelLayoutId: string }>()
   const navigate = useNavigate()
   const { isDark, toggle } = useTheme()
@@ -493,6 +493,23 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (isMobile && isPortrait) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-slate-950 text-slate-100"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="text-6xl" style={{ transform: 'rotate(90deg)' }}>📱</div>
+        <div className="text-center px-8">
+          <p className="text-lg font-bold text-slate-100 mb-2">Rotate your device</p>
+          <p className="text-sm text-slate-400">
+            The panel layout editor requires landscape orientation.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -1123,12 +1140,22 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
 export default function PanelLayoutEditorPage() {
   const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768)
   const [isTouchLikeDevice, setIsTouchLikeDevice] = useState(false)
+  const [isPortrait, setIsPortrait] = useState<boolean>(
+    () => window.matchMedia('(orientation: portrait)').matches,
+  )
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 767px)')
     const handleChange = (event: MediaQueryListEvent) => setIsMobile(event.matches)
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(orientation: portrait)')
+    const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
   }, [])
 
   useEffect(() => {
@@ -1153,7 +1180,7 @@ export default function PanelLayoutEditorPage() {
 
   return (
     <DndProvider backend={dndBackend} options={dndOptions}>
-      <PanelLayoutEditorInner isMobile={isMobile} />
+      <PanelLayoutEditorInner isMobile={isMobile} isPortrait={isPortrait} />
     </DndProvider>
   )
 }
