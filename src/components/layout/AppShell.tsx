@@ -45,7 +45,7 @@ export default function AppShell() {
           <div className="flex justify-end mb-2">
             <ThemeToggle isDark={isDark} toggle={toggle} />
           </div>
-          <p className="text-[10px] text-gray-500 text-center">© 2026 JVH</p>
+          <p className="text-[10px] text-gray-500 text-center">© {new Date().getFullYear()} JVH</p>
         </div>
       </nav>
 
@@ -55,7 +55,10 @@ export default function AppShell() {
           className="md:hidden sticky top-0 z-20 bg-gray-900 dark:bg-gray-950 text-white border-b border-gray-700 dark:border-gray-800 px-4 py-3 flex items-center justify-between"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
         >
-          <h1 className="text-base font-semibold tracking-tight">Rack Builder</h1>
+          <div>
+            <h1 className="text-base font-semibold tracking-tight">Rack Builder</h1>
+            <p className="text-[9px] text-gray-500">© {new Date().getFullYear()} JVH</p>
+          </div>
           <ThemeToggle isDark={isDark} toggle={toggle} />
         </header>
 
