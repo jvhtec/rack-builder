@@ -345,6 +345,12 @@
   display: block;
 }
 
+.print-rack-device-media svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .print-rack-device-fallback {
   width: 100%;
   height: 100%;

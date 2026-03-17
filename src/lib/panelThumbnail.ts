@@ -44,7 +44,7 @@ function getPortGeometry(
   return { x, y, width, height }
 }
 
-export function buildPanelThumbnailDataUrl(
+export function buildPanelThumbnailSvg(
   panel: PanelLayout,
   facing: DeviceFacing,
   connectorById: Map<string, ConnectorDefinition>,
@@ -99,7 +99,7 @@ export function buildPanelThumbnailDataUrl(
     </g>`
   }).join('')
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">
     <rect x="0" y="0" width="${width}" height="${height}" fill="#020617"/>
     <rect x="14" y="${bodyTop}" width="${width - 28}" height="${bodyHeight}" rx="6" fill="#0b1220" stroke="#1e293b" stroke-width="2"/>
     ${rowStripes}
@@ -109,6 +109,12 @@ export function buildPanelThumbnailDataUrl(
       ${escapeXml(panel.name)} • ${panel.height_ru}U • ${facing === 'front' ? 'Front' : 'Rear'}
     </text>
   </svg>`
+}
 
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+export function buildPanelThumbnailDataUrl(
+  panel: PanelLayout,
+  facing: DeviceFacing,
+  connectorById: Map<string, ConnectorDefinition>,
+): string {
+  return `data:image/svg+xml;utf8,${encodeURIComponent(buildPanelThumbnailSvg(panel, facing, connectorById))}`
 }

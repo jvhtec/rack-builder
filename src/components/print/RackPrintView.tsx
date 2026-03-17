@@ -1,13 +1,13 @@
 import { useMemo, type CSSProperties } from 'react'
-import type { ConnectorDefinition, DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
+import type { DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { useConnectors } from '../../hooks/useConnectors'
 import { buildSlots, getSlotTopPx } from '../editor/rackGeometry'
 import { getRackPanelAspect } from '../../lib/rackVisual'
 import { getItemSlot, getSlotStyle } from '../../lib/rackPositions'
 import { buildRackFaceViewModel, resolveVisibleImageSide, selectFacingImagePath } from '../../lib/rackViewModel'
+import { buildPanelThumbnailSvg } from '../../lib/panelThumbnail'
 import AutoScaleText from '../shared/AutoScaleText'
-import PanelLayoutCanvas from '../panels/PanelLayoutCanvas'
 
 function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
   const isCompact = item.device.rack_units <= 1
@@ -42,34 +42,6 @@ function getPrintSlotHeight(rackWidth: 'single' | 'dual'): number {
   const laneCount = rackWidth === 'dual' ? 2 : 1
   const lanePx = totalPx / laneCount
   return Math.round(lanePx / getRackPanelAspect(1))
-}
-
-function PanelMediaContent({
-  item,
-  facing,
-  connectorById,
-}: {
-  item: LayoutItemWithDevice
-  facing: DeviceFacing
-  connectorById: Map<string, ConnectorDefinition>
-}) {
-  const panelLayout = item.panel_layout
-  if (!panelLayout) return null
-  const visibleSide = resolveVisibleImageSide(item.facing, facing)
-  return (
-    <PanelLayoutCanvas
-      connectorById={connectorById}
-      heightRu={panelLayout.height_ru}
-      rows={panelLayout.rows ?? []}
-      ports={panelLayout.ports ?? []}
-      facing={visibleSide}
-      hasLacingBar={panelLayout.has_lacing_bar}
-      showGuides={false}
-      interactive={false}
-      showScaleMarker={false}
-      className="h-full w-full border-0 bg-transparent p-0 shadow-none"
-    />
-  )
 }
 
 interface RackPrintViewProps {
@@ -110,27 +82,35 @@ export default function RackPrintView({
 
   function renderDeviceContent(item: LayoutItemWithDevice) {
     const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
-    const hasPanelPreview = item.asset_kind === 'panel_layout' && !!item.panel_layout && connectorById.size > 0
-    const imageUrl = simplifiedView && !hasPanelPreview ? null : getDeviceImageUrl(selectFacingImagePath(item, facing))
+    const panelLayout = item.asset_kind === 'panel_layout' ? item.panel_layout : null
+    const panelSvg = panelLayout && connectorById.size > 0
+      ? buildPanelThumbnailSvg(panelLayout, resolveVisibleImageSide(item.facing, facing), connectorById)
+      : null
 
     if (simplifiedView) {
       return (
         <>
-          {hasPanelPreview && (
-            <div className="print-rack-device-media">
-              <PanelMediaContent item={item} facing={facing} connectorById={connectorById} />
-            </div>
+          {panelSvg && (
+            <div
+              className="print-rack-device-media"
+              dangerouslySetInnerHTML={{ __html: panelSvg }}
+            />
           )}
           <SimplifiedDeviceContent item={item} />
         </>
       )
     }
 
+    const imageUrl = panelSvg ? null : getDeviceImageUrl(selectFacingImagePath(item, facing))
+
     return (
       <>
         <div className="print-rack-device-media">
-          {hasPanelPreview ? (
-            <PanelMediaContent item={item} facing={facing} connectorById={connectorById} />
+          {panelSvg ? (
+            <div
+              style={{ width: '100%', height: '100%' }}
+              dangerouslySetInnerHTML={{ __html: panelSvg }}
+            />
           ) : imageUrl ? (
             <img src={imageUrl} alt={label} crossOrigin="anonymous" />
           ) : (
