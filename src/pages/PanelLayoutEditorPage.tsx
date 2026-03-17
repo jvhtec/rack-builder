@@ -183,7 +183,8 @@ function DraggableConnectorButton({
 
 // ─── Main Editor ─────────────────────────────────────────────────────────────
 
-function PanelLayoutEditorInner({ isMobile, isPortrait }: { isMobile: boolean; isPortrait: boolean }) {
+function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMobile: boolean; isPortrait: boolean; isTouchDevice: boolean }) {
+  const isMobileLike = isMobile || isTouchDevice
   const { projectId, panelLayoutId } = useParams<{ projectId: string; panelLayoutId: string }>()
   const navigate = useNavigate()
   const { isDark, toggle } = useTheme()
@@ -495,7 +496,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait }: { isMobile: boolean; i
     }
   }
 
-  if (isMobile && isPortrait) {
+  if (isMobileLike && isPortrait) {
     return (
       <div
         className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-slate-950 text-slate-100"
@@ -542,7 +543,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait }: { isMobile: boolean; i
   const saveActive = !saving && !!name.trim() && dirty
 
   // ─── Mobile Layout ──────────────────────────────────────────────────────────
-  if (isMobile) {
+  if (isMobileLike) {
     const selectedPortConnector = selectedPort
       ? connectorById.get(selectedPort.connector_id) ?? null
       : null
@@ -1180,7 +1181,7 @@ export default function PanelLayoutEditorPage() {
 
   return (
     <DndProvider backend={dndBackend} options={dndOptions}>
-      <PanelLayoutEditorInner isMobile={isMobile} isPortrait={isPortrait} />
+      <PanelLayoutEditorInner isMobile={isMobile} isPortrait={isPortrait} isTouchDevice={isTouchLikeDevice} />
     </DndProvider>
   )
 }
