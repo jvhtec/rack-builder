@@ -1,5 +1,4 @@
 import type { ButtonHTMLAttributes } from 'react'
-import { useHaptic } from '../../contexts/HapticContext'
 
 type Variant = 'primary' | 'secondary' | 'danger'
 
@@ -17,18 +16,11 @@ export default function Button({
   variant = 'primary',
   className = '',
   children,
-  onClick,
   ...props
 }: ButtonProps) {
-  const { trigger } = useHaptic()
-
   return (
     <button
       className={`inline-flex min-h-11 items-center justify-center px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variantStyles[variant]} ${className}`}
-      onClick={(e) => {
-        trigger('nudge')
-        onClick?.(e)
-      }}
       {...props}
     >
       {children}
