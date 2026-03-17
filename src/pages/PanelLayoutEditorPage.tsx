@@ -210,6 +210,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
   const [ports, setPorts] = useState<PanelLayoutPort[]>([])
   const [selectedConnectorId, setSelectedConnectorId] = useState<string | null>(null)
   const [selectedPortId, setSelectedPortId] = useState<string | null>(null)
+  const [mobileZoom, setMobileZoom] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -548,6 +549,8 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
       ? connectorById.get(selectedPort.connector_id) ?? null
       : null
 
+    const zoomPercent = Math.round(mobileZoom * 100)
+
     return (
       <div className="flex flex-col h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 overflow-hidden">
         {/* Mobile header */}
@@ -612,6 +615,33 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
           }}
         >
           <div className="p-4 flex flex-col items-center gap-3">
+            <div className="w-full max-w-lg flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileZoom((prev) => Math.max(0.6, +(prev - 0.1).toFixed(2)))}
+                className="min-h-9 min-w-9 rounded-md border border-slate-700 bg-slate-900/70 px-2 text-sm font-bold text-slate-200"
+                aria-label="Zoom out panel"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileZoom(1)}
+                className="rounded-md border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-[11px] font-semibold text-slate-300"
+                aria-label="Reset panel zoom"
+              >
+                Zoom {zoomPercent}%
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileZoom((prev) => Math.min(1.8, +(prev + 0.1).toFixed(2)))}
+                className="min-h-9 min-w-9 rounded-md border border-slate-700 bg-slate-900/70 px-2 text-sm font-bold text-slate-200"
+                aria-label="Zoom in panel"
+              >
+                +
+              </button>
+            </div>
+
             {/* Row usage summary */}
             <div className="w-full max-w-lg flex flex-wrap gap-1.5 justify-center">
               {rows.map((row) => {
@@ -626,7 +656,14 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
               })}
             </div>
 
-            <div className="w-full max-w-lg">
+            <div className="w-full max-w-lg overflow-x-auto">
+              <div
+                className="mx-auto"
+                style={{
+                  width: `${mobileZoom * 100}%`,
+                  minWidth: mobileZoom >= 1 ? `${mobileZoom * 100}%` : undefined,
+                }}
+              >
               <PanelLayoutCanvas
                 connectorById={connectorById}
                 heightRu={panel.height_ru}
@@ -644,6 +681,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
                 }}
                 interactive
               />
+              </div>
             </div>
 
             <p className="text-[10px] text-slate-600 max-w-xs text-center">
