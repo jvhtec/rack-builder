@@ -13,9 +13,24 @@ const HapticContext = createContext<HapticContextValue | null>(null)
 const BUTTON_SELECTOR = 'button, [role="button"], a[href], input[type="button"], input[type="submit"]'
 
 export function HapticProvider({ children }: { children: ReactNode }) {
-  const { trigger, cancel, isSupported } = useWebHaptics()
+  const { trigger, cancel, isSupported } = useWebHaptics({ showSwitch: true })
   const triggerRef = useRef(trigger)
   triggerRef.current = trigger
+
+  // The library uses display:none when showSwitch is false, which prevents
+  // iOS from triggering native haptics on the hidden switch checkbox.
+  // We pass showSwitch:true to avoid display:none, then visually hide the
+  // element off-screen so it remains accessible to iOS haptic internals.
+  useEffect(() => {
+    const label = document.querySelector<HTMLElement>('label[for^="web-haptics-"]')
+    if (label) {
+      label.style.position = 'fixed'
+      label.style.left = '-9999px'
+      label.style.top = '-9999px'
+      label.style.opacity = '0'
+      label.style.pointerEvents = 'none'
+    }
+  }, [])
 
   useEffect(() => {
     const handler = (e: PointerEvent) => {
