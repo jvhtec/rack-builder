@@ -1140,7 +1140,9 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
 
 export default function PanelLayoutEditorPage() {
   const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768)
-  const [isTouchLikeDevice, setIsTouchLikeDevice] = useState(false)
+  const [isTouchLikeDevice, setIsTouchLikeDevice] = useState<boolean>(
+    () => window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0,
+  )
   const [isPortrait, setIsPortrait] = useState<boolean>(
     () => window.matchMedia('(orientation: portrait)').matches,
   )
