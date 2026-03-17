@@ -1170,9 +1170,6 @@ export default function LayoutEditorPage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
-          <button onClick={() => setIsSheetOpen(true)} className="text-blue-600 dark:text-indigo-400 text-sm font-semibold px-2">
-            Menu
-          </button>
         </div>
       </header>
 
@@ -1450,24 +1447,15 @@ export default function LayoutEditorPage() {
       <footer className="bg-slate-900 border-t border-slate-800 flex items-center justify-around shrink-0 z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom)', minHeight: 'calc(4rem + env(safe-area-inset-bottom))' }}>
         <button
           onClick={() => { setActiveTab('devices'); setIsSheetOpen(true) }}
-          className={`flex flex-col items-center gap-1 ${selectedDeviceTemplate ? 'text-indigo-400' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-1 px-6 py-2 ${selectedDeviceTemplate ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <span className="text-lg">▦</span>
           <span className="text-[10px] font-bold uppercase">Devices</span>
         </button>
 
-        <div className="relative -top-6">
-          <button
-            onClick={() => { setActiveTab('devices'); setIsSheetOpen(true) }}
-            className="w-14 h-14 bg-indigo-600 rounded-full shadow-xl shadow-indigo-600/30 flex items-center justify-center border-4 border-slate-950 text-2xl"
-          >
-            +
-          </button>
-        </div>
-
         <button
           onClick={() => { setActiveTab('rack'); setIsSheetOpen(true) }}
-          className="flex flex-col items-center gap-1 text-slate-400"
+          className="flex flex-col items-center gap-1 px-6 py-2 text-slate-400"
         >
           <span className="text-lg">⚙</span>
           <span className="text-[10px] font-bold uppercase">Rack</span>

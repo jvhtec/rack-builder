@@ -683,24 +683,15 @@ function PanelLayoutEditorInner({ isMobile }: { isMobile: boolean }) {
         >
           <button
             onClick={() => setMobileSheet('connectors')}
-            className={`flex flex-col items-center gap-1 py-2 ${selectedConnectorId ? 'text-amber-400' : 'text-slate-400'}`}
+            className={`flex flex-col items-center gap-1 px-6 py-2 ${selectedConnectorId ? 'text-amber-400' : 'text-slate-400'}`}
           >
             <span className="text-lg">▦</span>
             <span className="text-[10px] font-bold uppercase">Connectors</span>
           </button>
 
-          <div className="relative -top-6">
-            <button
-              onClick={() => setMobileSheet('connectors')}
-              className="w-14 h-14 bg-amber-500 rounded-full shadow-xl shadow-amber-500/30 flex items-center justify-center border-4 border-slate-950 text-2xl text-slate-900 font-bold"
-            >
-              +
-            </button>
-          </div>
-
           <button
             onClick={() => setMobileSheet('properties')}
-            className="flex flex-col items-center gap-1 py-2 text-slate-400"
+            className="flex flex-col items-center gap-1 px-6 py-2 text-slate-400"
           >
             <span className="text-lg">⚙</span>
             <span className="text-[10px] font-bold uppercase">Settings</span>
