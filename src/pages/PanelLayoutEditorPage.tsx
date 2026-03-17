@@ -656,31 +656,31 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
               })}
             </div>
 
-            <div className="w-full max-w-lg overflow-x-auto">
+            <div className="w-full self-stretch overflow-x-auto -mx-4 px-4">
               <div
                 className="mx-auto"
                 style={{
                   width: `${mobileZoom * 100}%`,
-                  minWidth: mobileZoom >= 1 ? `${mobileZoom * 100}%` : undefined,
+                  minWidth: `${mobileZoom * 100}%`,
                 }}
               >
-              <PanelLayoutCanvas
-                connectorById={connectorById}
-                heightRu={panel.height_ru}
-                rows={rows}
-                ports={ports}
-                facing={facing}
-                hasLacingBar={hasLacingBar}
-                selectedPortId={selectedPortId}
-                onRowClick={(rowIndex) => placeConnector(rowIndex)}
-                onRowDrop={handleRowDrop}
-                canDropInRow={canDropInRow}
-                onPortClick={(portId) => {
-                  setSelectedPortId(portId === selectedPortId ? null : portId)
-                  setSelectedConnectorId(null)
-                }}
-                interactive
-              />
+                <PanelLayoutCanvas
+                  connectorById={connectorById}
+                  heightRu={panel.height_ru}
+                  rows={rows}
+                  ports={ports}
+                  facing={facing}
+                  hasLacingBar={hasLacingBar}
+                  selectedPortId={selectedPortId}
+                  onRowClick={(rowIndex) => placeConnector(rowIndex)}
+                  onRowDrop={handleRowDrop}
+                  canDropInRow={canDropInRow}
+                  onPortClick={(portId) => {
+                    setSelectedPortId(portId === selectedPortId ? null : portId)
+                    setSelectedConnectorId(null)
+                  }}
+                  interactive
+                />
               </div>
             </div>
 
