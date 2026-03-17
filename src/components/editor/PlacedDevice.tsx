@@ -73,11 +73,30 @@ export default function PlacedDevice({
         }}
         onContextMenu={(event) => event.preventDefault()}
       >
-        <div className="rack-device-wire" />
-        <span className="rack-device-screw lt" />
-        <span className="rack-device-screw rt" />
-        <span className="rack-device-screw lb" />
-        <span className="rack-device-screw rb" />
+        {hasPanelPreview ? (
+          <div className="rack-device-media">
+            <PanelLayoutCanvas
+              connectorById={connectorById}
+              heightRu={panelLayout.height_ru}
+              rows={panelLayout.rows ?? []}
+              ports={panelLayout.ports ?? []}
+              facing={visibleSide}
+              hasLacingBar={panelLayout.has_lacing_bar}
+              showGuides={false}
+              interactive={false}
+              showScaleMarker={false}
+              className="h-full w-full border-0 bg-transparent p-0 shadow-none"
+            />
+          </div>
+        ) : (
+          <>
+            <div className="rack-device-wire" />
+            <span className="rack-device-screw lt" />
+            <span className="rack-device-screw rt" />
+            <span className="rack-device-screw lb" />
+            <span className="rack-device-screw rb" />
+          </>
+        )}
 
         <div className="rack-device-simplified-layout">
           <span className="rack-device-simplified-brand">{item.device.brand}</span>

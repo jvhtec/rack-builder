@@ -1,10 +1,11 @@
 import { useMemo, type CSSProperties } from 'react'
-import type { DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
+import type { ConnectorDefinition, DeviceFacing, LayoutItemWithDevice, Rack } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import { buildSlots, getSlotTopPx } from '../editor/rackGeometry'
 import { getRackPanelAspect } from '../../lib/rackVisual'
 import { getItemSlot, getSlotStyle } from '../../lib/rackPositions'
-import { buildRackFaceViewModel, selectFacingImagePath } from '../../lib/rackViewModel'
+import { buildRackFaceViewModel, resolveVisibleImageSide, selectFacingImagePath } from '../../lib/rackViewModel'
+import { buildPanelThumbnailSvg } from '../../lib/panelThumbnail'
 import AutoScaleText from '../shared/AutoScaleText'
 
 function SimplifiedDeviceContent({ item }: { item: LayoutItemWithDevice }) {
@@ -46,6 +47,7 @@ interface RackPrintViewProps {
   rack: Rack
   items: LayoutItemWithDevice[]
   facing: DeviceFacing
+  connectorById: Map<string, ConnectorDefinition>
   showDeviceDetails?: boolean
   simplifiedView?: boolean
 }
@@ -54,6 +56,7 @@ export default function RackPrintView({
   rack,
   items,
   facing,
+  connectorById,
   showDeviceDetails = true,
   simplifiedView = false,
 }: RackPrintViewProps) {
@@ -76,6 +79,61 @@ export default function RackPrintView({
     '--print-rail-width': `${PRINT_RAIL_WIDTH_PX}px`,
     width: `${rack.width === 'dual' ? PRINT_DUAL_WIDTH_PX : PRINT_SINGLE_WIDTH_PX}px`,
   } as CSSProperties
+
+  function renderDeviceContent(item: LayoutItemWithDevice) {
+    const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
+    const panelLayout = item.asset_kind === 'panel_layout' ? item.panel_layout : null
+    const panelSvg = panelLayout && connectorById.size > 0
+      ? buildPanelThumbnailSvg(panelLayout, resolveVisibleImageSide(item.facing, facing), connectorById)
+      : null
+
+    if (simplifiedView) {
+      return (
+        <>
+          {panelSvg && (
+            <div className="print-rack-device-media">
+              <div
+                style={{ width: '100%', height: '100%' }}
+                dangerouslySetInnerHTML={{ __html: panelSvg }}
+              />
+            </div>
+          )}
+          <SimplifiedDeviceContent item={item} />
+        </>
+      )
+    }
+
+    const imageUrl = panelSvg ? null : getDeviceImageUrl(selectFacingImagePath(item, facing))
+
+    return (
+      <>
+        <div className="print-rack-device-media">
+          {panelSvg ? (
+            <div
+              style={{ width: '100%', height: '100%' }}
+              dangerouslySetInnerHTML={{ __html: panelSvg }}
+            />
+          ) : imageUrl ? (
+            <img src={imageUrl} alt={label} crossOrigin="anonymous" />
+          ) : (
+            <div className="print-rack-device-fallback">
+              <span>{label}</span>
+            </div>
+          )}
+        </div>
+
+        {showDeviceDetails && (
+          <div className="print-rack-device-meta">
+            <p className="print-rack-device-title">
+              {label}
+            </p>
+            {item.custom_name && <p className="print-rack-device-note">{item.device.brand} {item.device.model}</p>}
+            {item.notes && <p className="print-rack-device-note">{item.notes}</p>}
+          </div>
+        )}
+      </>
+    )
+  }
 
   return (
     <section className="print-rack-view">
@@ -115,12 +173,10 @@ export default function RackPrintView({
 
             <div className="print-rack-device-layer">
               {ghostItems.map((item, index) => {
-                const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
                 const slot = ghostSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
                 const { left: laneLeft, width: laneWidth } = getSlotStyle(slot, rack.width, facing)
                 const height = item.device.rack_units * slotHeight
-                const imageUrl = simplifiedView ? null : getDeviceImageUrl(selectFacingImagePath(item, facing))
 
                 return (
                   <div
@@ -135,43 +191,17 @@ export default function RackPrintView({
                     }}
                   >
                     <div className={`print-rack-device ${item.device.rack_units === 1 ? 'print-rack-device--compact' : ''} ${simplifiedView ? 'print-rack-device--simplified' : ''}`}>
-                      {simplifiedView ? (
-                        <SimplifiedDeviceContent item={item} />
-                      ) : (
-                        <>
-                          <div className="print-rack-device-media">
-                            {imageUrl ? (
-                              <img src={imageUrl} alt={label} crossOrigin="anonymous" />
-                            ) : (
-                              <div className="print-rack-device-fallback">
-                                <span>{label}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {showDeviceDetails && (
-                            <div className="print-rack-device-meta">
-                              <p className="print-rack-device-title">
-                                {label}
-                              </p>
-                              {item.custom_name && <p className="print-rack-device-note">{item.device.brand} {item.device.model}</p>}
-                              {item.notes && <p className="print-rack-device-note">{item.notes}</p>}
-                            </div>
-                          )}
-                        </>
-                      )}
+                      {renderDeviceContent(item)}
                     </div>
                   </div>
                 )
               })}
 
               {activeItems.map((item, index) => {
-                const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
                 const topPx = getSlotTopPx(rack.rack_units, item.start_u, item.device.rack_units, slotHeight)
                 const slot = activeSlotAssignments.get(item.id) ?? getItemSlot(item, rack.width)
                 const { left: laneLeft, width: laneWidth } = getSlotStyle(slot, rack.width, facing)
                 const height = item.device.rack_units * slotHeight
-                const imageUrl = simplifiedView ? null : getDeviceImageUrl(selectFacingImagePath(item, facing))
 
                 return (
                   <div
@@ -186,31 +216,7 @@ export default function RackPrintView({
                     }}
                   >
                     <div className={`print-rack-device ${item.device.rack_units === 1 ? 'print-rack-device--compact' : ''} ${simplifiedView ? 'print-rack-device--simplified' : ''}`}>
-                      {simplifiedView ? (
-                        <SimplifiedDeviceContent item={item} />
-                      ) : (
-                        <>
-                          <div className="print-rack-device-media">
-                            {imageUrl ? (
-                              <img src={imageUrl} alt={label} crossOrigin="anonymous" />
-                            ) : (
-                              <div className="print-rack-device-fallback">
-                                <span>{label}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {showDeviceDetails && (
-                            <div className="print-rack-device-meta">
-                              <p className="print-rack-device-title">
-                                {label}
-                              </p>
-                              {item.custom_name && <p className="print-rack-device-note">{item.device.brand} {item.device.model}</p>}
-                              {item.notes && <p className="print-rack-device-note">{item.notes}</p>}
-                            </div>
-                          )}
-                        </>
-                      )}
+                      {renderDeviceContent(item)}
                     </div>
                   </div>
                 )

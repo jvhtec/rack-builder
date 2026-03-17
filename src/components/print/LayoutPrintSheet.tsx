@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import RackPrintView from './RackPrintView'
 import PrintCartouche from './PrintCartouche'
+import { useConnectors } from '../../hooks/useConnectors'
 import type { Layout, LayoutItemWithDevice, Rack } from '../../types'
 
 interface LayoutPrintSheetProps {
@@ -97,6 +98,8 @@ export default function LayoutPrintSheet({
     return () => window.cancelAnimationFrame(frameId)
   }, [items, rack.id, recalculateScale, useAutoFitScale])
 
+  const { connectorById } = useConnectors()
+
   const effectiveScale = useAutoFitScale ? autoScale : scale
 
   const effectiveScaleLabel = useMemo(() => {
@@ -116,8 +119,8 @@ export default function LayoutPrintSheet({
         <div ref={frameRef} className="layout-print-drawing-frame">
           <div className="layout-print-drawing-scale" style={{ transform: `scale(${effectiveScale})` }}>
             <div ref={contentRef} className="layout-print-drawing-row">
-              <RackPrintView rack={rack} items={items} facing="front" showDeviceDetails simplifiedView={simplifiedView} />
-              <RackPrintView rack={rack} items={items} facing="rear" showDeviceDetails simplifiedView={simplifiedView} />
+              <RackPrintView rack={rack} items={items} facing="front" connectorById={connectorById} showDeviceDetails simplifiedView={simplifiedView} />
+              <RackPrintView rack={rack} items={items} facing="rear" connectorById={connectorById} showDeviceDetails simplifiedView={simplifiedView} />
             </div>
           </div>
         </div>
