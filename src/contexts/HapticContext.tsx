@@ -45,7 +45,7 @@ export function HapticProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handler = (e: PointerEvent) => {
       const el = (e.target as Element)?.closest?.(BUTTON_SELECTOR)
-      if (el && !(el as HTMLButtonElement).disabled) {
+      if (el && !('disabled' in el && (el as HTMLButtonElement).disabled) && el.getAttribute('aria-disabled') !== 'true') {
         triggerRef.current('nudge')
       }
     }
