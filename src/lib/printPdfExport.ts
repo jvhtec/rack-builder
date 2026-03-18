@@ -121,48 +121,78 @@ function toErrorMessage(error: unknown): string {
   return 'Failed to export PDF.'
 }
 
+function isIosDevice(): boolean {
+  return /iP(ad|hone|od)/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
 async function triggerPdfDownload(blob: Blob, fileName: string): Promise<void> {
-  // Use Web Share API on mobile for native "Save to Files/Downloads" dialog
-  const file = new File([blob], fileName, { type: 'application/pdf' })
-  if (
-    typeof navigator.share === 'function' &&
-    typeof navigator.canShare === 'function' &&
-    navigator.canShare({ files: [file] })
-  ) {
-    try {
-      await navigator.share({ files: [file], title: fileName })
-      return
-    } catch (error) {
-      // User cancelled — do not fall through to anchor download
-      if (error instanceof Error && error.name === 'AbortError') return
-      // Other errors fall through to anchor-based download
-    }
-  }
+  // Web Share API requires a recent user activation. After a long async
+  // render pipeline the gesture is typically expired, so we skip it and
+  // go straight to the most reliable download path per platform.
+  const ios = isIosDevice()
 
-  const objectUrl = URL.createObjectURL(blob)
-  const canUseDownloadAttribute = 'download' in HTMLAnchorElement.prototype
-  const isIosSafariLike = /iP(ad|hone|od)/i.test(navigator.userAgent)
-
-  const anchor = document.createElement('a')
-  anchor.href = objectUrl
-  anchor.rel = 'noopener'
-  anchor.style.display = 'none'
-
-  document.body.appendChild(anchor)
-
-  try {
-    if (canUseDownloadAttribute && !isIosSafariLike) {
-      anchor.download = fileName
-      anchor.click()
-      return
-    }
-
-    anchor.target = '_blank'
+  // Strategy 1 (non-iOS): anchor with download attribute — universally
+  // supported on Chrome, Firefox, Edge, and desktop Safari 14.1+.
+  if (!ios && 'download' in HTMLAnchorElement.prototype) {
+    const objectUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = objectUrl
+    anchor.download = fileName
+    anchor.rel = 'noopener'
+    anchor.style.display = 'none'
+    document.body.appendChild(anchor)
     anchor.click()
-  } finally {
     anchor.remove()
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+    return
   }
+
+  // Strategy 2 (iOS): open the PDF blob in the current tab. iOS Safari
+  // blocks window.open and target=_blank from async contexts, but
+  // navigating the current location to a blob URL works reliably and
+  // triggers the native iOS PDF viewer with its built-in share/save.
+  if (ios) {
+    const objectUrl = URL.createObjectURL(blob)
+    // Attempt Web Share first — it works on iOS 15+ when user activation
+    // hasn't expired. We try it but don't rely on it.
+    const file = new File([blob], fileName, { type: 'application/pdf' })
+    if (
+      typeof navigator.share === 'function' &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare({ files: [file] })
+    ) {
+      try {
+        await navigator.share({ files: [file], title: fileName })
+        URL.revokeObjectURL(objectUrl)
+        return
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          URL.revokeObjectURL(objectUrl)
+          return
+        }
+        // Web Share failed (likely expired gesture) — fall through
+      }
+    }
+
+    // Navigate to the blob URL. This opens the iOS PDF viewer inline,
+    // where the user can tap the share icon to save/send the file.
+    window.location.href = objectUrl
+    // Don't revoke immediately — the navigation needs the URL alive.
+    return
+  }
+
+  // Strategy 3 (fallback): open in new tab for other platforms
+  const objectUrl = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.target = '_blank'
+  anchor.rel = 'noopener'
+  anchor.style.display = 'none'
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
 }
 
 /** Consistent render dimensions for export (A3 at ~2x screen density). */

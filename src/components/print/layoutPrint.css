@@ -137,6 +137,7 @@
 
 .layout-print-drawing-frame {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   border: 2px solid #000;
   outline: 1px solid #000;
@@ -677,8 +678,9 @@
   background: #fff;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, auto);
   min-height: 96px;
+  flex-shrink: 0;
 }
 
 .print-cartouche-cell {
@@ -1180,6 +1182,16 @@ html.layout-print-force-light .layout-print-toolbar-error {
   height: 990px !important;
   max-width: none !important;
   aspect-ratio: auto !important;
+  overflow: hidden !important;
+}
+
+.layout-print-exporting .layout-print-sheet-inner {
+  padding: 8mm !important;
+  gap: 5mm !important;
+}
+
+.layout-print-exporting .layout-print-drawing-frame {
+  min-height: 0 !important;
 }
 
 .layout-print-exporting .layout-print-stage {
@@ -1191,9 +1203,20 @@ html.layout-print-force-light .layout-print-toolbar-error {
   pointer-events: none;
 }
 
-/* Keep cartouche readable in exported PDF even on low-quality fallback captures. */
+/* Pin cartouche to fixed dimensions during export so html2canvas renders
+   it identically on every device and browser (especially iOS Safari where
+   grid 1fr rows inside flex containers resolve unpredictably).            */
+.layout-print-exporting .print-cartouche {
+  height: 100px !important;
+  min-height: 100px !important;
+  max-height: 100px !important;
+  grid-template-rows: 50px 50px !important;
+  flex-shrink: 0 !important;
+}
+
 .layout-print-exporting .print-cartouche-cell {
   padding: 4px 6px !important;
+  overflow: hidden !important;
 }
 
 .layout-print-exporting .print-cartouche-label {
@@ -1205,13 +1228,9 @@ html.layout-print-force-light .layout-print-toolbar-error {
   font-size: 10px !important;
   line-height: 1.4 !important;
   white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
   overflow-wrap: anywhere !important;
-}
-
-.layout-print-exporting .print-cartouche {
-  min-height: 100px !important;
 }
 
 /* Keep BOM readable in exported PDF at all scale levels */
