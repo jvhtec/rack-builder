@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
+import RackBomSheet, { getBomPageCount } from '../components/print/RackBomSheet'
 import type { Layout, LayoutItemWithDevice, Project, Rack } from '../types'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../hooks/useTheme'
@@ -37,6 +38,7 @@ export default function LayoutPrintPage() {
   const [imagesReady, setImagesReady] = useState(false)
   const [scale, setScale] = useState(1)
   const [includeSimplified, setIncludeSimplified] = useState(false)
+  const [includeBom, setIncludeBom] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportStatus, setExportStatus] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -56,6 +58,8 @@ export default function LayoutPrintPage() {
       { weightKg: 0, powerW: 0 },
     )
   }, [items])
+
+  const uniqueDeviceCount = useMemo(() => new Set(items.map((i) => i.device.id)).size, [items])
 
   const imageUrls = useMemo(() => {
     const urls = new Set<string>()
@@ -273,6 +277,14 @@ export default function LayoutPrintPage() {
             />
             Include simplified view
           </label>
+          <label className="layout-print-toolbar-label">
+            <input
+              type="checkbox"
+              checked={includeBom}
+              onChange={(e) => setIncludeBom(e.target.checked)}
+            />
+            Include BOM
+          </label>
           <div className="ml-2 pl-4 border-l border-gray-300 dark:border-slate-700">
             <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
           </div>
@@ -284,39 +296,62 @@ export default function LayoutPrintPage() {
         {exportError && <p className="layout-print-toolbar-error">{exportError}</p>}
       </header>
 
-      <main className={`layout-print-stage ${includeSimplified ? 'layout-print-stage--project' : ''}`}>
-        <LayoutPrintSheet
-          layout={layout}
-          rack={rack}
-          items={items}
-          generatedAt={generatedAt}
-          projectOwner={project?.owner}
-          totalWeightKg={rackTotals.weightKg}
-          totalPowerW={rackTotals.powerW}
-          scaleLabel={scaleLabel}
-          pageNumber={1}
-          pageCount={includeSimplified ? 2 : 1}
-          scale={scale}
-          drawingFrameRef={drawingFrameRef}
-          drawingContentRef={drawingContentRef}
-          sheetClassName={includeSimplified ? 'layout-print-page-break' : undefined}
-        />
-        {includeSimplified && (
-          <LayoutPrintSheet
-            layout={layout}
-            rack={rack}
-            items={items}
-            generatedAt={generatedAt}
-            projectOwner={project?.owner}
-            totalWeightKg={rackTotals.weightKg}
-            totalPowerW={rackTotals.powerW}
-            scaleLabel={scaleLabel}
-            pageNumber={2}
-            pageCount={2}
-            useAutoFitScale
-            simplifiedView
-          />
-        )}
+      <main className={`layout-print-stage ${includeSimplified || includeBom ? 'layout-print-stage--project' : ''}`}>
+        {(() => {
+          const bomPages = includeBom ? getBomPageCount(uniqueDeviceCount) : 0
+          const totalPages = 1 + (includeSimplified ? 1 : 0) + bomPages
+          let nextPage = 1
+          return (
+            <>
+              <LayoutPrintSheet
+                layout={layout}
+                rack={rack}
+                items={items}
+                generatedAt={generatedAt}
+                projectOwner={project?.owner}
+                totalWeightKg={rackTotals.weightKg}
+                totalPowerW={rackTotals.powerW}
+                scaleLabel={scaleLabel}
+                pageNumber={nextPage++}
+                pageCount={totalPages}
+                scale={scale}
+                drawingFrameRef={drawingFrameRef}
+                drawingContentRef={drawingContentRef}
+                sheetClassName={includeSimplified || includeBom ? 'layout-print-page-break' : undefined}
+              />
+              {includeSimplified && (
+                <LayoutPrintSheet
+                  layout={layout}
+                  rack={rack}
+                  items={items}
+                  generatedAt={generatedAt}
+                  projectOwner={project?.owner}
+                  totalWeightKg={rackTotals.weightKg}
+                  totalPowerW={rackTotals.powerW}
+                  scaleLabel={scaleLabel}
+                  pageNumber={nextPage++}
+                  pageCount={totalPages}
+                  useAutoFitScale
+                  simplifiedView
+                  sheetClassName={includeBom ? 'layout-print-page-break' : undefined}
+                />
+              )}
+              {includeBom && (
+                <RackBomSheet
+                  layout={layout}
+                  rack={rack}
+                  items={items}
+                  generatedAt={generatedAt}
+                  projectOwner={project?.owner}
+                  totalWeightKg={rackTotals.weightKg}
+                  totalPowerW={rackTotals.powerW}
+                  startPageNumber={nextPage}
+                  pageCount={totalPages}
+                />
+              )}
+            </>
+          )
+        })()}
       </main>
     </div>
   )

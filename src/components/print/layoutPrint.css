@@ -48,6 +48,7 @@
 
 .layout-print-toolbar-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -137,6 +138,7 @@
 
 .layout-print-drawing-frame {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   border: 2px solid #000;
   outline: 1px solid #000;
@@ -174,7 +176,7 @@
   text-transform: uppercase;
   color: #000;
   font-weight: 700;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-rack-viewport {
@@ -198,7 +200,7 @@
 
 .print-rack-u-label {
   font-size: 9px;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   color: #111;
   font-weight: 500;
 }
@@ -373,7 +375,7 @@
   text-overflow: ellipsis;
   line-height: 1.2;
   word-break: break-word;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   text-transform: none;
   letter-spacing: 0;
 }
@@ -408,14 +410,14 @@
   color: #111;
   font-weight: 600;
   text-shadow: none;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-rack-device-note {
   font-size: 7px;
   color: #444;
   text-shadow: none;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-rack-device--compact .print-rack-device-note {
@@ -572,7 +574,7 @@
   text-transform: uppercase;
   letter-spacing: 0.2em;
   color: #4b5563;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .project-print-cover-title {
@@ -588,7 +590,7 @@
   margin: 0;
   font-size: 14px;
   color: #1f2937;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .project-print-index-wrap {
@@ -606,7 +608,7 @@
   font-size: 16px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   color: #111827;
 }
 
@@ -620,7 +622,7 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   font-size: 8.4px;
   line-height: 1.2;
 }
@@ -677,8 +679,9 @@
   background: #fff;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, auto);
   min-height: 96px;
+  flex-shrink: 0;
 }
 
 .print-cartouche-cell {
@@ -725,7 +728,7 @@
   text-transform: uppercase;
   color: #555;
   white-space: nowrap;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-cartouche-value {
@@ -738,7 +741,7 @@
   overflow: visible;
   text-overflow: clip;
   overflow-wrap: anywhere;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .panel-print-content {
@@ -785,7 +788,7 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   font-size: 7.5px;
   line-height: 1.2;
 }
@@ -840,6 +843,95 @@
 .panel-print-connector-table th:nth-child(6) {
   width: 10%;
   text-align: center;
+}
+
+/* ── BOM (Bill of Materials) sheet ────────────────────────────────────── */
+
+.rack-bom-wrap {
+  flex: 1;
+  border: 2px solid #000;
+  padding: 4.5mm;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.rack-bom-title {
+  margin: 0 0 1mm;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
+  color: #111827;
+}
+
+.rack-bom-subtitle {
+  margin: 0 0 3mm;
+  font-size: 9px;
+  color: #4b5563;
+  letter-spacing: 0.04em;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
+}
+
+.rack-bom-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rack-bom-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
+  font-size: 8.4px;
+  line-height: 1.2;
+}
+
+.rack-bom-col-num { width: 4%; }
+.rack-bom-col-brand { width: 14%; }
+.rack-bom-col-model { width: 20%; }
+.rack-bom-col-ru { width: 6%; }
+.rack-bom-col-qty { width: 6%; }
+.rack-bom-col-weight-each { width: 12%; }
+.rack-bom-col-power-each { width: 12%; }
+.rack-bom-col-weight-total { width: 13%; }
+.rack-bom-col-power-total { width: 13%; }
+
+.rack-bom-table th,
+.rack-bom-table td {
+  border: 1px solid #222;
+  padding: 1.4mm 1.1mm;
+  text-align: left;
+  vertical-align: top;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #111827;
+}
+
+.rack-bom-table th {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 8px;
+  background: #f3f4f6;
+  color: #555;
+}
+
+.rack-bom-table tfoot td {
+  font-weight: 700;
+  border-top: 2px solid #000;
+  background: #f9fafb;
+}
+
+.rack-bom-footnote {
+  margin: 2mm 0 0;
+  font-size: 8px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 /* ── Responsive scaling via container queries ──────────────────────────
@@ -929,6 +1021,32 @@
     font-size: 3.5px;
     padding: 0 6px 3px;
   }
+
+  /* BOM */
+  .rack-bom-wrap {
+    padding: 1mm;
+  }
+  .rack-bom-title {
+    font-size: 7px;
+    margin-bottom: 0.5mm;
+  }
+  .rack-bom-subtitle {
+    font-size: 4px;
+    margin-bottom: 1mm;
+  }
+  .rack-bom-table {
+    font-size: 4.5px;
+  }
+  .rack-bom-table th {
+    font-size: 4px;
+  }
+  .rack-bom-table th,
+  .rack-bom-table td {
+    padding: 0.3mm 0.5mm;
+  }
+  .rack-bom-footnote {
+    font-size: 3.5px;
+  }
 }
 
 /* Medium sheets (tablets, 501–1000px) */
@@ -1009,6 +1127,32 @@
     font-size: 6px;
     padding: 0 12px 6px;
   }
+
+  /* BOM */
+  .rack-bom-wrap {
+    padding: 2.5mm;
+  }
+  .rack-bom-title {
+    font-size: 11px;
+    margin-bottom: 1mm;
+  }
+  .rack-bom-subtitle {
+    font-size: 6px;
+    margin-bottom: 2mm;
+  }
+  .rack-bom-table {
+    font-size: 6px;
+  }
+  .rack-bom-table th {
+    font-size: 5.5px;
+  }
+  .rack-bom-table th,
+  .rack-bom-table td {
+    padding: 0.6mm 0.8mm;
+  }
+  .rack-bom-footnote {
+    font-size: 6px;
+  }
 }
 
 html.layout-print-force-light .layout-print-page {
@@ -1035,10 +1179,28 @@ html.layout-print-force-light .layout-print-toolbar-error {
 }
 
 .layout-print-exporting .layout-print-sheet {
-  width: 1400px !important;
-  height: 990px !important;
   max-width: none !important;
   aspect-ratio: auto !important;
+  overflow: hidden !important;
+}
+
+.layout-print-exporting-landscape .layout-print-sheet {
+  width: 1400px !important;
+  height: 990px !important;
+}
+
+.layout-print-exporting-portrait .layout-print-sheet {
+  width: 990px !important;
+  height: 1400px !important;
+}
+
+.layout-print-exporting .layout-print-sheet-inner {
+  padding: 8mm !important;
+  gap: 5mm !important;
+}
+
+.layout-print-exporting .layout-print-drawing-frame {
+  min-height: 0 !important;
 }
 
 .layout-print-exporting .layout-print-stage {
@@ -1050,9 +1212,20 @@ html.layout-print-force-light .layout-print-toolbar-error {
   pointer-events: none;
 }
 
-/* Keep cartouche readable in exported PDF even on low-quality fallback captures. */
+/* Pin cartouche to fixed dimensions during export so html2canvas renders
+   it identically on every device and browser (especially iOS Safari where
+   grid 1fr rows inside flex containers resolve unpredictably).            */
+.layout-print-exporting .print-cartouche {
+  height: 100px !important;
+  min-height: 100px !important;
+  max-height: 100px !important;
+  grid-template-rows: 50px 50px !important;
+  flex-shrink: 0 !important;
+}
+
 .layout-print-exporting .print-cartouche-cell {
   padding: 4px 6px !important;
+  overflow: hidden !important;
 }
 
 .layout-print-exporting .print-cartouche-label {
@@ -1064,13 +1237,98 @@ html.layout-print-force-light .layout-print-toolbar-error {
   font-size: 10px !important;
   line-height: 1.4 !important;
   white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
   overflow-wrap: anywhere !important;
 }
 
-.layout-print-exporting .print-cartouche {
-  min-height: 100px !important;
+/* Keep BOM readable in exported PDF at all scale levels */
+.layout-print-exporting .rack-bom-wrap {
+  padding: 4.5mm !important;
+}
+.layout-print-exporting .rack-bom-title {
+  font-size: 16px !important;
+}
+.layout-print-exporting .rack-bom-subtitle {
+  font-size: 9px !important;
+  margin-bottom: 3mm !important;
+}
+.layout-print-exporting .rack-bom-table {
+  font-size: 8.4px !important;
+}
+.layout-print-exporting .rack-bom-table th {
+  font-size: 8px !important;
+}
+.layout-print-exporting .rack-bom-table th,
+.layout-print-exporting .rack-bom-table td {
+  padding: 1.4mm 1.1mm !important;
+}
+.layout-print-exporting .rack-bom-footnote {
+  font-size: 8px !important;
+}
+
+/* Keep index table readable at all export scales */
+.layout-print-exporting .project-print-index-wrap {
+  padding: 4.5mm !important;
+}
+.layout-print-exporting .project-print-index-title {
+  font-size: 16px !important;
+  margin-bottom: 2.5mm !important;
+}
+.layout-print-exporting .project-print-index-table {
+  font-size: 8.4px !important;
+}
+.layout-print-exporting .project-print-index-table th {
+  font-size: 8px !important;
+}
+.layout-print-exporting .project-print-index-table th,
+.layout-print-exporting .project-print-index-table td {
+  padding: 1.4mm 1.1mm !important;
+}
+
+/* Keep cover text readable at all export scales */
+.layout-print-exporting .project-print-cover {
+  padding: 12mm !important;
+  gap: 14px !important;
+}
+.layout-print-exporting .project-print-cover-kicker {
+  font-size: 11px !important;
+}
+.layout-print-exporting .project-print-cover-title {
+  font-size: 38px !important;
+}
+.layout-print-exporting .project-print-cover-owner,
+.layout-print-exporting .project-print-cover-generated {
+  font-size: 14px !important;
+}
+.layout-print-exporting .project-print-cover-logo {
+  width: 220px !important;
+}
+
+/* Keep panel content readable at all export scales */
+.layout-print-exporting .panel-print-heading {
+  font-size: 14px !important;
+  padding: 12px 16px 8px !important;
+}
+.layout-print-exporting .panel-print-canvas-area {
+  padding: 0 16px !important;
+}
+.layout-print-exporting .panel-print-connector-wrap {
+  padding: 6px 16px !important;
+}
+.layout-print-exporting .panel-print-connector-table {
+  font-size: 7.5px !important;
+}
+.layout-print-exporting .panel-print-connector-table th {
+  font-size: 6.5px !important;
+}
+.layout-print-exporting .panel-print-connector-table th,
+.layout-print-exporting .panel-print-connector-table td {
+  padding: 0.8mm 1mm !important;
+}
+.layout-print-exporting .panel-print-footnote {
+  font-size: 8px !important;
+  padding: 0 16px 8px !important;
 }
 
 @page {

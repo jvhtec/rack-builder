@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
+import RackBomSheet, { getBomPageCount } from '../components/print/RackBomSheet'
 import ProjectPrintCover from '../components/print/ProjectPrintCover'
 import ProjectPrintIndex from '../components/print/ProjectPrintIndex'
 import PanelPrintSheet from '../components/print/PanelPrintSheet'
@@ -34,6 +35,51 @@ function preloadImage(url: string): Promise<void> {
   })
 }
 
+interface LayoutPageEntry {
+  startPage: number
+  mainPages: number
+  simplifiedPages: number
+  bomPages: number
+}
+
+interface PagePlan {
+  layouts: LayoutPageEntry[]
+  panelStartPage: number
+  pageCount: number
+}
+
+function buildPagePlan(
+  layoutModels: PrintLayoutModel[],
+  panelCount: number,
+  includeSimplified: boolean,
+  includeBom: boolean,
+): PagePlan {
+  const layouts: LayoutPageEntry[] = []
+  let cursor = 3 // pages 1=cover, 2=index, layouts start at 3
+
+  for (const model of layoutModels) {
+    const bomPages = includeBom
+      ? getBomPageCount(new Set(model.items.map((i) => i.device.id)).size)
+      : 0
+    const simplifiedPages = includeSimplified ? 1 : 0
+
+    layouts.push({
+      startPage: cursor,
+      mainPages: 1,
+      simplifiedPages,
+      bomPages,
+    })
+
+    cursor += 1 + simplifiedPages + bomPages
+  }
+
+  return {
+    layouts,
+    panelStartPage: cursor,
+    pageCount: cursor - 1 + panelCount,
+  }
+}
+
 export default function ProjectPrintPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
@@ -47,6 +93,7 @@ export default function ProjectPrintPage() {
   const [error, setError] = useState<string | null>(null)
   const [imagesReady, setImagesReady] = useState(false)
   const [includeSimplified, setIncludeSimplified] = useState(false)
+  const [includeBom, setIncludeBom] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportStatus, setExportStatus] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -182,17 +229,18 @@ export default function ProjectPrintPage() {
     return Array.from(urls)
   }, [layoutModels])
 
-  const simplifiedExtra = includeSimplified ? layoutModels.length : 0
-  const pageCount = 2 + layoutModels.length + simplifiedExtra + panelModels.length
+  const pagePlan = useMemo(
+    () => buildPagePlan(layoutModels, panelModels.length, includeSimplified, includeBom),
+    [layoutModels, panelModels.length, includeSimplified, includeBom],
+  )
 
-  const layoutPagesPerLayout = includeSimplified ? 2 : 1
   const layoutIndexRows = layoutModels.map((model, index) => ({
     layoutName: model.layout.name,
     rackName: model.rack.name,
     rackSpec: `${model.rack.rack_units}U | ${model.rack.width} | ${model.rack.depth_mm}mm`,
     totalPowerW: model.totalPowerW,
     totalWeightKg: model.totalWeightKg,
-    pageNumber: index * layoutPagesPerLayout + 3,
+    pageNumber: pagePlan.layouts[index]?.startPage ?? 3,
   }))
 
   const panelIndexRows = panelModels.map((panel, index) => ({
@@ -201,7 +249,7 @@ export default function ProjectPrintPage() {
     rackSpec: panel.facing,
     totalPowerW: 0,
     totalWeightKg: panel.weight_kg,
-    pageNumber: layoutModels.length * layoutPagesPerLayout + index + 3,
+    pageNumber: pagePlan.panelStartPage + index,
   }))
 
   const indexRows = [...layoutIndexRows, ...panelIndexRows]
@@ -328,6 +376,14 @@ export default function ProjectPrintPage() {
             />
             Include simplified view
           </label>
+          <label className="layout-print-toolbar-label">
+            <input
+              type="checkbox"
+              checked={includeBom}
+              onChange={(e) => setIncludeBom(e.target.checked)}
+            />
+            Include BOM
+          </label>
           <div className="ml-2 pl-4 border-l border-gray-300 dark:border-slate-700">
             <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
           </div>
@@ -346,13 +402,19 @@ export default function ProjectPrintPage() {
           rows={indexRows}
           generatedAt={generatedAt}
           pageNumber={2}
-          pageCount={pageCount}
+          pageCount={pagePlan.pageCount}
         />
 
         {layoutModels.map((model, index) => {
-          const layoutPageNumber = index * layoutPagesPerLayout + 3
+          const entry = pagePlan.layouts[index]
+          const layoutPageNumber = entry?.startPage ?? 3
           const isLastLayout = index === layoutModels.length - 1
-          const hasMoreSheets = !isLastLayout || panelModels.length > 0 || includeSimplified
+          const hasMoreAfterMain = includeSimplified || includeBom || !isLastLayout || panelModels.length > 0
+          const hasMoreAfterSimplified = includeBom || !isLastLayout || panelModels.length > 0
+          const hasMoreAfterBom = !isLastLayout || panelModels.length > 0
+
+          const simplifiedPageNumber = layoutPageNumber + (entry?.mainPages ?? 1)
+          const bomStartPage = simplifiedPageNumber + (entry?.simplifiedPages ?? 0)
 
           return (
             <Fragment key={model.layout.id}>
@@ -367,8 +429,8 @@ export default function ProjectPrintPage() {
                 scaleLabel="Fit (auto)"
                 useAutoFitScale
                 pageNumber={layoutPageNumber}
-                pageCount={pageCount}
-                sheetClassName={hasMoreSheets ? 'layout-print-page-break' : ''}
+                pageCount={pagePlan.pageCount}
+                sheetClassName={hasMoreAfterMain ? 'layout-print-page-break' : ''}
               />
               {includeSimplified && (
                 <LayoutPrintSheet
@@ -382,9 +444,23 @@ export default function ProjectPrintPage() {
                   scaleLabel="Fit (auto)"
                   useAutoFitScale
                   simplifiedView
-                  pageNumber={layoutPageNumber + 1}
-                  pageCount={pageCount}
-                  sheetClassName={isLastLayout && panelModels.length === 0 ? '' : 'layout-print-page-break'}
+                  pageNumber={simplifiedPageNumber}
+                  pageCount={pagePlan.pageCount}
+                  sheetClassName={hasMoreAfterSimplified ? 'layout-print-page-break' : ''}
+                />
+              )}
+              {includeBom && (
+                <RackBomSheet
+                  layout={model.layout}
+                  rack={model.rack}
+                  items={model.items}
+                  generatedAt={generatedAt}
+                  projectOwner={project.owner}
+                  totalWeightKg={model.totalWeightKg}
+                  totalPowerW={model.totalPowerW}
+                  startPageNumber={bomStartPage}
+                  pageCount={pagePlan.pageCount}
+                  breakAfterLastPage={hasMoreAfterBom}
                 />
               )}
             </Fragment>
@@ -392,7 +468,7 @@ export default function ProjectPrintPage() {
         })}
 
         {panelModels.map((panel, index) => {
-          const pageNumber = layoutModels.length * layoutPagesPerLayout + index + 3
+          const pageNumber = pagePlan.panelStartPage + index
           const isLast = index === panelModels.length - 1
           return (
             <PanelPrintSheet
@@ -402,7 +478,7 @@ export default function ProjectPrintPage() {
               generatedAt={generatedAt}
               projectOwner={project.owner}
               pageNumber={pageNumber}
-              pageCount={pageCount}
+              pageCount={pagePlan.pageCount}
               sheetClassName={isLast ? '' : 'layout-print-page-break'}
             />
           )

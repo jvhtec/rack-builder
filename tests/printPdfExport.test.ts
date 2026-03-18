@@ -23,10 +23,11 @@ describe('printPdfExport helpers', () => {
     const mobile = getBalancedScaleCandidates({ isMobile: true, devicePixelRatio: 2 })
     const desktop = getBalancedScaleCandidates({ isMobile: false, devicePixelRatio: 2 })
 
-    expect(mobile[0]).toBeLessThanOrEqual(2.2)
-    expect(mobile.at(-1)).toBe(1.25)
-    expect(desktop[0]).toBeGreaterThanOrEqual(2.3)
-    expect(desktop.at(-1)).toBe(1.5)
+    expect(mobile[0]).toBeLessThanOrEqual(2.8)
+    expect(mobile[0]).toBeGreaterThanOrEqual(2)
+    expect(mobile.at(-1)).toBe(1.4)
+    expect(desktop[0]).toBeGreaterThanOrEqual(2.8)
+    expect(desktop.at(-1)).toBe(1.8)
   })
 
   it('detects likely mobile devices by viewport or user agent', () => {

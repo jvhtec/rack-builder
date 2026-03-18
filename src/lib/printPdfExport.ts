@@ -75,22 +75,24 @@ export function getBalancedScaleCandidates(args: {
   devicePixelRatio: number
 }): number[] {
   const normalizedDpr = Number.isFinite(args.devicePixelRatio)
-    ? Math.max(1, Math.min(3, args.devicePixelRatio))
+    ? Math.max(1, Math.min(4, args.devicePixelRatio))
     : 1
 
+  // Target high-definition output: 3x on desktop, 2.5x on mobile.
+  // Falls back to progressively lower scales if the device runs out of memory.
   const startScale = args.isMobile
-    ? Math.min(2.2, Math.max(1.6, normalizedDpr * 1.35))
-    : Math.min(2.8, Math.max(2.1, normalizedDpr * 1.2))
+    ? Math.min(2.8, Math.max(2, normalizedDpr * 1.4))
+    : Math.min(3.5, Math.max(2.8, normalizedDpr * 1.4))
 
   const fallbackSeed = args.isMobile
-    ? [startScale, 2, 1.8, 1.6, 1.4, 1.25]
-    : [startScale, 2.6, 2.3, 2.1, 1.9, 1.75, 1.5]
+    ? [startScale, 2.5, 2.2, 2, 1.8, 1.6, 1.4]
+    : [startScale, 3, 2.8, 2.5, 2.2, 2, 1.8]
 
   const deduped = Array.from(
     new Set(
       fallbackSeed
         .map((value) => Number(value.toFixed(2)))
-        .filter((value) => value >= 1.25 && value <= 3),
+        .filter((value) => value >= 1.4 && value <= 4),
     ),
   )
 
@@ -119,49 +121,96 @@ function toErrorMessage(error: unknown): string {
   return 'Failed to export PDF.'
 }
 
+function isIosDevice(): boolean {
+  return /iP(ad|hone|od)/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
 async function triggerPdfDownload(blob: Blob, fileName: string): Promise<void> {
-  // Use Web Share API on mobile for native "Save to Files/Downloads" dialog
-  const file = new File([blob], fileName, { type: 'application/pdf' })
-  if (
-    typeof navigator.share === 'function' &&
-    typeof navigator.canShare === 'function' &&
-    navigator.canShare({ files: [file] })
-  ) {
-    try {
-      await navigator.share({ files: [file], title: fileName })
-      return
-    } catch (error) {
-      // User cancelled — do not fall through to anchor download
-      if (error instanceof Error && error.name === 'AbortError') return
-      // Other errors fall through to anchor-based download
-    }
-  }
+  // Web Share API requires a recent user activation. After a long async
+  // render pipeline the gesture is typically expired, so we skip it and
+  // go straight to the most reliable download path per platform.
+  const ios = isIosDevice()
 
-  const objectUrl = URL.createObjectURL(blob)
-  const canUseDownloadAttribute = 'download' in HTMLAnchorElement.prototype
-  const isIosSafariLike = /iP(ad|hone|od)/i.test(navigator.userAgent)
-
-  const anchor = document.createElement('a')
-  anchor.href = objectUrl
-  anchor.rel = 'noopener'
-  anchor.style.display = 'none'
-
-  document.body.appendChild(anchor)
-
-  try {
-    if (canUseDownloadAttribute && !isIosSafariLike) {
-      anchor.download = fileName
-      anchor.click()
-      return
-    }
-
-    anchor.target = '_blank'
+  // Strategy 1 (non-iOS): anchor with download attribute — universally
+  // supported on Chrome, Firefox, Edge, and desktop Safari 14.1+.
+  if (!ios && 'download' in HTMLAnchorElement.prototype) {
+    const objectUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = objectUrl
+    anchor.download = fileName
+    anchor.rel = 'noopener'
+    anchor.style.display = 'none'
+    document.body.appendChild(anchor)
     anchor.click()
-  } finally {
     anchor.remove()
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+    return
   }
+
+  // Strategy 2 (iOS): open the PDF blob in the current tab. iOS Safari
+  // blocks window.open and target=_blank from async contexts, but
+  // navigating the current location to a blob URL works reliably and
+  // triggers the native iOS PDF viewer with its built-in share/save.
+  if (ios) {
+    const objectUrl = URL.createObjectURL(blob)
+    // Attempt Web Share first — it works on iOS 15+ when user activation
+    // hasn't expired. We try it but don't rely on it.
+    const file = new File([blob], fileName, { type: 'application/pdf' })
+    if (
+      typeof navigator.share === 'function' &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare({ files: [file] })
+    ) {
+      try {
+        await navigator.share({ files: [file], title: fileName })
+        URL.revokeObjectURL(objectUrl)
+        return
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          URL.revokeObjectURL(objectUrl)
+          return
+        }
+        // Web Share failed (likely expired gesture) — fall through
+      }
+    }
+
+    // Navigate to the blob URL. This opens the iOS PDF viewer inline,
+    // where the user can tap the share icon to save/send the file.
+    window.location.href = objectUrl
+    // Don't revoke immediately — the navigation needs the URL alive.
+    return
+  }
+
+  // Strategy 3 (fallback): open in new tab for other platforms
+  const objectUrl = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.target = '_blank'
+  anchor.rel = 'noopener'
+  anchor.style.display = 'none'
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
 }
+
+/**
+ * Compute the pixel dimensions for rasterising sheets at ~2× screen density.
+ * The long side is 1400px (matching the A-series √2 ratio), flipped for portrait.
+ */
+const EXPORT_LONG_SIDE_PX = 1400
+const EXPORT_SHORT_SIDE_PX = 990
+
+export function getExportSheetSizePx(orientation: PdfOrientation): { widthPx: number; heightPx: number } {
+  if (orientation === 'portrait') {
+    return { widthPx: EXPORT_SHORT_SIDE_PX, heightPx: EXPORT_LONG_SIDE_PX }
+  }
+  return { widthPx: EXPORT_LONG_SIDE_PX, heightPx: EXPORT_SHORT_SIDE_PX }
+}
+
+const ORIENTATION_CLASS_LANDSCAPE = 'layout-print-exporting-landscape'
+const ORIENTATION_CLASS_PORTRAIT = 'layout-print-exporting-portrait'
 
 async function renderAtScale({
   sheets,
@@ -177,6 +226,7 @@ async function renderAtScale({
   onProgress?: (progress: PdfExportProgress) => void
 }): Promise<Blob> {
   const { html2canvas, jsPDF } = await loadPdfLibraries()
+  const { widthPx, heightPx } = getExportSheetSizePx(orientation)
 
   const pdf = new jsPDF({
     orientation,
@@ -198,8 +248,8 @@ async function renderAtScale({
     const canvas = await html2canvas(sheets[index], {
       backgroundColor: '#ffffff',
       scale,
-      width: Math.ceil(sheets[index].scrollWidth),
-      height: Math.ceil(sheets[index].scrollHeight),
+      width: widthPx,
+      height: heightPx,
       useCORS: true,
       allowTaint: false,
       imageTimeout: 15000,
@@ -207,12 +257,15 @@ async function renderAtScale({
       removeContainer: true,
       scrollX: 0,
       scrollY: 0,
+      windowWidth: widthPx,
+      windowHeight: heightPx,
     })
 
     if (index > 0) {
       pdf.addPage([pageSizeMm.widthMm, pageSizeMm.heightMm], orientation)
     }
 
+    // PNG preserves crisp text and line art for high-definition output.
     const imageData = canvas.toDataURL('image/png')
     pdf.addImage(imageData, 'PNG', 0, 0, pageSizeMm.widthMm, pageSizeMm.heightMm)
     canvas.width = 1
@@ -267,10 +320,14 @@ export async function exportPrintSheetsToPdf({
         })
       : [2]
 
+  const orientationClass =
+    orientation === 'portrait' ? ORIENTATION_CLASS_PORTRAIT : ORIENTATION_CLASS_LANDSCAPE
+
   const hadExportRootClass = rootElement.classList.contains(EXPORT_ROOT_CLASS)
   const hadForceLightClass = document.documentElement.classList.contains(FORCE_LIGHT_CLASS)
   const hadDarkClass = document.documentElement.classList.contains('dark')
   if (!hadExportRootClass) rootElement.classList.add(EXPORT_ROOT_CLASS)
+  rootElement.classList.add(orientationClass)
   if (!hadForceLightClass) document.documentElement.classList.add(FORCE_LIGHT_CLASS)
   if (hadDarkClass) document.documentElement.classList.remove('dark')
 
@@ -312,6 +369,7 @@ export async function exportPrintSheetsToPdf({
     throw new Error(`PDF export failed after quality fallback attempts. ${toErrorMessage(lastError)}`)
   } finally {
     if (hadDarkClass) document.documentElement.classList.add('dark')
+    rootElement.classList.remove(orientationClass)
     if (!hadExportRootClass) rootElement.classList.remove(EXPORT_ROOT_CLASS)
     if (!hadForceLightClass) document.documentElement.classList.remove(FORCE_LIGHT_CLASS)
   }
