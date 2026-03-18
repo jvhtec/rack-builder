@@ -195,9 +195,22 @@ async function triggerPdfDownload(blob: Blob, fileName: string): Promise<void> {
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
 }
 
-/** Consistent render dimensions for export (A3 at ~2x screen density). */
-const EXPORT_SHEET_WIDTH_PX = 1400
-const EXPORT_SHEET_HEIGHT_PX = 990
+/**
+ * Compute the pixel dimensions for rasterising sheets at ~2× screen density.
+ * The long side is 1400px (matching the A-series √2 ratio), flipped for portrait.
+ */
+const EXPORT_LONG_SIDE_PX = 1400
+const EXPORT_SHORT_SIDE_PX = 990
+
+export function getExportSheetSizePx(orientation: PdfOrientation): { widthPx: number; heightPx: number } {
+  if (orientation === 'portrait') {
+    return { widthPx: EXPORT_SHORT_SIDE_PX, heightPx: EXPORT_LONG_SIDE_PX }
+  }
+  return { widthPx: EXPORT_LONG_SIDE_PX, heightPx: EXPORT_SHORT_SIDE_PX }
+}
+
+const ORIENTATION_CLASS_LANDSCAPE = 'layout-print-exporting-landscape'
+const ORIENTATION_CLASS_PORTRAIT = 'layout-print-exporting-portrait'
 
 async function renderAtScale({
   sheets,
@@ -213,6 +226,7 @@ async function renderAtScale({
   onProgress?: (progress: PdfExportProgress) => void
 }): Promise<Blob> {
   const { html2canvas, jsPDF } = await loadPdfLibraries()
+  const { widthPx, heightPx } = getExportSheetSizePx(orientation)
 
   const pdf = new jsPDF({
     orientation,
@@ -231,17 +245,11 @@ async function renderAtScale({
       message: `Rendering page ${pageNumber} of ${sheets.length}...`,
     })
 
-    // Use the fixed export dimensions to ensure identical output on every device.
-    // The CSS .layout-print-exporting class already forces sheets to 1400×990px,
-    // so we render at that size regardless of the original viewport.
-    const renderWidth = EXPORT_SHEET_WIDTH_PX
-    const renderHeight = EXPORT_SHEET_HEIGHT_PX
-
     const canvas = await html2canvas(sheets[index], {
       backgroundColor: '#ffffff',
       scale,
-      width: renderWidth,
-      height: renderHeight,
+      width: widthPx,
+      height: heightPx,
       useCORS: true,
       allowTaint: false,
       imageTimeout: 15000,
@@ -249,8 +257,8 @@ async function renderAtScale({
       removeContainer: true,
       scrollX: 0,
       scrollY: 0,
-      windowWidth: EXPORT_SHEET_WIDTH_PX,
-      windowHeight: EXPORT_SHEET_HEIGHT_PX,
+      windowWidth: widthPx,
+      windowHeight: heightPx,
     })
 
     if (index > 0) {
@@ -312,10 +320,14 @@ export async function exportPrintSheetsToPdf({
         })
       : [2]
 
+  const orientationClass =
+    orientation === 'portrait' ? ORIENTATION_CLASS_PORTRAIT : ORIENTATION_CLASS_LANDSCAPE
+
   const hadExportRootClass = rootElement.classList.contains(EXPORT_ROOT_CLASS)
   const hadForceLightClass = document.documentElement.classList.contains(FORCE_LIGHT_CLASS)
   const hadDarkClass = document.documentElement.classList.contains('dark')
   if (!hadExportRootClass) rootElement.classList.add(EXPORT_ROOT_CLASS)
+  rootElement.classList.add(orientationClass)
   if (!hadForceLightClass) document.documentElement.classList.add(FORCE_LIGHT_CLASS)
   if (hadDarkClass) document.documentElement.classList.remove('dark')
 
@@ -357,6 +369,7 @@ export async function exportPrintSheetsToPdf({
     throw new Error(`PDF export failed after quality fallback attempts. ${toErrorMessage(lastError)}`)
   } finally {
     if (hadDarkClass) document.documentElement.classList.add('dark')
+    rootElement.classList.remove(orientationClass)
     if (!hadExportRootClass) rootElement.classList.remove(EXPORT_ROOT_CLASS)
     if (!hadForceLightClass) document.documentElement.classList.remove(FORCE_LIGHT_CLASS)
   }

@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
-import RackBomSheet from '../components/print/RackBomSheet'
+import RackBomSheet, { getBomPageCount } from '../components/print/RackBomSheet'
 import ProjectPrintCover from '../components/print/ProjectPrintCover'
 import ProjectPrintIndex from '../components/print/ProjectPrintIndex'
 import PanelPrintSheet from '../components/print/PanelPrintSheet'
@@ -184,18 +184,37 @@ export default function ProjectPrintPage() {
     return Array.from(urls)
   }, [layoutModels])
 
-  const simplifiedExtra = includeSimplified ? layoutModels.length : 0
-  const bomExtra = includeBom ? layoutModels.length : 0
-  const pageCount = 2 + layoutModels.length + simplifiedExtra + bomExtra + panelModels.length
+  // Compute per-layout page counts (main + optional simplified + BOM pages)
+  const layoutStartPages = useMemo(() => {
+    const starts: number[] = []
+    let cursor = 3 // pages 1=cover, 2=index, layouts start at 3
+    for (const model of layoutModels) {
+      starts.push(cursor)
+      cursor += 1 // main page
+      if (includeSimplified) cursor += 1
+      if (includeBom) {
+        const uniqueDevices = new Set(model.items.map((i) => i.device.id)).size
+        cursor += getBomPageCount(uniqueDevices)
+      }
+    }
+    return starts
+  }, [layoutModels, includeSimplified, includeBom])
 
-  const layoutPagesPerLayout = 1 + (includeSimplified ? 1 : 0) + (includeBom ? 1 : 0)
+  const layoutPagesTotal = layoutStartPages.length > 0
+    ? (layoutStartPages[layoutStartPages.length - 1] - 3) + 1
+      + (includeSimplified ? 1 : 0)
+      + (includeBom ? getBomPageCount(new Set(layoutModels[layoutModels.length - 1]?.items.map((i) => i.device.id)).size) : 0)
+    : 0
+  const panelStartPage = 3 + layoutPagesTotal
+  const pageCount = 2 + layoutPagesTotal + panelModels.length
+
   const layoutIndexRows = layoutModels.map((model, index) => ({
     layoutName: model.layout.name,
     rackName: model.rack.name,
     rackSpec: `${model.rack.rack_units}U | ${model.rack.width} | ${model.rack.depth_mm}mm`,
     totalPowerW: model.totalPowerW,
     totalWeightKg: model.totalWeightKg,
-    pageNumber: index * layoutPagesPerLayout + 3,
+    pageNumber: layoutStartPages[index] ?? 3,
   }))
 
   const panelIndexRows = panelModels.map((panel, index) => ({
@@ -204,7 +223,7 @@ export default function ProjectPrintPage() {
     rackSpec: panel.facing,
     totalPowerW: 0,
     totalWeightKg: panel.weight_kg,
-    pageNumber: layoutModels.length * layoutPagesPerLayout + index + 3,
+    pageNumber: panelStartPage + index,
   }))
 
   const indexRows = [...layoutIndexRows, ...panelIndexRows]
@@ -361,7 +380,7 @@ export default function ProjectPrintPage() {
         />
 
         {layoutModels.map((model, index) => {
-          const layoutPageNumber = index * layoutPagesPerLayout + 3
+          const layoutPageNumber = layoutStartPages[index] ?? 3
           const isLastLayout = index === layoutModels.length - 1
           const hasMoreAfterMain = includeSimplified || includeBom || !isLastLayout || panelModels.length > 0
           const hasMoreAfterSimplified = includeBom || !isLastLayout || panelModels.length > 0
@@ -411,7 +430,7 @@ export default function ProjectPrintPage() {
                   projectOwner={project.owner}
                   totalWeightKg={model.totalWeightKg}
                   totalPowerW={model.totalPowerW}
-                  pageNumber={layoutPageNumber + subPageOffset++}
+                  startPageNumber={layoutPageNumber + subPageOffset}
                   pageCount={pageCount}
                   sheetClassName={hasMoreAfterBom ? 'layout-print-page-break' : ''}
                 />
@@ -421,7 +440,7 @@ export default function ProjectPrintPage() {
         })}
 
         {panelModels.map((panel, index) => {
-          const pageNumber = layoutModels.length * layoutPagesPerLayout + index + 3
+          const pageNumber = panelStartPage + index
           const isLast = index === panelModels.length - 1
           return (
             <PanelPrintSheet

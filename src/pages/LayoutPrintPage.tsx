@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
-import RackBomSheet from '../components/print/RackBomSheet'
+import RackBomSheet, { getBomPageCount } from '../components/print/RackBomSheet'
 import type { Layout, LayoutItemWithDevice, Project, Rack } from '../types'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../hooks/useTheme'
@@ -58,6 +58,8 @@ export default function LayoutPrintPage() {
       { weightKg: 0, powerW: 0 },
     )
   }, [items])
+
+  const uniqueDeviceCount = useMemo(() => new Set(items.map((i) => i.device.id)).size, [items])
 
   const imageUrls = useMemo(() => {
     const urls = new Set<string>()
@@ -296,7 +298,8 @@ export default function LayoutPrintPage() {
 
       <main className={`layout-print-stage ${includeSimplified || includeBom ? 'layout-print-stage--project' : ''}`}>
         {(() => {
-          const totalPages = 1 + (includeSimplified ? 1 : 0) + (includeBom ? 1 : 0)
+          const bomPages = includeBom ? getBomPageCount(uniqueDeviceCount) : 0
+          const totalPages = 1 + (includeSimplified ? 1 : 0) + bomPages
           let nextPage = 1
           return (
             <>
@@ -342,7 +345,7 @@ export default function LayoutPrintPage() {
                   projectOwner={project?.owner}
                   totalWeightKg={rackTotals.weightKg}
                   totalPowerW={rackTotals.powerW}
-                  pageNumber={nextPage++}
+                  startPageNumber={nextPage}
                   pageCount={totalPages}
                 />
               )}

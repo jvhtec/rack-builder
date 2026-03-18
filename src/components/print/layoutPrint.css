@@ -175,7 +175,7 @@
   text-transform: uppercase;
   color: #000;
   font-weight: 700;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-rack-viewport {
@@ -199,7 +199,7 @@
 
 .print-rack-u-label {
   font-size: 9px;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   color: #111;
   font-weight: 500;
 }
@@ -374,7 +374,7 @@
   text-overflow: ellipsis;
   line-height: 1.2;
   word-break: break-word;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   text-transform: none;
   letter-spacing: 0;
 }
@@ -409,14 +409,14 @@
   color: #111;
   font-weight: 600;
   text-shadow: none;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-rack-device-note {
   font-size: 7px;
   color: #444;
   text-shadow: none;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-rack-device--compact .print-rack-device-note {
@@ -573,7 +573,7 @@
   text-transform: uppercase;
   letter-spacing: 0.2em;
   color: #4b5563;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .project-print-cover-title {
@@ -589,7 +589,7 @@
   margin: 0;
   font-size: 14px;
   color: #1f2937;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .project-print-index-wrap {
@@ -607,7 +607,7 @@
   font-size: 16px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   color: #111827;
 }
 
@@ -621,7 +621,7 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   font-size: 8.4px;
   line-height: 1.2;
 }
@@ -727,7 +727,7 @@
   text-transform: uppercase;
   color: #555;
   white-space: nowrap;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .print-cartouche-value {
@@ -740,7 +740,7 @@
   overflow: visible;
   text-overflow: clip;
   overflow-wrap: anywhere;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .panel-print-content {
@@ -787,7 +787,7 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   font-size: 7.5px;
   line-height: 1.2;
 }
@@ -861,7 +861,7 @@
   font-size: 16px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   color: #111827;
 }
 
@@ -870,7 +870,7 @@
   font-size: 9px;
   color: #4b5563;
   letter-spacing: 0.04em;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .rack-bom-table-wrap {
@@ -883,7 +883,7 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
   font-size: 8.4px;
   line-height: 1.2;
 }
@@ -930,7 +930,7 @@
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 /* ── Responsive scaling via container queries ──────────────────────────
@@ -1178,11 +1178,19 @@ html.layout-print-force-light .layout-print-toolbar-error {
 }
 
 .layout-print-exporting .layout-print-sheet {
-  width: 1400px !important;
-  height: 990px !important;
   max-width: none !important;
   aspect-ratio: auto !important;
   overflow: hidden !important;
+}
+
+.layout-print-exporting-landscape .layout-print-sheet {
+  width: 1400px !important;
+  height: 990px !important;
+}
+
+.layout-print-exporting-portrait .layout-print-sheet {
+  width: 990px !important;
+  height: 1400px !important;
 }
 
 .layout-print-exporting .layout-print-sheet-inner {

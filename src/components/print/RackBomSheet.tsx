@@ -12,6 +12,15 @@ interface BomRow {
   quantity: number
 }
 
+/** Maximum BOM data rows that fit on one fixed-height A3 sheet. */
+export const MAX_BOM_ROWS_PER_PAGE = 30
+
+/** Compute how many sheets a BOM with `uniqueDeviceCount` rows will need. */
+export function getBomPageCount(uniqueDeviceCount: number): number {
+  if (uniqueDeviceCount <= 0) return 1
+  return Math.ceil(uniqueDeviceCount / MAX_BOM_ROWS_PER_PAGE)
+}
+
 interface RackBomSheetProps {
   layout: Layout
   rack: Rack
@@ -20,9 +29,18 @@ interface RackBomSheetProps {
   projectOwner?: string | null
   totalWeightKg: number
   totalPowerW: number
-  pageNumber: number
+  /** Page number of the first BOM sheet. Subsequent pages increment from here. */
+  startPageNumber: number
   pageCount: number
   sheetClassName?: string
+}
+
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size))
+  }
+  return chunks.length > 0 ? chunks : [[]]
 }
 
 export default function RackBomSheet({
@@ -33,7 +51,7 @@ export default function RackBomSheet({
   projectOwner,
   totalWeightKg,
   totalPowerW,
-  pageNumber,
+  startPageNumber,
   pageCount,
   sheetClassName,
 }: RackBomSheetProps) {
@@ -74,94 +92,122 @@ export default function RackBomSheet({
   const totalDevices = bomRows.reduce((sum, row) => sum + row.quantity, 0)
   const totalRackUnits = bomRows.reduce((sum, row) => sum + row.rackUnits * row.quantity, 0)
 
+  const pages = useMemo(() => chunkArray(bomRows, MAX_BOM_ROWS_PER_PAGE), [bomRows])
+
+  const colGroup = (
+    <colgroup>
+      <col className="rack-bom-col-num" />
+      <col className="rack-bom-col-brand" />
+      <col className="rack-bom-col-model" />
+      <col className="rack-bom-col-ru" />
+      <col className="rack-bom-col-qty" />
+      <col className="rack-bom-col-weight-each" />
+      <col className="rack-bom-col-power-each" />
+      <col className="rack-bom-col-weight-total" />
+      <col className="rack-bom-col-power-total" />
+    </colgroup>
+  )
+
+  const tableHead = (
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Brand</th>
+        <th>Model</th>
+        <th>RU</th>
+        <th>Qty</th>
+        <th>Weight (ea)</th>
+        <th>Power (ea)</th>
+        <th>Weight (tot)</th>
+        <th>Power (tot)</th>
+      </tr>
+    </thead>
+  )
+
   return (
-    <section
-      className={`layout-print-sheet ${sheetClassName ?? ''}`.trim()}
-      aria-label={`Bill of Materials for ${layout.name}`}
-    >
-      <div className="layout-print-sheet-inner">
-        <div className="rack-bom-wrap">
-          <h2 className="rack-bom-title">Bill of Materials</h2>
-          <p className="rack-bom-subtitle">
-            {layout.name} — {rack.name} ({rack.rack_units}U {rack.width} {rack.depth_mm}mm)
-          </p>
+    <>
+      {pages.map((pageRows, pageIndex) => {
+        const isLastPage = pageIndex === pages.length - 1
+        const rowOffset = pageIndex * MAX_BOM_ROWS_PER_PAGE
+        const currentPageNumber = startPageNumber + pageIndex
+        const pageBreakClass =
+          !isLastPage || sheetClassName ? 'layout-print-page-break' : ''
+        const combinedClass =
+          `layout-print-sheet ${sheetClassName ?? ''} ${pageBreakClass}`.replace(/\s+/g, ' ').trim()
 
-          <div className="rack-bom-table-wrap">
-            <table className="rack-bom-table">
-              <colgroup>
-                <col className="rack-bom-col-num" />
-                <col className="rack-bom-col-brand" />
-                <col className="rack-bom-col-model" />
-                <col className="rack-bom-col-ru" />
-                <col className="rack-bom-col-qty" />
-                <col className="rack-bom-col-weight-each" />
-                <col className="rack-bom-col-power-each" />
-                <col className="rack-bom-col-weight-total" />
-                <col className="rack-bom-col-power-total" />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Brand</th>
-                  <th>Model</th>
-                  <th>RU</th>
-                  <th>Qty</th>
-                  <th>Weight (ea)</th>
-                  <th>Power (ea)</th>
-                  <th>Weight (tot)</th>
-                  <th>Power (tot)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bomRows.map((row, index) => (
-                  <tr key={row.deviceId}>
-                    <td>{index + 1}</td>
-                    <td>{row.brand}</td>
-                    <td>{row.model}</td>
-                    <td>{row.rackUnits}U</td>
-                    <td>{row.quantity}</td>
-                    <td>{row.weightKg.toFixed(2)} kg</td>
-                    <td>{row.powerW} W</td>
-                    <td>{(row.weightKg * row.quantity).toFixed(2)} kg</td>
-                    <td>{row.powerW * row.quantity} W</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="rack-bom-totals-row">
-                  <td colSpan={3}>Totals</td>
-                  <td>{totalRackUnits}U</td>
-                  <td>{totalDevices}</td>
-                  <td></td>
-                  <td></td>
-                  <td>{totalWeightKg.toFixed(2)} kg</td>
-                  <td>{totalPowerW} W</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+        return (
+          <section
+            key={pageIndex}
+            className={combinedClass}
+            aria-label={`Bill of Materials for ${layout.name}${pages.length > 1 ? ` (page ${pageIndex + 1} of ${pages.length})` : ''}`}
+          >
+            <div className="layout-print-sheet-inner">
+              <div className="rack-bom-wrap">
+                <h2 className="rack-bom-title">Bill of Materials</h2>
+                <p className="rack-bom-subtitle">
+                  {layout.name} — {rack.name} ({rack.rack_units}U {rack.width} {rack.depth_mm}mm)
+                  {pages.length > 1 && ` — Sheet ${pageIndex + 1}/${pages.length}`}
+                </p>
 
-          <p className="rack-bom-footnote">
-            {rack.rack_units - totalRackUnits}U free of {rack.rack_units}U total rack space
-          </p>
-        </div>
+                <div className="rack-bom-table-wrap">
+                  <table className="rack-bom-table">
+                    {colGroup}
+                    {tableHead}
+                    <tbody>
+                      {pageRows.map((row, index) => (
+                        <tr key={row.deviceId}>
+                          <td>{rowOffset + index + 1}</td>
+                          <td>{row.brand}</td>
+                          <td>{row.model}</td>
+                          <td>{row.rackUnits}U</td>
+                          <td>{row.quantity}</td>
+                          <td>{row.weightKg.toFixed(2)} kg</td>
+                          <td>{row.powerW} W</td>
+                          <td>{(row.weightKg * row.quantity).toFixed(2)} kg</td>
+                          <td>{row.powerW * row.quantity} W</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {isLastPage && (
+                      <tfoot>
+                        <tr className="rack-bom-totals-row">
+                          <td colSpan={3}>Totals</td>
+                          <td>{totalRackUnits}U</td>
+                          <td>{totalDevices}</td>
+                          <td></td>
+                          <td></td>
+                          <td>{totalWeightKg.toFixed(2)} kg</td>
+                          <td>{totalPowerW} W</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
 
-        <PrintCartouche
-          title="Bill of Materials"
-          jobName={layout.name}
-          pageNumber={pageNumber}
-          pageCount={pageCount}
-          extraFields={[
-            { label: 'Rack', value: rack.name },
-            { label: 'Rack Spec', value: `${rack.rack_units}U | ${rack.width} | ${rack.depth_mm}mm` },
-            { label: 'Unique Devices', value: String(bomRows.length) },
-            { label: 'Total Devices', value: String(totalDevices) },
-            { label: 'Total Weight', value: `${totalWeightKg.toFixed(2)} kg` },
-            { label: 'Total Power', value: `${totalPowerW} W` },
-            { label: 'Generated', value: generatedBy },
-          ]}
-        />
-      </div>
-    </section>
+                {isLastPage && (
+                  <p className="rack-bom-footnote">
+                    {rack.rack_units - totalRackUnits}U free of {rack.rack_units}U total rack space
+                  </p>
+                )}
+              </div>
+
+              <PrintCartouche
+                title="Bill of Materials"
+                jobName={layout.name}
+                pageNumber={currentPageNumber}
+                pageCount={pageCount}
+                extraFields={[
+                  { label: 'Rack', value: rack.name },
+                  { label: 'Rack Spec', value: `${rack.rack_units}U | ${rack.width} | ${rack.depth_mm}mm` },
+                  { label: 'Devices', value: `${bomRows.length} unique / ${totalDevices} total` },
+                  { label: 'Weight / Power', value: `${totalWeightKg.toFixed(2)} kg / ${totalPowerW} W` },
+                  { label: 'Generated', value: generatedBy },
+                ]}
+              />
+            </div>
+          </section>
+        )
+      })}
+    </>
   )
 }
