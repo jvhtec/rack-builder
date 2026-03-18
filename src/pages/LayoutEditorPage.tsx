@@ -5,7 +5,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
 import { supabase } from '../lib/supabase'
 import { useLayoutItems } from '../hooks/useLayoutItems'
-import { ALL_BRAND, filterDevicesByBrand, filterDevicesByCategory, filterDevicesBySearch, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
+import { ALL_BRAND, getDeviceImageUrl, useDevices } from '../hooks/useDevices'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
 import { useLayouts } from '../hooks/useLayouts'
 import { useRacks } from '../hooks/useRacks'
@@ -20,7 +20,6 @@ import {
   preferenceToSlot,
 } from '../lib/rackPositions'
 import type { DeviceFacing, LayoutItemWithDevice, Project, RackWidth } from '../types'
-import { buildPanelThumbnailDataUrl } from '../lib/panelThumbnail'
 import { buildRackFaceViewModel, selectFacingImagePath } from '../lib/rackViewModel'
 import DevicePalette from '../components/editor/DevicePalette'
 import RackGrid from '../components/editor/RackGrid'
@@ -35,6 +34,11 @@ import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
 import { useTheme } from '../hooks/useTheme'
 import ThemeToggle from '../components/ui/ThemeToggle'
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout'
+import { useRackViewState, VIEW_MODE_OPTIONS, MIN_ZOOM_PERCENT, MAX_ZOOM_PERCENT } from '../hooks/useRackViewState'
+import { useDeviceFiltering, parsePanelTemplateId } from '../hooks/useDeviceFiltering'
+import { useLayoutCrud } from '../hooks/useLayoutCrud'
+import { useMobileItemEditor } from '../hooks/useMobileItemEditor'
 
 function getTopU(item: LayoutItemWithDevice): number {
   return item.start_u + item.device.rack_units - 1
@@ -115,54 +119,6 @@ function toErrorMessage(error: unknown): string {
   return 'Unknown backend error.'
 }
 
-const PANEL_LIBRARY_CATEGORY_ID = '__panel_layouts__'
-const PANEL_LIBRARY_CATEGORY_NAME = 'Panel Layouts'
-const PANEL_LIBRARY_BRAND = 'Panel Layouts'
-
-function panelTemplateDeviceId(panelLayoutId: string): string {
-  return `panel:${panelLayoutId}`
-}
-
-function parsePanelTemplateId(deviceId: string): string | null {
-  if (!deviceId.startsWith('panel:')) return null
-  return deviceId.slice('panel:'.length)
-}
-
-type RackViewMode = DeviceFacing | 'left' | 'right'
-
-const VIEW_MODE_OPTIONS: Array<{ value: RackViewMode; label: string; shortLabel: string }> = [
-  { value: 'front', label: 'Front', shortLabel: 'Fr' },
-  { value: 'rear', label: 'Rear', shortLabel: 'Re' },
-  { value: 'left', label: 'Left', shortLabel: 'Lt' },
-  { value: 'right', label: 'Right', shortLabel: 'Rt' },
-]
-
-const LAYOUT_EDITOR_ZOOM_STORAGE_KEY = 'layout-editor-zoom-percent'
-const MIN_ZOOM_PERCENT = 60
-const MAX_ZOOM_PERCENT = 180
-const DEFAULT_ZOOM_PERCENT = 100
-const ZOOM_STEP_PERCENT = 10
-
-function normalizeZoomPercent(value: number): number {
-  if (!Number.isFinite(value)) return DEFAULT_ZOOM_PERCENT
-  const stepped = Math.round(value / ZOOM_STEP_PERCENT) * ZOOM_STEP_PERCENT
-  return Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, stepped))
-}
-
-function getInitialZoomPercent(): number {
-  try {
-    const storedValue = localStorage.getItem(LAYOUT_EDITOR_ZOOM_STORAGE_KEY)
-    if (storedValue === null) return DEFAULT_ZOOM_PERCENT
-    return normalizeZoomPercent(Number(storedValue))
-  } catch {
-    return DEFAULT_ZOOM_PERCENT
-  }
-}
-
-function isSideViewMode(mode: RackViewMode): mode is 'left' | 'right' {
-  return mode === 'left' || mode === 'right'
-}
-
 
 function useProject(projectId: string | undefined) {
   const [project, setProject] = useState<Project | null>(null)
@@ -216,39 +172,22 @@ export default function LayoutEditorPage() {
   const navigate = useNavigate()
   const { isDark, toggle } = useTheme()
 
-  const [facing, setFacing] = useState<DeviceFacing>('front')
-  const [viewMode, setViewMode] = useState<RackViewMode>('front')
   const [notesItem, setNotesItem] = useState<LayoutItemWithDevice | null>(null)
   const [activeTab, setActiveTab] = useState<'devices' | 'rack'>('devices')
   const [isSheetOpen, setIsSheetOpen] = useState(false)
-  const [selectedDeviceTemplate, setSelectedDeviceTemplate] = useState<string | null>(null)
-  const [showDeviceNames, setShowDeviceNames] = useState(true)
-  const [simplifiedView, setSimplifiedView] = useState(false)
-  const [zoomPercent, setZoomPercent] = useState<number>(getInitialZoomPercent)
-  const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768)
-  const [isTouchLikeDevice, setIsTouchLikeDevice] = useState<boolean>(
-    () => window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window,
-  )
-  const [mobileDualLane, setMobileDualLane] = useState<0 | 1>(0)
-  const [selectedCategoryId, setSelectedCategoryId] = useState('favorites')
-  const [selectedBrand, setSelectedBrand] = useState(ALL_BRAND)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedItemToMove, setSelectedItemToMove] = useState<string | null>(null)
-  const [mobileOffsetDraft, setMobileOffsetDraft] = useState('0')
-  const [mobileNameDraft, setMobileNameDraft] = useState('')
-  const [mobileNotesDraft, setMobileNotesDraft] = useState('')
-  const [mobileEditorError, setMobileEditorError] = useState<string | null>(null)
   const [hoverPlacementHint, setHoverPlacementHint] = useState<string | null>(null)
   const [placementErrorHint, setPlacementErrorHint] = useState<string | null>(null)
   const placementHint = placementErrorHint ?? hoverPlacementHint
   const { trigger: haptic } = useHaptic()
+  const [mobileDualLane, setMobileDualLane] = useState<0 | 1>(0)
 
-  const [createLayoutOpen, setCreateLayoutOpen] = useState(false)
-  const [renameLayoutOpen, setRenameLayoutOpen] = useState(false)
-  const [deleteLayoutOpen, setDeleteLayoutOpen] = useState(false)
-  const [layoutNameDraft, setLayoutNameDraft] = useState('')
-  const [layoutRackDraft, setLayoutRackDraft] = useState('')
-  const [layoutSaving, setLayoutSaving] = useState(false)
+  const { isMobile, isTouchLikeDevice } = useResponsiveLayout()
+  const {
+    facing, viewMode, showDeviceNames, setShowDeviceNames,
+    simplifiedView, setSimplifiedView, zoomPercent, isSideView, zoomFactor,
+    canZoomIn, canZoomOut, activeViewOption, setRackViewMode,
+    cycleRackViewMode, handleZoomIn, handleZoomOut, handleZoomReset,
+  } = useRackViewState()
 
   const { project, loading: projectLoading, error: projectError } = useProject(projectId)
   const {
@@ -289,32 +228,11 @@ export default function LayoutEditorPage() {
     )
   }, [items])
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 767px)')
-    const handleChange = (event: MediaQueryListEvent) => setIsMobile(event.matches)
-    setIsMobile(mediaQuery.matches)
-    mediaQuery.addEventListener('change', handleChange)
-    return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [])
-
-  useEffect(() => {
-    const coarsePointerQuery = window.matchMedia('(pointer: coarse)')
-    const updateTouchLike = () => {
-      setIsTouchLikeDevice(coarsePointerQuery.matches || 'ontouchstart' in window)
-    }
-
-    updateTouchLike()
-    coarsePointerQuery.addEventListener('change', updateTouchLike)
-    return () => coarsePointerQuery.removeEventListener('change', updateTouchLike)
-  }, [])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(LAYOUT_EDITOR_ZOOM_STORAGE_KEY, String(zoomPercent))
-    } catch {
-      // ignore
-    }
-  }, [zoomPercent])
+  const {
+    selectedDeviceTemplate, setSelectedDeviceTemplate, selectedCategoryId, setSelectedCategoryId,
+    selectedBrand, setSelectedBrand, searchQuery, setSearchQuery,
+    filteredDevices, libraryCategories, brands,
+  } = useDeviceFiltering(devices, categories, panelLayouts, connectorById)
 
   const dndBackend = isTouchLikeDevice ? TouchBackend : HTML5Backend
   const dndOptions = isTouchLikeDevice
@@ -347,129 +265,11 @@ export default function LayoutEditorPage() {
     setSearchParams(next)
   }, [searchParams, setSearchParams])
 
-  const setRackViewMode = useCallback((nextViewMode: RackViewMode) => {
-    setViewMode(nextViewMode)
-    if (nextViewMode === 'front' || nextViewMode === 'rear') {
-      setFacing(nextViewMode)
-    }
-  }, [])
-
-  const cycleRackViewMode = useCallback(() => {
-    const options = VIEW_MODE_OPTIONS.map((option) => option.value)
-    const currentIndex = options.indexOf(viewMode)
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % options.length
-    setRackViewMode(options[nextIndex])
-  }, [setRackViewMode, viewMode])
-
-  const handleZoomOut = useCallback(() => {
-    setZoomPercent((prev) => normalizeZoomPercent(prev - ZOOM_STEP_PERCENT))
-  }, [])
-
-  const handleZoomIn = useCallback(() => {
-    setZoomPercent((prev) => normalizeZoomPercent(prev + ZOOM_STEP_PERCENT))
-  }, [])
-
-  const handleZoomReset = useCallback(() => {
-    setZoomPercent(DEFAULT_ZOOM_PERCENT)
-  }, [])
-
-  const isSideView = isSideViewMode(viewMode)
-  const activeViewOption = VIEW_MODE_OPTIONS.find((option) => option.value === viewMode) ?? VIEW_MODE_OPTIONS[0]
-  const zoomFactor = zoomPercent / 100
-  const canZoomOut = zoomPercent > MIN_ZOOM_PERCENT
-  const canZoomIn = zoomPercent < MAX_ZOOM_PERCENT
-
-  useEffect(() => {
-    if (!isSideView) return
-    if (selectedDeviceTemplate) setSelectedDeviceTemplate(null)
-    if (selectedItemToMove) setSelectedItemToMove(null)
-  }, [isSideView, selectedDeviceTemplate, selectedItemToMove])
-
   useEffect(() => {
     if (!isSideView) return
     if (hoverPlacementHint) setHoverPlacementHint(null)
     if (placementErrorHint) setPlacementErrorHint(null)
   }, [hoverPlacementHint, isSideView, placementErrorHint])
-
-  useEffect(() => {
-    if (!selectedItemToMove) {
-      setMobileOffsetDraft('0')
-      setMobileNameDraft('')
-      setMobileNotesDraft('')
-      setMobileEditorError(null)
-      return
-    }
-
-    const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
-    if (!selectedItem) return
-
-    setMobileOffsetDraft(String(selectedItem.rack_ear_offset_mm ?? 0))
-    setMobileNameDraft(selectedItem.custom_name ?? '')
-    setMobileNotesDraft(selectedItem.notes ?? '')
-    setMobileEditorError(null)
-  }, [items, selectedItemToMove])
-
-  const panelLibraryDevices = useMemo(() => panelLayouts.map((panel) => ({
-    id: panelTemplateDeviceId(panel.id),
-    brand: PANEL_LIBRARY_BRAND,
-    model: panel.name,
-    rack_units: panel.height_ru,
-    depth_mm: panel.depth_mm,
-    weight_kg: panel.weight_kg,
-    power_w: 0,
-    is_half_rack: false,
-    category_id: PANEL_LIBRARY_CATEGORY_ID,
-    fav: false,
-    category: {
-      id: PANEL_LIBRARY_CATEGORY_ID,
-      name: PANEL_LIBRARY_CATEGORY_NAME,
-      created_at: panel.created_at,
-      updated_at: panel.updated_at,
-    },
-    front_image_path: buildPanelThumbnailDataUrl(panel, 'front', connectorById),
-    rear_image_path: buildPanelThumbnailDataUrl(panel, 'rear', connectorById),
-    created_at: panel.created_at,
-    updated_at: panel.updated_at,
-  })), [connectorById, panelLayouts])
-
-  const libraryDevices = useMemo(
-    () => [...devices, ...panelLibraryDevices],
-    [devices, panelLibraryDevices],
-  )
-
-  const panelCategory = useMemo(
-    () => panelLayouts.length > 0
-      ? [{
-        id: PANEL_LIBRARY_CATEGORY_ID,
-        name: PANEL_LIBRARY_CATEGORY_NAME,
-        created_at: panelLayouts[0].created_at,
-        updated_at: panelLayouts[0].updated_at,
-      }]
-      : [],
-    [panelLayouts],
-  )
-
-  const libraryCategories = useMemo(
-    () => [...categories, ...panelCategory],
-    [categories, panelCategory],
-  )
-
-  const brands = useMemo(
-    () => [...new Set(libraryDevices.map((d) => d.brand))]
-      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
-    [libraryDevices],
-  )
-
-  const filteredDevices = useMemo(
-    () => filterDevicesBySearch(filterDevicesByBrand(filterDevicesByCategory(libraryDevices, selectedCategoryId), selectedBrand), searchQuery),
-    [libraryDevices, selectedCategoryId, selectedBrand, searchQuery],
-  )
-
-  useEffect(() => {
-    if (!selectedDeviceTemplate) return
-    if (filteredDevices.some((device) => device.id === selectedDeviceTemplate)) return
-    setSelectedDeviceTemplate(null)
-  }, [filteredDevices, selectedDeviceTemplate])
 
   const showBackendPlacementReject = useCallback((actionLabel: string, error: unknown) => {
     const message = toErrorMessage(error)
@@ -752,122 +552,34 @@ export default function LayoutEditorPage() {
   }
 
 
+  const {
+    selectedItemToMove, setSelectedItemToMove, mobileOffsetDraft, setMobileOffsetDraft,
+    mobileNameDraft, setMobileNameDraft, mobileNotesDraft, setMobileNotesDraft,
+    mobileEditorError, setMobileEditorError, handleMobileOffsetSave: handleMobileOffsetSaveBase,
+    handleMobileDeleteItem,
+  } = useMobileItemEditor({ items, updateItemDetails, removeItem, getPlacementIssue })
+
+  useEffect(() => {
+    if (!isSideView) return
+    if (selectedDeviceTemplate) setSelectedDeviceTemplate(null)
+    if (selectedItemToMove) setSelectedItemToMove(null)
+  }, [isSideView, selectedDeviceTemplate, selectedItemToMove, setSelectedDeviceTemplate, setSelectedItemToMove])
+
   const handleMobileOffsetSave = async () => {
-    if (!selectedItemToMove) return
-
-    const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
-    if (!selectedItem) return
-
-    const offset = Number(mobileOffsetDraft)
-    if (!Number.isFinite(offset)) {
-      setMobileEditorError('Rack ear offset must be a valid number.')
-      return
-    }
-    if (offset < 0) {
-      setMobileEditorError('Rack ear offset cannot be negative.')
-      return
-    }
-
-    const normalizedOffset = Math.round(offset * 10) / 10
-    const issue = getPlacementIssue(
-      selectedItem.start_u,
-      selectedItem.device.rack_units,
-      selectedItem.device.is_half_rack,
-      selectedItem.force_full_width,
-      selectedItem.device.depth_mm,
-      normalizedOffset,
-      selectedItem.id,
-      selectedItem.preferred_lane ?? undefined,
-      selectedItem.preferred_sub_lane ?? undefined,
-    )
-    if (issue) {
-      setMobileEditorError(issue)
-      return
-    }
-
-    try {
-      await updateItemDetails(selectedItemToMove, {
-        custom_name: mobileNameDraft.trim() || null,
-        notes: mobileNotesDraft,
-        rack_ear_offset_mm: normalizedOffset,
-      })
-      setMobileEditorError(null)
-      setPlacementErrorHint(null)
-    } catch (err) {
-      console.error('Save failed:', err)
-      setMobileEditorError(toErrorMessage(err))
-    }
+    await handleMobileOffsetSaveBase()
+    setPlacementErrorHint(null)
   }
 
-  const handleMobileDeleteItem = async () => {
-    if (!selectedItemToMove) return
-    try {
-      await removeItem(selectedItemToMove)
-      setSelectedItemToMove(null)
-      setMobileEditorError(null)
-    } catch (err) {
-      console.error('Delete failed:', err)
-      setMobileEditorError(toErrorMessage(err))
-    }
-  }
-
-  const openCreateLayoutModal = () => {
-    setLayoutNameDraft('')
-    setLayoutRackDraft(rack?.id ?? racks[0]?.id ?? '')
-    setCreateLayoutOpen(true)
-  }
-
-  const openRenameLayoutModal = () => {
-    if (!activeLayout) return
-    setLayoutNameDraft(activeLayout.name)
-    setRenameLayoutOpen(true)
-  }
-
-  const handleCreateLayout = async () => {
-    if (!projectId || !layoutNameDraft || !layoutRackDraft) return
-
-    setLayoutSaving(true)
-    try {
-      const created = await createLayout({
-        project_id: projectId,
-        name: layoutNameDraft,
-        rack_id: layoutRackDraft,
-      })
-      if (created) {
-        setCreateLayoutOpen(false)
-        setActiveLayout(created.id)
-      }
-    } finally {
-      setLayoutSaving(false)
-    }
-  }
-
-  const handleRenameLayout = async () => {
-    if (!activeLayout || !layoutNameDraft) return
-
-    setLayoutSaving(true)
-    try {
-      await updateLayout(activeLayout.id, { name: layoutNameDraft })
-      setRenameLayoutOpen(false)
-    } finally {
-      setLayoutSaving(false)
-    }
-  }
-
-  const handleDeleteLayout = async () => {
-    if (!activeLayout || layouts.length <= 1) return
-
-    const fallbackLayout = layouts.find((entry) => entry.id !== activeLayout.id)
-
-    setLayoutSaving(true)
-    try {
-      await deleteLayout(activeLayout.id)
-      setDeleteLayoutOpen(false)
-      if (fallbackLayout) setActiveLayout(fallbackLayout.id)
-    } finally {
-      setLayoutSaving(false)
-    }
-  }
+  const {
+    createLayoutOpen, setCreateLayoutOpen, renameLayoutOpen, setRenameLayoutOpen,
+    deleteLayoutOpen, setDeleteLayoutOpen, layoutNameDraft, setLayoutNameDraft,
+    layoutRackDraft, setLayoutRackDraft, layoutSaving,
+    openCreateLayoutModal, openRenameLayoutModal,
+    handleCreateLayout, handleRenameLayout, handleDeleteLayout,
+  } = useLayoutCrud({
+    projectId, activeLayout, layouts, racks, rack,
+    createLayout, updateLayout, deleteLayout, setActiveLayout,
+  })
 
   if (projectError) {
     return (
@@ -1085,7 +797,7 @@ export default function LayoutEditorPage() {
                 <RackSideDepthView
                   rack={rack}
                   items={items}
-                  side={viewMode}
+                  side={viewMode as 'left' | 'right'}
                   zoom={zoomFactor}
                   showDeviceDetails={showDeviceNames}
                 />
@@ -1314,7 +1026,7 @@ export default function LayoutEditorPage() {
               <RackSideDepthView
                 rack={rack}
                 items={items}
-                side={viewMode}
+                side={viewMode as 'left' | 'right'}
                 showDeviceDetails={showDeviceNames}
                 compact
               />

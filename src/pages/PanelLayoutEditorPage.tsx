@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type LegacyRef } from 'react'
+import { useCallback, useMemo, useState, type LegacyRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
@@ -10,53 +10,16 @@ import {
   isMountingAllowed,
   rowHasCapacity,
   summarizeRowCapacities,
-  getActiveColumns,
 } from '../lib/panelGrid'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
 import type { ConnectorDefinition, DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../types'
 import { useTheme } from '../hooks/useTheme'
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout'
+import { usePanelDraft, usePanelDraftAutoSave, type PanelFormState } from '../hooks/usePanelDraft'
 import ThemeToggle from '../components/ui/ThemeToggle'
 import PanelLayoutCanvas from '../components/panels/PanelLayoutCanvas'
 import { CONNECTOR_ITEM_TYPE, type ConnectorDragItem } from '../components/panels/panelDndTypes'
 
-const DRAFT_STORAGE_PREFIX = 'panel-layout-draft'
-const AUTO_HOLE_COUNT = 16
-
-interface DraftState {
-  name: string
-  facing: DeviceFacing
-  hasLacingBar: boolean
-  notes: string
-  rows: Array<Pick<PanelLayoutRow, 'row_index' | 'hole_count' | 'active_column_map'>>
-  ports: Array<Pick<PanelLayoutPort, 'id' | 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label'>>
-}
-
-function normalizeRowsToAutoGrid(
-  panelId: string,
-  heightRu: number,
-  rows: Array<Partial<PanelLayoutRow>>,
-  createdAt: string,
-  updatedAt: string,
-): PanelLayoutRow[] {
-  const byIndex = new Map<number, Partial<PanelLayoutRow>>()
-  for (const row of rows) {
-    if (typeof row.row_index === 'number') byIndex.set(row.row_index, row)
-  }
-
-  return Array.from({ length: Math.max(1, heightRu) }, (_, rowIndex) => {
-    const existing = byIndex.get(rowIndex)
-    const holeCount = (existing?.hole_count ?? AUTO_HOLE_COUNT) as 4 | 6 | 8 | 12 | 16
-    return {
-      id: existing?.id ?? `auto-row-${rowIndex}`,
-      panel_layout_id: panelId,
-      row_index: rowIndex,
-      hole_count: holeCount,
-      active_column_map: existing?.active_column_map?.length ? existing.active_column_map : getActiveColumns(holeCount),
-      created_at: existing?.created_at ?? createdAt,
-      updated_at: existing?.updated_at ?? updatedAt,
-    }
-  })
-}
 
 // ─── Dark workspace form primitives ──────────────────────────────────────────
 
@@ -213,116 +176,26 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
   const [mobileZoom, setMobileZoom] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [dirty, setDirty] = useState(false)
-  const hydratedDraft = useRef(false)
-  const prevPanelIdRef = useRef<string | null>(null)
 
-  const draftStorageKey = `${DRAFT_STORAGE_PREFIX}:${projectId ?? 'none'}:${panelLayoutId ?? 'none'}`
+  const setFormState = useCallback((state: PanelFormState) => {
+    setName(state.name)
+    setFacing(state.facing)
+    setHasLacingBar(state.hasLacingBar)
+    setNotes(state.notes)
+    setRows(state.rows)
+    setPorts(state.ports)
+  }, [])
 
-  useEffect(() => {
-    if (!panel) return
-    // Reset hydration flag when switching to a different panel
-    if (prevPanelIdRef.current !== null && prevPanelIdRef.current !== panel.id) {
-      hydratedDraft.current = false
-      setDirty(false)
-    }
-    prevPanelIdRef.current = panel.id
-    if (!hydratedDraft.current) {
-      const draftRaw = localStorage.getItem(draftStorageKey)
-      if (draftRaw) {
-        try {
-          const draft = JSON.parse(draftRaw) as DraftState
-          setName(draft.name)
-          setFacing(draft.facing)
-          setHasLacingBar(draft.hasLacingBar)
-          setNotes(draft.notes)
-          setRows(
-            normalizeRowsToAutoGrid(
-              panel.id,
-              panel.height_ru,
-              draft.rows.map((row, index) => ({
-                id: `draft-row-${index}`,
-                panel_layout_id: panel.id,
-                row_index: row.row_index,
-                hole_count: row.hole_count,
-                active_column_map: row.active_column_map,
-                created_at: panel.created_at,
-                updated_at: panel.updated_at,
-              })),
-              panel.created_at,
-              panel.updated_at,
-            ),
-          )
-          setPorts(
-            draft.ports.map((port) => ({
-              id: port.id,
-              panel_layout_id: panel.id,
-              connector_id: port.connector_id,
-              row_index: port.row_index,
-              hole_index: port.hole_index,
-              span_w: port.span_w,
-              span_h: port.span_h,
-              label: port.label ?? null,
-              created_at: panel.created_at,
-              updated_at: panel.updated_at,
-            })),
-          )
-          setDirty(true)
-          hydratedDraft.current = true
-          return
-        } catch {
-          localStorage.removeItem(draftStorageKey)
-        }
-      }
-      hydratedDraft.current = true
-    }
+  const { dirty, setDirty, draftStorageKey, clearDraft } = usePanelDraft({
+    panel, projectId, panelLayoutId, setFormState,
+  })
 
-    if (!dirty) {
-      setName(panel.name)
-      setFacing(panel.facing)
-      setHasLacingBar(panel.has_lacing_bar)
-      setNotes(panel.notes ?? '')
-      setRows(
-        normalizeRowsToAutoGrid(
-          panel.id,
-          panel.height_ru,
-          [...(panel.rows ?? [])].sort((a, b) => a.row_index - b.row_index),
-          panel.created_at,
-          panel.updated_at,
-        ),
-      )
-      setPorts([...(panel.ports ?? [])])
-    }
-  }, [dirty, draftStorageKey, panel])
+  const formState = useMemo<PanelFormState>(
+    () => ({ name, facing, hasLacingBar, notes, rows, ports }),
+    [name, facing, hasLacingBar, notes, rows, ports],
+  )
 
-  useEffect(() => {
-    if (!panel || !dirty) return
-    const timeoutId = window.setTimeout(() => {
-      const draft: DraftState = {
-        name,
-        facing,
-        hasLacingBar,
-        notes,
-        rows: rows.map((row) => ({
-          row_index: row.row_index,
-          hole_count: row.hole_count,
-          active_column_map: row.active_column_map,
-        })),
-        ports: ports.map((port) => ({
-          id: port.id,
-          connector_id: port.connector_id,
-          row_index: port.row_index,
-          hole_index: port.hole_index,
-          span_w: port.span_w,
-          span_h: port.span_h,
-          label: port.label,
-        })),
-      }
-      localStorage.setItem(draftStorageKey, JSON.stringify(draft))
-    }, 500)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [dirty, draftStorageKey, facing, hasLacingBar, name, notes, panel, ports, rows])
+  usePanelDraftAutoSave({ panel, dirty, draftStorageKey, formState })
 
   const selectedConnector = selectedConnectorId ? connectorById.get(selectedConnectorId) ?? null : null
   const selectedPort = selectedPortId ? ports.find((port) => port.id === selectedPortId) ?? null : null
@@ -488,7 +361,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
           label: port.label ?? null,
         })),
       )
-      localStorage.removeItem(draftStorageKey)
+      clearDraft()
       setDirty(false)
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Failed to save panel layout.')
@@ -1197,37 +1070,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
 // ─── DndProvider wrapper ─────────────────────────────────────────────────────
 
 export default function PanelLayoutEditorPage() {
-  const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768)
-  const [isTouchLikeDevice, setIsTouchLikeDevice] = useState<boolean>(
-    () => window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0,
-  )
-  const [isPortrait, setIsPortrait] = useState<boolean>(
-    () => window.matchMedia('(orientation: portrait)').matches,
-  )
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 767px)')
-    const handleChange = (event: MediaQueryListEvent) => setIsMobile(event.matches)
-    mediaQuery.addEventListener('change', handleChange)
-    return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [])
-
-  useEffect(() => {
-    const mq = window.matchMedia('(orientation: portrait)')
-    const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-
-  useEffect(() => {
-    const coarsePointerQuery = window.matchMedia('(pointer: coarse)')
-    const updateTouchLike = () => {
-      setIsTouchLikeDevice(coarsePointerQuery.matches || navigator.maxTouchPoints > 0)
-    }
-    updateTouchLike()
-    coarsePointerQuery.addEventListener('change', updateTouchLike)
-    return () => coarsePointerQuery.removeEventListener('change', updateTouchLike)
-  }, [])
+  const { isMobile, isTouchLikeDevice, isPortrait } = useResponsiveLayout()
 
   const dndBackend = isTouchLikeDevice ? TouchBackend : HTML5Backend
   const dndOptions = isTouchLikeDevice
