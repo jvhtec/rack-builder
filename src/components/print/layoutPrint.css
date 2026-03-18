@@ -48,6 +48,7 @@
 
 .layout-print-toolbar-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -1271,6 +1272,7 @@ html.layout-print-force-light .layout-print-toolbar-error {
 }
 .layout-print-exporting .project-print-index-title {
   font-size: 16px !important;
+  margin-bottom: 2.5mm !important;
 }
 .layout-print-exporting .project-print-index-table {
   font-size: 8.4px !important;
@@ -1284,6 +1286,10 @@ html.layout-print-force-light .layout-print-toolbar-error {
 }
 
 /* Keep cover text readable at all export scales */
+.layout-print-exporting .project-print-cover {
+  padding: 12mm !important;
+  gap: 14px !important;
+}
 .layout-print-exporting .project-print-cover-kicker {
   font-size: 11px !important;
 }
@@ -1302,6 +1308,12 @@ html.layout-print-force-light .layout-print-toolbar-error {
 .layout-print-exporting .panel-print-heading {
   font-size: 14px !important;
   padding: 12px 16px 8px !important;
+}
+.layout-print-exporting .panel-print-canvas-area {
+  padding: 0 16px !important;
+}
+.layout-print-exporting .panel-print-connector-wrap {
+  padding: 6px 16px !important;
 }
 .layout-print-exporting .panel-print-connector-table {
   font-size: 7.5px !important;

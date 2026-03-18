@@ -33,6 +33,8 @@ interface RackBomSheetProps {
   startPageNumber: number
   pageCount: number
   sheetClassName?: string
+  /** Insert a page break after the final BOM page (default false). */
+  breakAfterLastPage?: boolean
 }
 
 function chunkArray<T>(array: T[], size: number): T[][] {
@@ -54,6 +56,7 @@ export default function RackBomSheet({
   startPageNumber,
   pageCount,
   sheetClassName,
+  breakAfterLastPage = false,
 }: RackBomSheetProps) {
   const bomRows = useMemo(() => {
     const grouped = new Map<string, BomRow>()
@@ -130,10 +133,9 @@ export default function RackBomSheet({
         const isLastPage = pageIndex === pages.length - 1
         const rowOffset = pageIndex * MAX_BOM_ROWS_PER_PAGE
         const currentPageNumber = startPageNumber + pageIndex
-        const pageBreakClass =
-          !isLastPage || sheetClassName ? 'layout-print-page-break' : ''
+        const needsPageBreak = !isLastPage || breakAfterLastPage
         const combinedClass =
-          `layout-print-sheet ${sheetClassName ?? ''} ${pageBreakClass}`.replace(/\s+/g, ' ').trim()
+          `layout-print-sheet ${sheetClassName ?? ''} ${needsPageBreak ? 'layout-print-page-break' : ''}`.replace(/\s+/g, ' ').trim()
 
         return (
           <section
