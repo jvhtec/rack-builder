@@ -1251,6 +1251,7 @@ html.layout-print-force-light .layout-print-toolbar-error {
 }
 .layout-print-exporting .rack-bom-subtitle {
   font-size: 9px !important;
+  margin-bottom: 3mm !important;
 }
 .layout-print-exporting .rack-bom-table {
   font-size: 8.4px !important;
@@ -1327,6 +1328,7 @@ html.layout-print-force-light .layout-print-toolbar-error {
 }
 .layout-print-exporting .panel-print-footnote {
   font-size: 8px !important;
+  padding: 0 16px 8px !important;
 }
 
 @page {
