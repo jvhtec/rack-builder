@@ -10,6 +10,17 @@ interface DeviceListProps {
   onToggleFavorite: (device: Device) => void
 }
 
+function ImageBadge({ label, present }: { label: string; present: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${present ? 'bg-green-500/90 text-white' : 'bg-gray-400/60 text-gray-100 dark:bg-gray-600/60'}`}
+    >
+      {label}
+    </span>
+  )
+}
+
 export default function DeviceList({ devices, onEdit, onDelete, onToggleFavorite }: DeviceListProps) {
   if (devices.length === 0) {
     return <p className="text-gray-500 text-sm">No devices defined yet. Create one to get started.</p>
@@ -19,8 +30,8 @@ export default function DeviceList({ devices, onEdit, onDelete, onToggleFavorite
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {devices.map((device) => {
         const thumbUrl = getDeviceImageUrl(device.front_image_path)
-        const hasFront = Boolean(device.front_image_path)
-        const hasRear = Boolean(device.rear_image_path)
+        const hasFront = !!device.front_image_path
+        const hasRear = !!device.rear_image_path
         return (
           <div key={device.id} className="border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 hover:shadow-sm transition-shadow">
             <div className="relative mb-3">
@@ -35,19 +46,12 @@ export default function DeviceList({ devices, onEdit, onDelete, onToggleFavorite
                   No image
                 </div>
               )}
-              <div className="absolute bottom-1.5 right-1.5 flex gap-1">
-                <span
-                  title="Front image"
-                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${hasFront ? 'bg-green-500/90 text-white' : 'bg-gray-400/60 text-gray-100 dark:bg-gray-600/60'}`}
-                >
-                  F
-                </span>
-                <span
-                  title="Rear image"
-                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${hasRear ? 'bg-green-500/90 text-white' : 'bg-gray-400/60 text-gray-100 dark:bg-gray-600/60'}`}
-                >
-                  R
-                </span>
+              <div
+                className="absolute bottom-1.5 right-1.5 flex gap-1"
+                aria-label={`Front image: ${hasFront ? 'present' : 'absent'}. Rear image: ${hasRear ? 'present' : 'absent'}.`}
+              >
+                <ImageBadge label="F" present={hasFront} />
+                <ImageBadge label="R" present={hasRear} />
               </div>
             </div>
             <div className="mb-1 flex items-start justify-between gap-2">
