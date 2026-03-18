@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import LayoutPrintSheet from '../components/print/LayoutPrintSheet'
+import RackBomSheet from '../components/print/RackBomSheet'
 import ProjectPrintCover from '../components/print/ProjectPrintCover'
 import ProjectPrintIndex from '../components/print/ProjectPrintIndex'
 import PanelPrintSheet from '../components/print/PanelPrintSheet'
@@ -47,6 +48,7 @@ export default function ProjectPrintPage() {
   const [error, setError] = useState<string | null>(null)
   const [imagesReady, setImagesReady] = useState(false)
   const [includeSimplified, setIncludeSimplified] = useState(false)
+  const [includeBom, setIncludeBom] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportStatus, setExportStatus] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -183,9 +185,10 @@ export default function ProjectPrintPage() {
   }, [layoutModels])
 
   const simplifiedExtra = includeSimplified ? layoutModels.length : 0
-  const pageCount = 2 + layoutModels.length + simplifiedExtra + panelModels.length
+  const bomExtra = includeBom ? layoutModels.length : 0
+  const pageCount = 2 + layoutModels.length + simplifiedExtra + bomExtra + panelModels.length
 
-  const layoutPagesPerLayout = includeSimplified ? 2 : 1
+  const layoutPagesPerLayout = 1 + (includeSimplified ? 1 : 0) + (includeBom ? 1 : 0)
   const layoutIndexRows = layoutModels.map((model, index) => ({
     layoutName: model.layout.name,
     rackName: model.rack.name,
@@ -328,6 +331,14 @@ export default function ProjectPrintPage() {
             />
             Include simplified view
           </label>
+          <label className="layout-print-toolbar-label">
+            <input
+              type="checkbox"
+              checked={includeBom}
+              onChange={(e) => setIncludeBom(e.target.checked)}
+            />
+            Include BOM
+          </label>
           <div className="ml-2 pl-4 border-l border-gray-300 dark:border-slate-700">
             <ThemeToggle isDark={isDark} toggle={toggle} className="text-gray-500 dark:text-slate-400" />
           </div>
@@ -352,7 +363,11 @@ export default function ProjectPrintPage() {
         {layoutModels.map((model, index) => {
           const layoutPageNumber = index * layoutPagesPerLayout + 3
           const isLastLayout = index === layoutModels.length - 1
-          const hasMoreSheets = !isLastLayout || panelModels.length > 0 || includeSimplified
+          const hasMoreAfterMain = includeSimplified || includeBom || !isLastLayout || panelModels.length > 0
+          const hasMoreAfterSimplified = includeBom || !isLastLayout || panelModels.length > 0
+          const hasMoreAfterBom = !isLastLayout || panelModels.length > 0
+
+          let subPageOffset = 1
 
           return (
             <Fragment key={model.layout.id}>
@@ -368,7 +383,7 @@ export default function ProjectPrintPage() {
                 useAutoFitScale
                 pageNumber={layoutPageNumber}
                 pageCount={pageCount}
-                sheetClassName={hasMoreSheets ? 'layout-print-page-break' : ''}
+                sheetClassName={hasMoreAfterMain ? 'layout-print-page-break' : ''}
               />
               {includeSimplified && (
                 <LayoutPrintSheet
@@ -382,9 +397,23 @@ export default function ProjectPrintPage() {
                   scaleLabel="Fit (auto)"
                   useAutoFitScale
                   simplifiedView
-                  pageNumber={layoutPageNumber + 1}
+                  pageNumber={layoutPageNumber + subPageOffset++}
                   pageCount={pageCount}
-                  sheetClassName={isLastLayout && panelModels.length === 0 ? '' : 'layout-print-page-break'}
+                  sheetClassName={hasMoreAfterSimplified ? 'layout-print-page-break' : ''}
+                />
+              )}
+              {includeBom && (
+                <RackBomSheet
+                  layout={model.layout}
+                  rack={model.rack}
+                  items={model.items}
+                  generatedAt={generatedAt}
+                  projectOwner={project.owner}
+                  totalWeightKg={model.totalWeightKg}
+                  totalPowerW={model.totalPowerW}
+                  pageNumber={layoutPageNumber + subPageOffset++}
+                  pageCount={pageCount}
+                  sheetClassName={hasMoreAfterBom ? 'layout-print-page-break' : ''}
                 />
               )}
             </Fragment>

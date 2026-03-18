@@ -842,6 +842,95 @@
   text-align: center;
 }
 
+/* ── BOM (Bill of Materials) sheet ────────────────────────────────────── */
+
+.rack-bom-wrap {
+  flex: 1;
+  border: 2px solid #000;
+  padding: 4.5mm;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.rack-bom-title {
+  margin: 0 0 1mm;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  color: #111827;
+}
+
+.rack-bom-subtitle {
+  margin: 0 0 3mm;
+  font-size: 9px;
+  color: #4b5563;
+  letter-spacing: 0.04em;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.rack-bom-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rack-bom-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 8.4px;
+  line-height: 1.2;
+}
+
+.rack-bom-col-num { width: 4%; }
+.rack-bom-col-brand { width: 14%; }
+.rack-bom-col-model { width: 20%; }
+.rack-bom-col-ru { width: 6%; }
+.rack-bom-col-qty { width: 6%; }
+.rack-bom-col-weight-each { width: 12%; }
+.rack-bom-col-power-each { width: 12%; }
+.rack-bom-col-weight-total { width: 13%; }
+.rack-bom-col-power-total { width: 13%; }
+
+.rack-bom-table th,
+.rack-bom-table td {
+  border: 1px solid #222;
+  padding: 1.4mm 1.1mm;
+  text-align: left;
+  vertical-align: top;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #111827;
+}
+
+.rack-bom-table th {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 8px;
+  background: #f3f4f6;
+  color: #555;
+}
+
+.rack-bom-table tfoot td {
+  font-weight: 700;
+  border-top: 2px solid #000;
+  background: #f9fafb;
+}
+
+.rack-bom-footnote {
+  margin: 2mm 0 0;
+  font-size: 8px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
 /* ── Responsive scaling via container queries ──────────────────────────
    Rack layouts handle their own scaling via JS auto-fit (transform:scale).
    Cover, index, panel, and cartouche need CSS-based adaptation.            */
@@ -929,6 +1018,32 @@
     font-size: 3.5px;
     padding: 0 6px 3px;
   }
+
+  /* BOM */
+  .rack-bom-wrap {
+    padding: 1mm;
+  }
+  .rack-bom-title {
+    font-size: 7px;
+    margin-bottom: 0.5mm;
+  }
+  .rack-bom-subtitle {
+    font-size: 4px;
+    margin-bottom: 1mm;
+  }
+  .rack-bom-table {
+    font-size: 4.5px;
+  }
+  .rack-bom-table th {
+    font-size: 4px;
+  }
+  .rack-bom-table th,
+  .rack-bom-table td {
+    padding: 0.3mm 0.5mm;
+  }
+  .rack-bom-footnote {
+    font-size: 3.5px;
+  }
 }
 
 /* Medium sheets (tablets, 501–1000px) */
@@ -1009,6 +1124,32 @@
     font-size: 6px;
     padding: 0 12px 6px;
   }
+
+  /* BOM */
+  .rack-bom-wrap {
+    padding: 2.5mm;
+  }
+  .rack-bom-title {
+    font-size: 11px;
+    margin-bottom: 1mm;
+  }
+  .rack-bom-subtitle {
+    font-size: 6px;
+    margin-bottom: 2mm;
+  }
+  .rack-bom-table {
+    font-size: 6px;
+  }
+  .rack-bom-table th {
+    font-size: 5.5px;
+  }
+  .rack-bom-table th,
+  .rack-bom-table td {
+    padding: 0.6mm 0.8mm;
+  }
+  .rack-bom-footnote {
+    font-size: 6px;
+  }
 }
 
 html.layout-print-force-light .layout-print-page {
@@ -1071,6 +1212,82 @@ html.layout-print-force-light .layout-print-toolbar-error {
 
 .layout-print-exporting .print-cartouche {
   min-height: 100px !important;
+}
+
+/* Keep BOM readable in exported PDF at all scale levels */
+.layout-print-exporting .rack-bom-wrap {
+  padding: 4.5mm !important;
+}
+.layout-print-exporting .rack-bom-title {
+  font-size: 16px !important;
+}
+.layout-print-exporting .rack-bom-subtitle {
+  font-size: 9px !important;
+}
+.layout-print-exporting .rack-bom-table {
+  font-size: 8.4px !important;
+}
+.layout-print-exporting .rack-bom-table th {
+  font-size: 8px !important;
+}
+.layout-print-exporting .rack-bom-table th,
+.layout-print-exporting .rack-bom-table td {
+  padding: 1.4mm 1.1mm !important;
+}
+.layout-print-exporting .rack-bom-footnote {
+  font-size: 8px !important;
+}
+
+/* Keep index table readable at all export scales */
+.layout-print-exporting .project-print-index-wrap {
+  padding: 4.5mm !important;
+}
+.layout-print-exporting .project-print-index-title {
+  font-size: 16px !important;
+}
+.layout-print-exporting .project-print-index-table {
+  font-size: 8.4px !important;
+}
+.layout-print-exporting .project-print-index-table th {
+  font-size: 8px !important;
+}
+.layout-print-exporting .project-print-index-table th,
+.layout-print-exporting .project-print-index-table td {
+  padding: 1.4mm 1.1mm !important;
+}
+
+/* Keep cover text readable at all export scales */
+.layout-print-exporting .project-print-cover-kicker {
+  font-size: 11px !important;
+}
+.layout-print-exporting .project-print-cover-title {
+  font-size: 38px !important;
+}
+.layout-print-exporting .project-print-cover-owner,
+.layout-print-exporting .project-print-cover-generated {
+  font-size: 14px !important;
+}
+.layout-print-exporting .project-print-cover-logo {
+  width: 220px !important;
+}
+
+/* Keep panel content readable at all export scales */
+.layout-print-exporting .panel-print-heading {
+  font-size: 14px !important;
+  padding: 12px 16px 8px !important;
+}
+.layout-print-exporting .panel-print-connector-table {
+  font-size: 7.5px !important;
+}
+.layout-print-exporting .panel-print-connector-table th {
+  font-size: 6.5px !important;
+}
+.layout-print-exporting .panel-print-connector-table th,
+.layout-print-exporting .panel-print-connector-table td {
+  padding: 0.8mm 1mm !important;
+}
+.layout-print-exporting .panel-print-footnote {
+  font-size: 8px !important;
 }
 
 @page {

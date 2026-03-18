@@ -75,22 +75,24 @@ export function getBalancedScaleCandidates(args: {
   devicePixelRatio: number
 }): number[] {
   const normalizedDpr = Number.isFinite(args.devicePixelRatio)
-    ? Math.max(1, Math.min(3, args.devicePixelRatio))
+    ? Math.max(1, Math.min(4, args.devicePixelRatio))
     : 1
 
+  // Target high-definition output: 3x on desktop, 2.5x on mobile.
+  // Falls back to progressively lower scales if the device runs out of memory.
   const startScale = args.isMobile
-    ? Math.min(2.2, Math.max(1.6, normalizedDpr * 1.35))
-    : Math.min(2.8, Math.max(2.1, normalizedDpr * 1.2))
+    ? Math.min(2.8, Math.max(2, normalizedDpr * 1.4))
+    : Math.min(3.5, Math.max(2.8, normalizedDpr * 1.4))
 
   const fallbackSeed = args.isMobile
-    ? [startScale, 2, 1.8, 1.6, 1.4, 1.25]
-    : [startScale, 2.6, 2.3, 2.1, 1.9, 1.75, 1.5]
+    ? [startScale, 2.5, 2.2, 2, 1.8, 1.6, 1.4]
+    : [startScale, 3, 2.8, 2.5, 2.2, 2, 1.8]
 
   const deduped = Array.from(
     new Set(
       fallbackSeed
         .map((value) => Number(value.toFixed(2)))
-        .filter((value) => value >= 1.25 && value <= 3),
+        .filter((value) => value >= 1.4 && value <= 4),
     ),
   )
 
@@ -163,6 +165,10 @@ async function triggerPdfDownload(blob: Blob, fileName: string): Promise<void> {
   }
 }
 
+/** Consistent render dimensions for export (A3 at ~2x screen density). */
+const EXPORT_SHEET_WIDTH_PX = 1400
+const EXPORT_SHEET_HEIGHT_PX = 990
+
 async function renderAtScale({
   sheets,
   scale,
@@ -195,11 +201,17 @@ async function renderAtScale({
       message: `Rendering page ${pageNumber} of ${sheets.length}...`,
     })
 
+    // Use the fixed export dimensions to ensure identical output on every device.
+    // The CSS .layout-print-exporting class already forces sheets to 1400×990px,
+    // so we render at that size regardless of the original viewport.
+    const renderWidth = EXPORT_SHEET_WIDTH_PX
+    const renderHeight = EXPORT_SHEET_HEIGHT_PX
+
     const canvas = await html2canvas(sheets[index], {
       backgroundColor: '#ffffff',
       scale,
-      width: Math.ceil(sheets[index].scrollWidth),
-      height: Math.ceil(sheets[index].scrollHeight),
+      width: renderWidth,
+      height: renderHeight,
       useCORS: true,
       allowTaint: false,
       imageTimeout: 15000,
@@ -207,12 +219,15 @@ async function renderAtScale({
       removeContainer: true,
       scrollX: 0,
       scrollY: 0,
+      windowWidth: EXPORT_SHEET_WIDTH_PX,
+      windowHeight: EXPORT_SHEET_HEIGHT_PX,
     })
 
     if (index > 0) {
       pdf.addPage([pageSizeMm.widthMm, pageSizeMm.heightMm], orientation)
     }
 
+    // PNG preserves crisp text and line art for high-definition output.
     const imageData = canvas.toDataURL('image/png')
     pdf.addImage(imageData, 'PNG', 0, 0, pageSizeMm.widthMm, pageSizeMm.heightMm)
     canvas.width = 1
