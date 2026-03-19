@@ -13,6 +13,7 @@ interface DeviceRow {
   is_half_rack?: boolean
   category_id: string
   fav: boolean
+  invert_image_in_dark_mode?: boolean
   front_image_path: string | null
   rear_image_path: string | null
   created_at: string
@@ -65,6 +66,7 @@ function mapDeviceRow(row: DeviceRow): Device {
     is_half_rack: row.is_half_rack === true,
     category_id: row.category_id,
     fav: row.fav === true,
+    invert_image_in_dark_mode: row.invert_image_in_dark_mode === true,
     front_image_path: row.front_image_path,
     rear_image_path: row.rear_image_path,
     created_at: row.created_at,
@@ -224,6 +226,7 @@ export function useDevices() {
     is_half_rack?: boolean
     category_id: string
     fav?: boolean
+    invert_image_in_dark_mode?: boolean
     front_image_path?: string | null
     rear_image_path?: string | null
   }) => {
@@ -244,6 +247,7 @@ export function useDevices() {
       is_half_rack: boolean
       category_id: string
       fav: boolean
+      invert_image_in_dark_mode: boolean
       front_image_path: string | null
       rear_image_path: string | null
     }>,

@@ -71,7 +71,9 @@ export default function DraggableDevice({ device }: DraggableDeviceProps) {
           src={thumbUrl}
           alt={device.model}
           draggable={false}
-          className="w-full h-14 object-contain bg-gray-50 dark:bg-gray-900/50 rounded mb-2"
+          className={`w-full h-14 object-contain bg-gray-50 dark:bg-gray-900/50 rounded mb-2 ${
+            device.invert_image_in_dark_mode ? 'dark:invert' : ''
+          }`}
         />
       )}
       <div className="text-sm font-medium truncate dark:text-white">{device.brand} {device.model}</div>
