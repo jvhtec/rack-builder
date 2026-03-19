@@ -3,6 +3,7 @@ import Button from '../ui/Button'
 import Input from '../ui/Input'
 import Select from '../ui/Select'
 import type { Rack, RackWidth } from '../../types'
+import { useHaptic } from '../../contexts/HapticContext'
 
 interface RackFormProps {
   initialData?: Rack
@@ -16,12 +17,16 @@ export default function RackForm({ initialData, onSubmit, onCancel }: RackFormPr
   const [depthMm, setDepthMm] = useState(initialData?.depth_mm ?? 800)
   const [width, setWidth] = useState<RackWidth>(initialData?.width ?? 'single')
   const [saving, setSaving] = useState(false)
+  const { trigger } = useHaptic()
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setSaving(true)
     try {
       await onSubmit({ name, rack_units: rackUnits, depth_mm: depthMm, width })
+      trigger('success')
+    } catch {
+      trigger('error')
     } finally {
       setSaving(false)
     }

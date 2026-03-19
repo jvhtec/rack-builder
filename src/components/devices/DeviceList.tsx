@@ -2,6 +2,7 @@ import { Star } from 'lucide-react'
 import type { Device } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
 import Button from '../ui/Button'
+import { useHaptic } from '../../contexts/HapticContext'
 
 interface DeviceListProps {
   devices: Device[]
@@ -22,6 +23,8 @@ function ImageBadge({ label, present }: { label: string; present: boolean }) {
 }
 
 export default function DeviceList({ devices, onEdit, onDelete, onToggleFavorite }: DeviceListProps) {
+  const { trigger } = useHaptic()
+
   if (devices.length === 0) {
     return <p className="text-gray-500 text-sm">No devices defined yet. Create one to get started.</p>
   }
@@ -58,6 +61,7 @@ export default function DeviceList({ devices, onEdit, onDelete, onToggleFavorite
               <div className="font-medium text-gray-900 dark:text-white">{device.brand} {device.model}</div>
               <button
                 type="button"
+                onPointerDown={() => trigger('nudge')}
                 onClick={() => onToggleFavorite(device)}
                 className="rounded p-1 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                 aria-label={device.fav ? 'Remove from favorites' : 'Add to favorites'}

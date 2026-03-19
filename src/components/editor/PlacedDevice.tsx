@@ -7,6 +7,7 @@ import { RACK_SLOT_HEIGHT_PX } from './rackGeometry'
 import PanelLayoutCanvas from '../panels/PanelLayoutCanvas'
 import { resolveVisibleImageSide, selectFacingImagePath } from '../../lib/rackViewModel'
 import AutoScaleText from '../shared/AutoScaleText'
+import { useHaptic } from '../../contexts/HapticContext'
 
 const SLOT_HEIGHT = RACK_SLOT_HEIGHT_PX
 
@@ -34,6 +35,7 @@ export default function PlacedDevice({
   onEditNotes,
 }: PlacedDeviceProps) {
   const label = item.custom_name?.trim() || `${item.device.brand} ${item.device.model}`
+  const { trigger } = useHaptic()
   const [{ isDragging }, dragRef] = useDrag<PlacedDeviceDragItem, unknown, { isDragging: boolean }>({
     type: PLACED_DEVICE_TYPE,
     canDrag: interactive,
@@ -117,7 +119,7 @@ export default function PlacedDevice({
               N
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); onRemove(item.id) }}
+              onClick={(e) => { e.stopPropagation(); trigger('error'); onRemove(item.id) }}
               className="rack-device-action"
               title="Remove"
             >
