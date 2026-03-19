@@ -54,6 +54,10 @@ rack-builder/
 │   │   │   ├── DeviceNotes.tsx
 │   │   │   ├── DevicePalette.tsx
 │   │   │   ├── DraggableDevice.tsx
+│   │   │   ├── LayoutModals.tsx       # Create/rename/delete layout modals
+│   │   │   ├── MobileEditorSheet.tsx  # Mobile side drawer (devices + rack settings)
+│   │   │   ├── MobileItemEditorPanel.tsx # Floating mobile item editor
+│   │   │   ├── MobileRackGrid.tsx     # Mobile rack slot rendering
 │   │   │   ├── PlacedDevice.tsx
 │   │   │   ├── RackGrid.tsx
 │   │   │   ├── RackSideDepthView.tsx
@@ -67,7 +71,10 @@ rack-builder/
 │   │   │   ├── LayoutForm.tsx
 │   │   │   └── LayoutList.tsx
 │   │   ├── panels/                  # Panel layout designer
+│   │   │   ├── DraggableConnectorButton.tsx # Draggable connector (react-dnd)
 │   │   │   ├── PanelLayoutCanvas.tsx
+│   │   │   ├── PanelMobileSheet.tsx   # Mobile bottom sheet (connectors/properties/port-edit)
+│   │   │   ├── PanelPropertiesSidebar.tsx # Desktop properties sidebar
 │   │   │   └── panelDndTypes.ts
 │   │   ├── print/                   # Print & PDF export views
 │   │   │   ├── LayoutPrintSheet.tsx
@@ -86,6 +93,7 @@ rack-builder/
 │   │   └── ui/                      # Base UI primitives
 │   │       ├── Button.tsx
 │   │       ├── ConfirmDialog.tsx
+│   │       ├── DarkForm.tsx           # Dark-themed form primitives
 │   │       ├── Input.tsx
 │   │       ├── Modal.tsx
 │   │       ├── Select.tsx
@@ -94,19 +102,30 @@ rack-builder/
 │   │   └── HapticContext.tsx         # Haptic feedback provider
 │   ├── data/
 │   │   └── connectors.json          # Static connector definitions
-│   ├── hooks/                       # Custom React hooks (data layer)
+│   ├── hooks/                       # Custom React hooks
 │   │   ├── useAutoScaleFont.ts
 │   │   ├── useConnectors.ts
+│   │   ├── useDeviceFiltering.ts    # Device palette search/filter state
 │   │   ├── useDevices.ts
 │   │   ├── useImageUpload.ts
+│   │   ├── useLayoutCrud.ts         # Layout create/rename/delete modal state
 │   │   ├── useLayoutItems.ts
 │   │   ├── useLayouts.ts
+│   │   ├── useMobileItemEditor.ts   # Mobile item editing state & handlers
+│   │   ├── useMobilePlacement.ts    # Mobile drag/drop & slot-click placement
+│   │   ├── usePanelDraft.ts         # Panel localStorage draft persistence
+│   │   ├── usePanelGridPlacement.ts # Panel connector grid placement logic
 │   │   ├── usePanelLayoutCounts.ts
 │   │   ├── usePanelLayoutPorts.ts
 │   │   ├── usePanelLayoutRows.ts
 │   │   ├── usePanelLayouts.ts
+│   │   ├── usePanelSave.ts          # Panel save with validation
+│   │   ├── usePlacement.ts          # Rack placement issue detection
+│   │   ├── useProject.ts            # Single project fetch by ID
 │   │   ├── useProjects.ts
+│   │   ├── useRackViewState.ts      # View mode, zoom, display toggles
 │   │   ├── useRacks.ts
+│   │   ├── useResponsiveLayout.ts   # Shared responsive media queries
 │   │   └── useTheme.ts
 │   ├── lib/                         # Pure logic & utilities
 │   │   ├── connectorCatalog.ts
@@ -116,6 +135,7 @@ rack-builder/
 │   │   ├── panelLayoutMapper.ts
 │   │   ├── panelThumbnail.ts
 │   │   ├── printPdfExport.ts
+│   │   ├── rackHelpers.ts           # Placement image URL, error helpers
 │   │   ├── rackPositions.ts
 │   │   ├── rackViewModel.ts
 │   │   ├── rackVisual.ts
@@ -284,9 +304,12 @@ Professional-grade print output:
 
 Custom React hooks abstract all Supabase interactions:
 
+**Data hooks** (Supabase interactions):
+
 | Hook                    | Purpose                                    |
 |------------------------|--------------------------------------------|
 | `useProjects`          | Project CRUD + layout count aggregation     |
+| `useProject`           | Single project fetch by ID                  |
 | `useDevices`           | Device CRUD + category join + search/filter |
 | `useRacks`             | Rack definition CRUD                        |
 | `useLayouts`           | Layout CRUD scoped to project               |
@@ -300,7 +323,22 @@ Custom React hooks abstract all Supabase interactions:
 | `useTheme`             | Dark/light mode toggle (localStorage)       |
 | `useAutoScaleFont`     | Dynamic font sizing for labels              |
 
-Each hook returns `{ data, loading, error, create*, update*, delete*, refetch }`.
+Each data hook returns `{ data, loading, error, create*, update*, delete*, refetch }`.
+
+**UI state hooks** (extracted from page components):
+
+| Hook                    | Purpose                                              |
+|------------------------|------------------------------------------------------|
+| `useResponsiveLayout`  | Shared media queries (isMobile, isTouchLikeDevice, isPortrait) |
+| `useRackViewState`     | View mode, zoom, display toggles for rack editor     |
+| `useDeviceFiltering`   | Device palette search, category, and brand filtering  |
+| `useLayoutCrud`        | Layout create/rename/delete modal state & handlers    |
+| `useMobileItemEditor`  | Mobile item editing state (name, notes, offset)       |
+| `useMobilePlacement`   | Mobile drag/drop and slot-click placement handlers    |
+| `usePlacement`         | Rack placement issue detection & view model           |
+| `usePanelDraft`        | Panel localStorage draft hydration & auto-save        |
+| `usePanelGridPlacement`| Panel connector grid placement logic                  |
+| `usePanelSave`         | Panel save with mounting compatibility validation     |
 
 ### 3.7 Pure Logic Library (`src/lib/`)
 
@@ -311,6 +349,7 @@ Side-effect-free utility modules:
 | `rackPositions.ts`    | Slot CSS positioning for single/dual racks            |
 | `rackViewModel.ts`    | Front/rear view model computation with ghost items    |
 | `rackVisual.ts`       | Visual CSS helpers for device rendering               |
+| `rackHelpers.ts`      | Placement image URL resolution, error formatting      |
 | `overlap.ts`          | 3D depth conflict detection between devices           |
 | `panelGrid.ts`        | Panel cell geometry calculations                      |
 | `panelLayoutMapper.ts`| Row/port structure transformation                     |
@@ -681,7 +720,7 @@ describe('rackPositions', () => {
 - **No state management library**: Data flows through props drilling and context. As the app grows, a solution like Zustand or Jotai may be needed.
 - **Limited test coverage**: Only core geometry/logic utilities are tested. No component tests, integration tests, or E2E tests.
 - **Duplicate migration prefix**: Two migrations share the `015_` prefix (`device_favorites` and `layout_item_rack_ear_offset`).
-- **Large page components**: `LayoutEditorPage.tsx` and `PanelLayoutEditorPage.tsx` contain significant amounts of state logic that could be extracted into custom hooks.
+- **Page component decomposition** (partially addressed): State logic has been extracted from `LayoutEditorPage.tsx` (~1,710 → ~620 lines) and `PanelLayoutEditorPage.tsx` (~1,250 → ~580 lines) into 10 custom hooks and 8 sub-components. Further decomposition of mobile/desktop view branches is possible.
 
 ### 9.2 Planned Migrations
 
@@ -736,8 +775,8 @@ describe('rackPositions', () => {
 | **Primary Language**| TypeScript (React)                                 |
 | **License**         | —                                                  |
 | **Primary Contact** | jvhtec (GitHub)                                    |
-| **Last Updated**    | 2026-03-18                                         |
+| **Last Updated**    | 2026-03-19                                         |
 
 ---
 
-*This document was generated from codebase analysis on 2026-03-18.*
+*This document was last updated on 2026-03-19.*

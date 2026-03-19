@@ -4,7 +4,7 @@ import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
 import { useLayoutItems } from '../hooks/useLayoutItems'
-import { ALL_BRAND, useDevices } from '../hooks/useDevices'
+import { useDevices } from '../hooks/useDevices'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
 import { useLayouts } from '../hooks/useLayouts'
 import { useRacks } from '../hooks/useRacks'
@@ -13,13 +13,12 @@ import DevicePalette from '../components/editor/DevicePalette'
 import RackGrid from '../components/editor/RackGrid'
 import RackSideDepthView from '../components/editor/RackSideDepthView'
 import MobileRackGrid from '../components/editor/MobileRackGrid'
+import MobileEditorSheet from '../components/editor/MobileEditorSheet'
+import MobileItemEditorPanel from '../components/editor/MobileItemEditorPanel'
+import LayoutModals from '../components/editor/LayoutModals'
 import DeviceNotes from '../components/editor/DeviceNotes'
 import Button from '../components/ui/Button'
 import { useHaptic } from '../contexts/HapticContext'
-import Modal from '../components/ui/Modal'
-import ConfirmDialog from '../components/ui/ConfirmDialog'
-import Input from '../components/ui/Input'
-import Select from '../components/ui/Select'
 import { useTheme } from '../hooks/useTheme'
 import ThemeToggle from '../components/ui/ThemeToggle'
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout'
@@ -403,59 +402,15 @@ export default function LayoutEditorPage() {
           />
         </div>
 
-        <Modal isOpen={createLayoutOpen} onClose={() => setCreateLayoutOpen(false)} title="New Layout">
-          <div className="space-y-4">
-            <Input
-              label="Layout Name"
-              value={layoutNameDraft}
-              onChange={(e) => setLayoutNameDraft(e.target.value)}
-              required
-            />
-            <Select
-              label="Rack"
-              value={layoutRackDraft}
-              onChange={(e) => setLayoutRackDraft(e.target.value)}
-              options={racks.map((entry) => ({ value: entry.id, label: `${entry.name} (${entry.rack_units}U)` }))}
-            />
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="secondary" type="button" onClick={() => setCreateLayoutOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => void handleCreateLayout()}
-                disabled={layoutSaving || !layoutNameDraft || !layoutRackDraft}
-              >
-                {layoutSaving ? 'Creating...' : 'Create Layout'}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-
-        <Modal isOpen={renameLayoutOpen} onClose={() => setRenameLayoutOpen(false)} title="Rename Layout">
-          <div className="space-y-4">
-            <Input
-              label="Layout Name"
-              value={layoutNameDraft}
-              onChange={(e) => setLayoutNameDraft(e.target.value)}
-              required
-            />
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="secondary" type="button" onClick={() => setRenameLayoutOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => void handleRenameLayout()} disabled={layoutSaving || !layoutNameDraft}>
-                {layoutSaving ? 'Saving...' : 'Save'}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-
-        <ConfirmDialog
-          isOpen={deleteLayoutOpen}
-          onClose={() => setDeleteLayoutOpen(false)}
-          onConfirm={() => void handleDeleteLayout()}
-          title="Delete Layout"
-          message={`Delete "${activeLayout.name}" from this project?`}
+        <LayoutModals
+          createLayoutOpen={createLayoutOpen} setCreateLayoutOpen={setCreateLayoutOpen}
+          renameLayoutOpen={renameLayoutOpen} setRenameLayoutOpen={setRenameLayoutOpen}
+          deleteLayoutOpen={deleteLayoutOpen} setDeleteLayoutOpen={setDeleteLayoutOpen}
+          layoutNameDraft={layoutNameDraft} setLayoutNameDraft={setLayoutNameDraft}
+          layoutRackDraft={layoutRackDraft} setLayoutRackDraft={setLayoutRackDraft}
+          layoutSaving={layoutSaving} racks={racks} activeLayout={activeLayout}
+          handleCreateLayout={handleCreateLayout} handleRenameLayout={handleRenameLayout}
+          handleDeleteLayout={handleDeleteLayout}
         />
       </DndProvider>
     )
@@ -512,54 +467,18 @@ export default function LayoutEditorPage() {
           </div>
         )}
 
-        {!isSideView && selectedItemToMove && (() => {
-          const selectedItem = items.find((entry) => entry.id === selectedItemToMove)
-          if (!selectedItem) return null
-          const selectedLabel = selectedItem.custom_name?.trim() || `${selectedItem.device.brand} ${selectedItem.device.model}`
-          return (
-            <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-xl border border-indigo-400 bg-slate-900/95 px-3 py-2 shadow-2xl" style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
-              <div className="mb-2 text-[11px] font-semibold text-indigo-100 truncate">Edit · {selectedLabel}</div>
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={mobileNameDraft}
-                  onChange={(e) => { setMobileNameDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
-                  placeholder="Custom name"
-                  className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"
-                />
-                <textarea
-                  value={mobileNotesDraft}
-                  onChange={(e) => { setMobileNotesDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
-                  placeholder="Notes"
-                  className="w-full h-16 rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-xs text-slate-100"
-                />
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={mobileOffsetDraft}
-                    onChange={(e) => { setMobileOffsetDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
-                    className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"
-                    placeholder="Offset (mm)"
-                  />
-                  <button
-                    onClick={() => void handleMobileOffsetSave()}
-                    className="min-h-9 rounded-md border border-indigo-300 bg-indigo-600 px-3 text-xs font-semibold text-white"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => void handleMobileDeleteItem()}
-                    className="min-h-9 rounded-md border border-red-500/70 bg-red-700/70 px-3 text-xs font-semibold text-white"
-                  >
-                    Delete
-                  </button>
-                </div>
-                {mobileEditorError && <p className="text-[11px] text-amber-300">{mobileEditorError}</p>}
-              </div>
-            </div>
-          )
-        })()}
+        {!isSideView && selectedItemToMove && (
+          <MobileItemEditorPanel
+            items={items}
+            selectedItemToMove={selectedItemToMove}
+            mobileNameDraft={mobileNameDraft} setMobileNameDraft={setMobileNameDraft}
+            mobileNotesDraft={mobileNotesDraft} setMobileNotesDraft={setMobileNotesDraft}
+            mobileOffsetDraft={mobileOffsetDraft} setMobileOffsetDraft={setMobileOffsetDraft}
+            mobileEditorError={mobileEditorError} setMobileEditorError={setMobileEditorError}
+            onSave={() => void handleMobileOffsetSave()}
+            onDelete={() => void handleMobileDeleteItem()}
+          />
+        )}
 
         {placementHint && !isSideView && (
           <div className="fixed left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-[380px] rounded-lg border border-amber-400 bg-amber-100 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-lg" style={{ top: 'calc(10.5rem + env(safe-area-inset-top))' }}>
@@ -659,170 +578,28 @@ export default function LayoutEditorPage() {
       </footer>
 
       {isSheetOpen && (
-        <div className="fixed inset-0 z-50 flex overflow-hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setIsSheetOpen(false)} />
-          <div className="relative w-80 max-w-[85%] bg-slate-900 h-full shadow-2xl flex flex-col">
-            <div
-              className="p-4 border-b border-slate-800 flex items-center justify-between"
-              style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
-            >
-              <h2 className="font-bold text-sm uppercase tracking-widest text-slate-400">
-                {activeTab === 'devices' ? 'Add Equipment' : 'Rack Settings'}
-              </h2>
-              <button onClick={() => setIsSheetOpen(false)} className="p-2 text-slate-300">✕</button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4">
-              {activeTab === 'devices' ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs uppercase text-slate-500 mb-1 font-bold">Search</label>
-                    <input
-                      type="search"
-                      placeholder="Brand, model or category…"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase text-slate-500 mb-1 font-bold">Category</label>
-                    <select
-                      value={selectedCategoryId}
-                      onChange={(e) => setSelectedCategoryId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm"
-                    >
-                      <option value="favorites">Favorites</option>
-                      <option value="all">All categories</option>
-                      {libraryCategories.map((category) => (
-                        <option key={category.id} value={category.id}>{category.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs uppercase text-slate-500 mb-1 font-bold">Brand</label>
-                    <select
-                      value={selectedBrand}
-                      onChange={(e) => setSelectedBrand(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm"
-                    >
-                      <option value={ALL_BRAND}>All brands</option>
-                      {brands.map((b) => (
-                        <option key={b} value={b}>{b}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {filteredDevices.map((device) => (
-                    <button
-                      key={device.id}
-                      onClick={() => {
-                        setSelectedDeviceTemplate(device.id)
-                        setIsSheetOpen(false)
-                      }}
-                      className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${
-                        selectedDeviceTemplate === device.id
-                          ? 'bg-indigo-600 border-indigo-400'
-                          : 'bg-slate-800 border-slate-700'
-                      }`}
-                      >
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase truncate">{device.brand}</p>
-                        <p className="text-xs text-slate-300 truncate">{device.model}</p>
-                        <p className="text-[10px] text-indigo-200 truncate">{device.category?.name ?? 'Uncategorized'}</p>
-                      </div>
-                      <div className="bg-slate-950 px-2 py-1 rounded text-[10px] font-mono text-indigo-400 shrink-0">
-                        {device.rack_units}U{device.is_half_rack ? ' ½' : ''}
-                      </div>
-                    </button>
-                  ))}
-                  {filteredDevices.length === 0 && <p className="text-xs text-slate-400">No devices match your filters.</p>}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-xs text-slate-500 uppercase font-bold">Layouts</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => { setIsSheetOpen(false); openCreateLayoutModal() }}
-                      className="flex-1 py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
-                    >
-                      + New
-                    </button>
-                    <button
-                      onClick={() => { setIsSheetOpen(false); openRenameLayoutModal() }}
-                      className="flex-1 py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
-                    >
-                      Rename
-                    </button>
-                    <button
-                      onClick={() => { setIsSheetOpen(false); setDeleteLayoutOpen(true) }}
-                      disabled={layouts.length <= 1}
-                      className="flex-1 py-2 rounded-lg border text-sm border-red-700/60 bg-red-900/30 text-red-300 disabled:opacity-40"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-500 uppercase font-bold">View</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {VIEW_MODE_OPTIONS.map((option) => (
-                      <button
-                        key={`mobile-view-${option.value}`}
-                        onClick={() => setRackViewMode(option.value)}
-                        className={`py-2 rounded-lg border text-sm ${
-                          viewMode === option.value
-                            ? 'border-indigo-400 bg-indigo-500/20'
-                            : 'border-slate-700 bg-slate-800'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => setShowDeviceNames((prev) => !prev)}
-                    className={`w-full py-2 rounded-lg border text-sm ${
-                      showDeviceNames ? 'border-indigo-400 bg-indigo-500/20' : 'border-slate-700 bg-slate-800'
-                    }`}
-                  >
-                    Device names: {showDeviceNames ? 'On' : 'Off'}
-                  </button>
-                  <button
-                    onClick={() => setSimplifiedView((prev) => !prev)}
-                    className={`w-full py-2 rounded-lg border text-sm ${
-                      simplifiedView ? 'border-indigo-400 bg-indigo-500/20' : 'border-slate-700 bg-slate-800'
-                    }`}
-                  >
-                    Simplified view: {simplifiedView ? 'On' : 'Off'}
-                  </button>
-                  <button
-                    onClick={() => navigate(`/editor/project/${project.id}/print/${activeLayout.id}`)}
-                    className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
-                  >
-                    Export A3 PDF
-                  </button>
-                  <button
-                    onClick={() => navigate(`/editor/project/${project.id}/print/all`)}
-                    disabled={layouts.length <= 1}
-                    className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800 disabled:opacity-40"
-                    title={layouts.length <= 1 ? 'Add more layouts to export the full project PDF' : undefined}
-                  >
-                    Export Full Project PDF
-                  </button>
-                  <button
-                    onClick={() => navigate(`/editor/project/${project.id}/panels`)}
-                    className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
-                  >
-                    Panel Layouts
-                  </button>
-                  <p className="text-xs text-slate-500">Rack: {rack.name} ({rack.rack_units}U, {rack.width})</p>
-                  <p className="text-xs text-slate-500">Total load: {rackTotals.weightKg.toFixed(2)} kg</p>
-                  <p className="text-xs text-slate-500">Total power: {rackTotals.powerW} W</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <MobileEditorSheet
+          activeTab={activeTab}
+          onClose={() => setIsSheetOpen(false)}
+          searchQuery={searchQuery} onSearchChange={setSearchQuery}
+          selectedCategoryId={selectedCategoryId} onCategoryChange={setSelectedCategoryId}
+          libraryCategories={libraryCategories}
+          selectedBrand={selectedBrand} onBrandChange={setSelectedBrand}
+          brands={brands}
+          filteredDevices={filteredDevices}
+          selectedDeviceTemplate={selectedDeviceTemplate}
+          onDeviceSelect={(id) => { setSelectedDeviceTemplate(id); setIsSheetOpen(false) }}
+          layouts={layouts} activeLayout={activeLayout} rack={rack} rackTotals={rackTotals}
+          viewMode={viewMode} showDeviceNames={showDeviceNames} simplifiedView={simplifiedView}
+          onSetRackViewMode={setRackViewMode}
+          onToggleDeviceNames={() => setShowDeviceNames((prev) => !prev)}
+          onToggleSimplifiedView={() => setSimplifiedView((prev) => !prev)}
+          onOpenCreateLayout={() => { setIsSheetOpen(false); openCreateLayoutModal() }}
+          onOpenRenameLayout={() => { setIsSheetOpen(false); openRenameLayoutModal() }}
+          onOpenDeleteLayout={() => { setIsSheetOpen(false); setDeleteLayoutOpen(true) }}
+          onNavigate={navigate}
+          projectId={project.id}
+        />
       )}
 
       <DeviceNotes
@@ -832,56 +609,15 @@ export default function LayoutEditorPage() {
         onClose={() => setNotesItem(null)}
       />
 
-      <Modal isOpen={createLayoutOpen} onClose={() => setCreateLayoutOpen(false)} title="New Layout">
-        <div className="space-y-4">
-          <Input
-            label="Layout Name"
-            value={layoutNameDraft}
-            onChange={(e) => setLayoutNameDraft(e.target.value)}
-            required
-          />
-          <Select
-            label="Rack"
-            value={layoutRackDraft}
-            onChange={(e) => setLayoutRackDraft(e.target.value)}
-            options={racks.map((entry) => ({ value: entry.id, label: `${entry.name} (${entry.rack_units}U)` }))}
-          />
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setCreateLayoutOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => void handleCreateLayout()} disabled={layoutSaving || !layoutNameDraft || !layoutRackDraft}>
-              {layoutSaving ? 'Creating...' : 'Create Layout'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal isOpen={renameLayoutOpen} onClose={() => setRenameLayoutOpen(false)} title="Rename Layout">
-        <div className="space-y-4">
-          <Input
-            label="Layout Name"
-            value={layoutNameDraft}
-            onChange={(e) => setLayoutNameDraft(e.target.value)}
-            required
-          />
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setRenameLayoutOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => void handleRenameLayout()} disabled={layoutSaving || !layoutNameDraft}>
-              {layoutSaving ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <ConfirmDialog
-        isOpen={deleteLayoutOpen}
-        onClose={() => setDeleteLayoutOpen(false)}
-        onConfirm={() => void handleDeleteLayout()}
-        title="Delete Layout"
-        message={`Delete "${activeLayout.name}" from this project?`}
+      <LayoutModals
+        createLayoutOpen={createLayoutOpen} setCreateLayoutOpen={setCreateLayoutOpen}
+        renameLayoutOpen={renameLayoutOpen} setRenameLayoutOpen={setRenameLayoutOpen}
+        deleteLayoutOpen={deleteLayoutOpen} setDeleteLayoutOpen={setDeleteLayoutOpen}
+        layoutNameDraft={layoutNameDraft} setLayoutNameDraft={setLayoutNameDraft}
+        layoutRackDraft={layoutRackDraft} setLayoutRackDraft={setLayoutRackDraft}
+        layoutSaving={layoutSaving} racks={racks} activeLayout={activeLayout}
+        handleCreateLayout={handleCreateLayout} handleRenameLayout={handleRenameLayout}
+        handleDeleteLayout={handleDeleteLayout}
       />
     </div>
   )
