@@ -57,6 +57,7 @@ export default function DeviceManagerPage() {
     depth_mm: number
     weight_kg: number
     power_w: number
+    invert_image_in_dark_mode: boolean
     category_id: string
     front_image_path?: string | null
     rear_image_path?: string | null

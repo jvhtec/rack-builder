@@ -31,6 +31,7 @@ export interface Device {
   is_half_rack: boolean
   category_id: string
   fav: boolean
+  invert_image_in_dark_mode: boolean
   category?: DeviceCategory | null
   front_image_path: string | null
   rear_image_path: string | null

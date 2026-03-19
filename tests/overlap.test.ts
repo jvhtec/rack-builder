@@ -37,6 +37,7 @@ function makeItem(args: {
       power_w: 0,
       is_half_rack: args.isHalfRack ?? false,
       category_id: 'cat-1',
+      invert_image_in_dark_mode: false,
       front_image_path: 'front.png',
       rear_image_path: 'rear.png',
       created_at: '2026-01-01T00:00:00Z',
