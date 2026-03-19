@@ -1,147 +1,29 @@
-import { useCallback, useMemo, useState, type LegacyRef } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
-import { useDrag } from 'react-dnd'
 import { useConnectors } from '../hooks/useConnectors'
-import {
-  autoDistributeAllRows,
-  isMountingAllowed,
-  rowHasCapacity,
-  summarizeRowCapacities,
-} from '../lib/panelGrid'
+import { isMountingAllowed } from '../lib/panelGrid'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
-import type { ConnectorDefinition, DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../types'
+import type { DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../types'
 import { useTheme } from '../hooks/useTheme'
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout'
 import { usePanelDraft, usePanelDraftAutoSave, type PanelFormState } from '../hooks/usePanelDraft'
+import { usePanelGridPlacement } from '../hooks/usePanelGridPlacement'
 import ThemeToggle from '../components/ui/ThemeToggle'
+import { DarkLabel, DarkInput, DarkSelect } from '../components/ui/DarkForm'
+import DraggableConnectorButton from '../components/panels/DraggableConnectorButton'
 import PanelLayoutCanvas from '../components/panels/PanelLayoutCanvas'
-import { CONNECTOR_ITEM_TYPE, type ConnectorDragItem } from '../components/panels/panelDndTypes'
 
 
-// ─── Dark workspace form primitives ──────────────────────────────────────────
-
-function DarkLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-400 md:text-sm">
-      {children}
-    </span>
-  )
-}
-
-function DarkInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-}) {
-  return (
-    <div>
-      <DarkLabel>{label}</DarkLabel>
-      <input
-        className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition focus:border-amber-500/60 focus:outline-none focus:ring-2 focus:ring-amber-500/60 md:text-lg"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
-    </div>
-  )
-}
-
-function DarkSelect({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <div>
-      <DarkLabel>{label}</DarkLabel>
-      <select
-        className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2.5 text-sm text-slate-100 transition focus:border-amber-500/60 focus:outline-none focus:ring-2 focus:ring-amber-500/60 md:text-lg"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-    </div>
-  )
-}
-
-// ─── Category accent colors (chip only, not full bg) ─────────────────────────
+// ─── Category accent colors ──────────────────────────────────────────────────
 const CATEGORY_DOT: Record<string, string> = {
   audio: '#f59e0b',
   data: '#06b6d4',
   power: '#3b82f6',
   multipin: '#a78bfa',
   other: '#6b7280',
-}
-
-// ─── DraggableConnectorButton ────────────────────────────────────────────────
-
-function DraggableConnectorButton({
-  connector,
-  selected,
-  allowed,
-  onSelect,
-}: {
-  connector: ConnectorDefinition
-  selected: boolean
-  allowed: boolean
-  onSelect: () => void
-}) {
-  const [{ isDragging }, dragRef] = useDrag<ConnectorDragItem, unknown, { isDragging: boolean }>({
-    type: CONNECTOR_ITEM_TYPE,
-    item: {
-      type: CONNECTOR_ITEM_TYPE,
-      connectorId: connector.id,
-      gridWidth: connector.grid_width,
-      gridHeight: connector.grid_height,
-    },
-    canDrag: allowed,
-    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-  })
-
-  return (
-    <button
-      ref={dragRef as unknown as LegacyRef<HTMLButtonElement>}
-      type="button"
-      onClick={onSelect}
-      className={`w-full select-none rounded-lg border px-5 py-3.5 text-left transition ${
-        selected
-          ? 'border-amber-500/60 bg-amber-500/10 text-amber-100'
-          : allowed
-          ? 'border-slate-700/50 bg-slate-800/40 text-slate-300 hover:border-slate-600 hover:bg-slate-800'
-          : 'border-slate-800 bg-slate-900/30 text-slate-600'
-      }`}
-      style={{
-        opacity: isDragging ? 0.4 : 1,
-        touchAction: 'none',
-        WebkitUserSelect: 'none',
-        userSelect: 'none',
-      }}
-    >
-      <p className="text-base font-semibold leading-tight">{connector.name}</p>
-      <p className="mt-1.5 text-sm text-slate-500">
-        {connector.grid_width}×{connector.grid_height} grid
-        {!allowed ? <span className="text-red-500/70"> · not allowed</span> : null}
-      </p>
-    </button>
-  )
 }
 
 // ─── Main Editor ─────────────────────────────────────────────────────────────
@@ -197,133 +79,18 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
 
   usePanelDraftAutoSave({ panel, dirty, draftStorageKey, formState })
 
-  const selectedConnector = selectedConnectorId ? connectorById.get(selectedConnectorId) ?? null : null
-  const selectedPort = selectedPortId ? ports.find((port) => port.id === selectedPortId) ?? null : null
-  const rowCapacities = useMemo(() => summarizeRowCapacities(rows, ports), [rows, ports])
-  const rowCapacityByIndex = useMemo(
-    () => new Map(rowCapacities.map((entry) => [entry.row_index, entry])),
-    [rowCapacities],
-  )
-
-  /** Check if a row can accept a connector/port during drag hover. */
-  const canDropInRow = (
-    rowIndex: number,
-    transferId: string,
-    isPortMove: boolean,
-  ): boolean => {
-    if (!panel) return false
-
-    if (isPortMove) {
-      const movingPort = ports.find((port) => port.id === transferId)
-      if (!movingPort) return false
-      // Allow drop on same row (reorder) or on a row with capacity
-      if (movingPort.row_index === rowIndex) return true
-      return rowHasCapacity(rowIndex, movingPort.span_w, movingPort.span_h, rows, ports, movingPort.id)
-    }
-
-    const connector = connectorById.get(transferId)
-    if (!connector) return false
-    if (!isMountingAllowed(connector.mounting, facing)) return false
-    return rowHasCapacity(rowIndex, connector.grid_width, connector.grid_height, rows, ports)
-  }
-
-  /** Place a new connector on a row and auto-distribute. */
-  const placeConnector = (rowIndex: number, forcedConnectorId?: string) => {
-    if (!panel) return
-    const connector = forcedConnectorId
-      ? connectorById.get(forcedConnectorId) ?? null
-      : selectedConnector
-    if (!connector) return
-    if (forcedConnectorId) setSelectedConnectorId(forcedConnectorId)
-    if (!isMountingAllowed(connector.mounting, facing)) {
-      setError(`"${connector.name}" cannot be mounted on ${facing} panels.`)
-      return
-    }
-    if (!rowHasCapacity(rowIndex, connector.grid_width, connector.grid_height, rows, ports)) {
-      setError('No free space available for this connector footprint on the selected row.')
-      return
-    }
-
-    const newPort: PanelLayoutPort = {
-      id: `draft-port-${crypto.randomUUID()}`,
-      panel_layout_id: panel.id,
-      connector_id: connector.id,
-      row_index: rowIndex,
-      hole_index: 0, // placeholder — auto-distribute will set the real position
-      span_w: connector.grid_width,
-      span_h: connector.grid_height,
-      label: null,
-      created_at: panel.created_at,
-      updated_at: panel.updated_at,
-    }
-
-    const newPorts = [...ports, newPort]
-    const distributed = autoDistributeAllRows(newPorts, rows)
-    setPorts(distributed)
-    setSelectedPortId(newPort.id)
-    setError(null)
-    setDirty(true)
-  }
-
-  /** Move an already-placed port to a new row (or reorder within same row). */
-  const movePort = (portId: string, rowIndex: number) => {
-    if (!panel) return
-    const existing = ports.find((p) => p.id === portId)
-    if (!existing) return
-
-    const connector = connectorById.get(existing.connector_id)
-    if (connector && !isMountingAllowed(connector.mounting, facing)) {
-      setError(`"${connector.name}" cannot be mounted on ${facing} panels.`)
-      return
-    }
-
-    if (existing.row_index === rowIndex) {
-      // Same row — no-op for now (order is maintained by auto-distribute)
-      return
-    }
-
-    // Check capacity on target row
-    if (!rowHasCapacity(rowIndex, existing.span_w, existing.span_h, rows, ports, existing.id)) {
-      setError('No free space available at this row for the selected connector footprint.')
-      return
-    }
-
-    const moved: PanelLayoutPort = { ...existing, row_index: rowIndex }
-    const newPorts = ports.map((p) => (p.id === portId ? moved : p))
-    const distributed = autoDistributeAllRows(newPorts, rows)
-    setPorts(distributed)
-    setSelectedPortId(portId)
-    setError(null)
-    setDirty(true)
-  }
-
-  /** Called by canvas on drop — distinguishes library drop vs. port move. */
-  const handleRowDrop = (rowIndex: number, transferId: string, isPortMove: boolean) => {
-    if (isPortMove) {
-      movePort(transferId, rowIndex)
-    } else {
-      placeConnector(rowIndex, transferId)
-    }
-  }
-
-  const updateSelectedPortLabel = (label: string) => {
-    if (!selectedPort) return
-    setPorts((current) => current.map((port) => (
-      port.id === selectedPort.id
-        ? { ...port, label: label || null }
-        : port
-    )))
-    setDirty(true)
-  }
-
-  const removeSelectedPort = () => {
-    if (!selectedPort) return
-    const remaining = ports.filter((port) => port.id !== selectedPort.id)
-    const distributed = autoDistributeAllRows(remaining, rows)
-    setPorts(distributed)
-    setSelectedPortId(null)
-    setDirty(true)
-  }
+  const {
+    selectedPort, rowCapacityByIndex,
+    canDropInRow, placeConnector, handleRowDrop,
+    updateSelectedPortLabel, removeSelectedPort,
+  } = usePanelGridPlacement({
+    panel, rows, ports,
+    setPorts: (updater) => setPorts(updater),
+    facing, connectorById,
+    selectedConnectorId, setSelectedConnectorId,
+    selectedPortId, setSelectedPortId,
+    setError, setDirty,
+  })
 
   const handleSave = async () => {
     if (!panel) return
