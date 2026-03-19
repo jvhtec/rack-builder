@@ -21,6 +21,7 @@ interface DeviceFormProps {
     weight_kg: number
     power_w: number
     is_half_rack: boolean
+    invert_image_in_dark_mode: boolean
     category_id: string
     front_image_path?: string | null
     rear_image_path?: string | null
@@ -42,6 +43,7 @@ export default function DeviceForm({
   const [depthMm, setDepthMm] = useState(initialData?.depth_mm ?? 400)
   const [weightKg, setWeightKg] = useState(initialData?.weight_kg ?? 0)
   const [powerW, setPowerW] = useState(initialData?.power_w ?? 0)
+  const [invertImageInDarkMode, setInvertImageInDarkMode] = useState(initialData?.invert_image_in_dark_mode ?? false)
   const [frontPath, setFrontPath] = useState(initialData?.front_image_path ?? null)
   const [rearPath, setRearPath] = useState(initialData?.rear_image_path ?? null)
   const [categoryId, setCategoryId] = useState(initialData?.category_id ?? '')
@@ -119,6 +121,7 @@ export default function DeviceForm({
         weight_kg: weightKg,
         power_w: powerW,
         is_half_rack: isHalfRack,
+        invert_image_in_dark_mode: invertImageInDarkMode,
         category_id: resolvedCategoryId,
         front_image_path: frontPath,
         rear_image_path: rearPath,
@@ -190,6 +193,18 @@ export default function DeviceForm({
           />
           <span className="text-sm font-medium text-gray-700">
             Half-rack width device (~9.5&Prime; / half of 19&Prime;)
+          </span>
+        </label>
+
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={invertImageInDarkMode}
+            onChange={(e) => setInvertImageInDarkMode(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-sm font-medium text-gray-700">
+            Invert device images in dark theme
           </span>
         </label>
 

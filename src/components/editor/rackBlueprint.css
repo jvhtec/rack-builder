@@ -245,6 +245,10 @@
   -webkit-touch-callout: none;
 }
 
+.dark .rack-device-media img.rack-device-image--invert-in-dark {
+  filter: invert(1);
+}
+
 .rack-device--has-image .rack-device-media {
   display: flex;
   align-items: center;

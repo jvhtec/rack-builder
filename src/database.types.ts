@@ -72,6 +72,7 @@ export interface Database {
           is_half_rack: boolean
           category_id: string
           fav: boolean
+          invert_image_in_dark_mode: boolean
           front_image_path: string | null
           rear_image_path: string | null
           created_at: string
@@ -88,6 +89,7 @@ export interface Database {
           is_half_rack?: boolean
           category_id: string
           fav?: boolean
+          invert_image_in_dark_mode?: boolean
           front_image_path?: string | null
           rear_image_path?: string | null
           created_at?: string
@@ -104,6 +106,7 @@ export interface Database {
           is_half_rack?: boolean
           category_id?: string
           fav?: boolean
+          invert_image_in_dark_mode?: boolean
           front_image_path?: string | null
           rear_image_path?: string | null
           created_at?: string
