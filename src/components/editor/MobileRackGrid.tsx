@@ -1,6 +1,6 @@
 import type { DeviceFacing, LayoutItemWithDevice, Rack, RackWidth } from '../../types'
 import { getDeviceImageUrl } from '../../hooks/useDevices'
-import { getItemSlot, getSlotStyle, type ItemSlot } from '../../lib/rackPositions'
+import { getItemSlot, getSlotStyle } from '../../lib/rackPositions'
 import { selectFacingImagePath } from '../../lib/rackViewModel'
 import AutoScaleText from '../shared/AutoScaleText'
 

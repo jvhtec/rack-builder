@@ -1,6 +1,6 @@
 import type { Device, Layout, Rack } from '../../types'
 import { ALL_BRAND } from '../../hooks/useDevices'
-import { VIEW_MODE_OPTIONS } from '../../hooks/useRackViewState'
+import { VIEW_MODE_OPTIONS, type RackViewMode } from '../../hooks/useRackViewState'
 
 interface MobileEditorSheetProps {
   activeTab: 'devices' | 'rack'
@@ -22,10 +22,10 @@ interface MobileEditorSheetProps {
   activeLayout: Layout
   rack: Rack
   rackTotals: { weightKg: number; powerW: number }
-  viewMode: string
+  viewMode: RackViewMode
   showDeviceNames: boolean
   simplifiedView: boolean
-  onSetRackViewMode: (mode: string) => void
+  onSetRackViewMode: (mode: RackViewMode) => void
   onToggleDeviceNames: () => void
   onToggleSimplifiedView: () => void
   onOpenCreateLayout: () => void

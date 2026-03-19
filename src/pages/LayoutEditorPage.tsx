@@ -76,7 +76,7 @@ export default function LayoutEditorPage() {
     return rackMap.get(activeLayout.rack_id) ?? null
   }, [activeLayout, rackMap])
 
-  const { items, addItem, addPanelLayoutItem, removeItem, moveItem, updateItemDetails } = useLayoutItems(
+  const { items, addItem: addItemRaw, addPanelLayoutItem: addPanelLayoutItemRaw, removeItem, moveItem, updateItemDetails } = useLayoutItems(
     activeLayout?.id,
     rack?.rack_units ?? 0,
   )
@@ -128,7 +128,7 @@ export default function LayoutEditorPage() {
   }, [searchParams, setSearchParams])
 
   const {
-    mobileItems, mobileSlotAssignments,
+    mobileSlotAssignments,
     mobileGhostSlotAssignments,
     getPlacementIssue, getDeviceAtU,
   } = usePlacement({ rack, items, facing })
@@ -143,7 +143,9 @@ export default function LayoutEditorPage() {
   } = useMobilePlacement({
     rack, items, devices, panelLayouts, facing,
     selectedDeviceTemplate, setSelectedDeviceTemplate,
-    addItem, addPanelLayoutItem, moveItem, removeItem, updateItemDetails,
+    addItem: async (...args) => { await addItemRaw(...args) },
+    addPanelLayoutItem: async (...args) => { await addPanelLayoutItemRaw(...args) },
+    moveItem, removeItem, updateItemDetails,
     getPlacementIssue, haptic,
   })
 

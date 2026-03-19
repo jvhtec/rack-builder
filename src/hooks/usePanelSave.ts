@@ -14,8 +14,8 @@ export function usePanelSave(params: {
   savePanelLayout: (
     id: string,
     meta: { name: string; facing: DeviceFacing; has_lacing_bar: boolean; notes: string | null },
-    rows: { row_index: number; hole_count: number; active_column_map: number[] | null }[],
-    ports: { connector_id: string; row_index: number; hole_index: number; span_w: number; span_h: number; label: string | null }[],
+    rows: Array<Pick<PanelLayoutRow, 'row_index' | 'hole_count' | 'active_column_map'>>,
+    ports: Array<Pick<PanelLayoutPort, 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label'>>,
   ) => Promise<void>
   clearDraft: () => void
   setDirty: (v: boolean) => void
