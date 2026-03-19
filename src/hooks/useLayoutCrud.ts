@@ -43,10 +43,13 @@ export function useLayoutCrud(params: {
     setRenameLayoutOpen(true)
   }, [activeLayout])
 
+  const [layoutError, setLayoutError] = useState<string | null>(null)
+
   const handleCreateLayout = useCallback(async () => {
     if (!projectId || !layoutNameDraft || !layoutRackDraft) return
 
     setLayoutSaving(true)
+    setLayoutError(null)
     try {
       const created = await createLayout({
         project_id: projectId,
@@ -57,6 +60,9 @@ export function useLayoutCrud(params: {
         setCreateLayoutOpen(false)
         setActiveLayout(created.id)
       }
+    } catch (err) {
+      console.error('Create layout failed:', err)
+      setLayoutError(err instanceof Error ? err.message : 'Failed to create layout.')
     } finally {
       setLayoutSaving(false)
     }
@@ -66,9 +72,13 @@ export function useLayoutCrud(params: {
     if (!activeLayout || !layoutNameDraft) return
 
     setLayoutSaving(true)
+    setLayoutError(null)
     try {
       await updateLayout(activeLayout.id, { name: layoutNameDraft })
       setRenameLayoutOpen(false)
+    } catch (err) {
+      console.error('Rename layout failed:', err)
+      setLayoutError(err instanceof Error ? err.message : 'Failed to rename layout.')
     } finally {
       setLayoutSaving(false)
     }
@@ -80,10 +90,14 @@ export function useLayoutCrud(params: {
     const fallbackLayout = layouts.find((entry) => entry.id !== activeLayout.id)
 
     setLayoutSaving(true)
+    setLayoutError(null)
     try {
       await deleteLayout(activeLayout.id)
       setDeleteLayoutOpen(false)
       if (fallbackLayout) setActiveLayout(fallbackLayout.id)
+    } catch (err) {
+      console.error('Delete layout failed:', err)
+      setLayoutError(err instanceof Error ? err.message : 'Failed to delete layout.')
     } finally {
       setLayoutSaving(false)
     }
@@ -101,6 +115,8 @@ export function useLayoutCrud(params: {
     layoutRackDraft,
     setLayoutRackDraft,
     layoutSaving,
+    layoutError,
+    setLayoutError,
     openCreateLayoutModal,
     openRenameLayoutModal,
     handleCreateLayout,

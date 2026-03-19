@@ -33,13 +33,17 @@ export default function MobileItemEditorPanel({
       <div className="mb-2 text-[11px] font-semibold text-indigo-100 truncate">Edit · {selectedLabel}</div>
       <div className="space-y-2">
         <input
+          id="mobile-item-name"
           type="text"
+          aria-label="Custom name"
           value={mobileNameDraft}
           onChange={(e) => { setMobileNameDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
           placeholder="Custom name"
           className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"
         />
         <textarea
+          id="mobile-item-notes"
+          aria-label="Notes"
           value={mobileNotesDraft}
           onChange={(e) => { setMobileNotesDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
           placeholder="Notes"
@@ -47,8 +51,10 @@ export default function MobileItemEditorPanel({
         />
         <div className="flex items-center gap-2">
           <input
+            id="mobile-item-offset"
             type="number"
             step="0.1"
+            aria-label="Rack ear offset in millimeters"
             value={mobileOffsetDraft}
             onChange={(e) => { setMobileOffsetDraft(e.target.value); if (mobileEditorError) setMobileEditorError(null) }}
             className="w-full min-h-9 rounded-md border border-slate-600 bg-slate-800 px-2 text-xs text-slate-100"

@@ -145,7 +145,7 @@ export default function LayoutEditorPage() {
     selectedDeviceTemplate, setSelectedDeviceTemplate,
     addItem: async (...args) => { await addItemRaw(...args) },
     addPanelLayoutItem: async (...args) => { await addPanelLayoutItemRaw(...args) },
-    moveItem, removeItem, updateItemDetails,
+    moveItem, updateItemDetails,
     getPlacementIssue, haptic,
   })
 
@@ -373,7 +373,7 @@ export default function LayoutEditorPage() {
                 <RackSideDepthView
                   rack={rack}
                   items={items}
-                  side={viewMode as 'left' | 'right'}
+                  side={viewMode === 'left' ? 'left' : 'right'}
                   zoom={zoomFactor}
                   showDeviceDetails={showDeviceNames}
                 />
@@ -522,7 +522,7 @@ export default function LayoutEditorPage() {
               <RackSideDepthView
                 rack={rack}
                 items={items}
-                side={viewMode as 'left' | 'right'}
+                side={viewMode === 'left' ? 'left' : 'right'}
                 showDeviceDetails={showDeviceNames}
                 compact
               />

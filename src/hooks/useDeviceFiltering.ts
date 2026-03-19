@@ -79,10 +79,11 @@ export function useDeviceFiltering(
     [libraryDevices],
   )
 
-  const filteredDevices = useMemo(
-    () => filterDevicesBySearch(filterDevicesByBrand(filterDevicesByCategory(libraryDevices, selectedCategoryId), selectedBrand), searchQuery),
-    [libraryDevices, selectedCategoryId, selectedBrand, searchQuery],
-  )
+  const filteredDevices = useMemo(() => {
+    const byCategory = filterDevicesByCategory(libraryDevices, selectedCategoryId)
+    const byBrand = filterDevicesByBrand(byCategory, selectedBrand)
+    return filterDevicesBySearch(byBrand, searchQuery)
+  }, [libraryDevices, selectedCategoryId, selectedBrand, searchQuery])
 
   useEffect(() => {
     if (!selectedDeviceTemplate) return

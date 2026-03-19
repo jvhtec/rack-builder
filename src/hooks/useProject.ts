@@ -28,7 +28,7 @@ export function useProject(projectId: string | undefined) {
 
       if (projectError || !data) {
         setProject(null)
-        setError('Project not found')
+        setError(projectError?.message ?? 'Project not found')
         setLoading(false)
         return
       }

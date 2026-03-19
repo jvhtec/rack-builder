@@ -94,7 +94,7 @@ export function useMobileItemEditor(params: {
     try {
       await updateItemDetails(selectedItemToMove, {
         custom_name: mobileNameDraft.trim() || null,
-        notes: mobileNotesDraft,
+        notes: mobileNotesDraft.trim(),
         rack_ear_offset_mm: normalizedOffset,
       })
       setMobileEditorError(null)

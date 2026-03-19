@@ -29,6 +29,7 @@ export function useResponsiveLayout() {
 
   useEffect(() => {
     const mq = window.matchMedia('(orientation: portrait)')
+    setIsPortrait(mq.matches)
     const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)

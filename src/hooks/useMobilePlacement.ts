@@ -16,7 +16,6 @@ interface UseMobilePlacementParams {
   addItem: (deviceId: string, startU: number, facing: DeviceFacing, rackUnits: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => Promise<void>
   addPanelLayoutItem: (panelLayoutId: string, startU: number, facing: DeviceFacing, heightRu: number, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => Promise<void>
   moveItem: (itemId: string, newStartU: number, facing: DeviceFacing, preferredLane?: 0 | 1, preferredSubLane?: 0 | 1) => Promise<void>
-  removeItem: (itemId: string) => Promise<void>
   updateItemDetails: (itemId: string, updates: Partial<{ notes: string; custom_name: string | null; force_full_width: boolean; rack_ear_offset_mm: number }>) => Promise<void>
   getPlacementIssue: (
     slotU: number, rackUnits: number, isHalfRack: boolean, forceFullWidth: boolean,
@@ -61,11 +60,9 @@ export function useMobilePlacement(params: UseMobilePlacementParams) {
           panelLayoutId, startU, facing, panelLayout.height_ru,
           preferredLane, preferredSubLane,
         )
-        setPlacementErrorHint(null)
         return
       }
       await addItem(deviceId, startU, facing, rackUnits, preferredLane, preferredSubLane)
-      setPlacementErrorHint(null)
     } catch (err) {
       console.error('Drop failed:', err)
       showBackendPlacementReject('Placement', err)
@@ -76,7 +73,6 @@ export function useMobilePlacement(params: UseMobilePlacementParams) {
     setPlacementErrorHint(null)
     try {
       await moveItem(itemId, newStartU, facing, preferredLane, preferredSubLane)
-      setPlacementErrorHint(null)
     } catch (err) {
       console.error('Move failed:', err)
       showBackendPlacementReject('Move', err)

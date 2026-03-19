@@ -86,7 +86,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
     updateSelectedPortLabel, removeSelectedPort,
   } = usePanelGridPlacement({
     panel, rows, ports,
-    setPorts: (updater) => setPorts(updater),
+    setPorts,
     facing, connectorById,
     selectedConnectorId, setSelectedConnectorId,
     selectedPortId, setSelectedPortId,
