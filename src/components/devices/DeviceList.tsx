@@ -39,7 +39,9 @@ export default function DeviceList({ devices, onEdit, onDelete, onToggleFavorite
                 <img
                   src={thumbUrl}
                   alt={`${device.brand} ${device.model}`}
-                  className="w-full h-24 object-contain bg-gray-100 dark:bg-gray-900/50 rounded"
+                  className={`w-full h-24 object-contain bg-gray-100 dark:bg-gray-900/50 rounded ${
+                    device.invert_image_in_dark_mode ? 'dark:invert' : ''
+                  }`}
                 />
               ) : (
                 <div className="w-full h-24 bg-gray-100 dark:bg-gray-900/50 rounded flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs">

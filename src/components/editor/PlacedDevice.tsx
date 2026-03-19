@@ -159,6 +159,7 @@ export default function PlacedDevice({
             src={imageSrc}
             alt={label}
             draggable={false}
+            className={item.device.invert_image_in_dark_mode ? 'rack-device-image--invert-in-dark' : undefined}
           />
         ) : (
           <div className="rack-device-fallback">No Image</div>

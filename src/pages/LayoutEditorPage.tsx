@@ -420,6 +420,7 @@ export default function LayoutEditorPage() {
     is_half_rack: false,
     category_id: PANEL_LIBRARY_CATEGORY_ID,
     fav: false,
+    invert_image_in_dark_mode: false,
     category: {
       id: PANEL_LIBRARY_CATEGORY_ID,
       name: PANEL_LIBRARY_CATEGORY_NAME,
