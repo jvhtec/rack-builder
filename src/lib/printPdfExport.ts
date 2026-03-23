@@ -139,26 +139,25 @@ function prunePdfClone(documentClone: Document, clonedSheet: HTMLElement) {
 const MODERN_COLOR_RE = /oklch\([^)]*\)|oklab\([^)]*\)/gi
 
 /**
- * Convert oklch()/oklab() CSS color values to sRGB hex so that html2canvas
- * (which does not support modern CSS color functions) can parse them.
+ * Temporarily rewrite oklch()/oklab() in the **live** document's stylesheets
+ * to sRGB hex so that html2canvas (which cannot parse modern CSS colour
+ * functions) inherits clean values when it clones the DOM.
  *
- * Uses the browser's canvas 2D context as a colour converter: assigning a
- * CSS colour string to `ctx.fillStyle` causes the browser to resolve it
- * to an sRGB hex string automatically.
+ * Modifying the original document before cloning is the only reliable
+ * strategy because:
+ *  - Linked stylesheets (<link>) may not be accessible via CSSOM in the
+ *    html2canvas clone (the clone's sheets haven't loaded yet).
+ *  - Pseudo-elements (::before, ::after) and CSS custom properties can
+ *    carry oklch/oklab but can't be patched via inline style overrides.
  *
- * Three sources are patched:
- * 1. Linked stylesheets (<link>) – read via CSSOM, replaced with inline
- *    <style> elements containing rewritten CSS text.
- * 2. Inline <style> elements – textContent is rewritten in-place.
- * 3. Inline style attributes – scanned via querySelectorAll('[style]')
- *    (no getComputedStyle, so this is fast).
+ * Returns a cleanup function that restores every modified stylesheet.
  */
-function normalizeModernColors(documentClone: Document) {
+function applyColorNormalization(): () => void {
   const canvas = document.createElement('canvas')
   canvas.width = 1
   canvas.height = 1
   const ctx = canvas.getContext('2d')
-  if (!ctx) return
+  if (!ctx) return () => {}
   const safeCtx = ctx
 
   function toSrgb(color: string): string {
@@ -171,44 +170,57 @@ function normalizeModernColors(documentClone: Document) {
     return text.replace(MODERN_COLOR_RE, (match) => toSrgb(match))
   }
 
-  // 1. Rewrite linked stylesheets via CSSOM.  Tailwind v4 compiles to a
-  //    bundled CSS file loaded via <link>; html2canvas parses these and
-  //    chokes on oklch/oklab.  We serialise the rules, rewrite colours,
-  //    and replace the <link> with an inline <style>.
-  const win = documentClone.defaultView
-  for (const sheet of Array.from(documentClone.styleSheets)) {
+  const cleanups: Array<() => void> = []
+
+  for (const sheet of Array.from(document.styleSheets)) {
     if (!sheet.ownerNode) continue
-    const isLink = win
-      ? sheet.ownerNode instanceof win.HTMLLinkElement
-      : sheet.ownerNode.nodeName === 'LINK'
-    if (!isLink) continue
     try {
       let cssText = ''
       for (const rule of sheet.cssRules) {
         cssText += rule.cssText + '\n'
       }
-      if (MODERN_COLOR_RE.test(cssText)) {
-        MODERN_COLOR_RE.lastIndex = 0
-        const inlineStyle = documentClone.createElement('style')
-        inlineStyle.textContent = replaceModernColors(cssText)
-        sheet.ownerNode.replaceWith(inlineStyle)
-      }
+      if (!MODERN_COLOR_RE.test(cssText)) continue
+      MODERN_COLOR_RE.lastIndex = 0
+
+      // Disable the original sheet and insert a rewritten <style> next to it.
+      // This preserves rule order / specificity while swapping colours.
+      sheet.disabled = true
+      const replacement = document.createElement('style')
+      replacement.textContent = replaceModernColors(cssText)
+      sheet.ownerNode.parentNode!.insertBefore(replacement, sheet.ownerNode)
+
+      cleanups.push(() => {
+        sheet.disabled = false
+        replacement.remove()
+      })
     } catch {
       // Cross-origin stylesheet – cannot read rules, skip.
     }
   }
 
-  // 2. Rewrite <style> elements (e.g. CSS-in-JS, Vite injected styles).
-  for (const style of documentClone.querySelectorAll('style')) {
-    if (style.textContent && MODERN_COLOR_RE.test(style.textContent)) {
-      MODERN_COLOR_RE.lastIndex = 0
-      style.textContent = replaceModernColors(style.textContent)
-    }
+  return () => cleanups.forEach((fn) => fn())
+}
+
+/**
+ * Patch any remaining oklch/oklab in inline style attributes on the
+ * html2canvas clone (fast – only touches elements with a style attr).
+ */
+function normalizeCloneInlineStyles(documentClone: Document) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1
+  canvas.height = 1
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  const safeCtx = ctx
+
+  function replaceModernColors(text: string): string {
+    return text.replace(MODERN_COLOR_RE, (match) => {
+      safeCtx.fillStyle = '#000000'
+      safeCtx.fillStyle = match
+      return safeCtx.fillStyle
+    })
   }
 
-  // 3. Rewrite inline style attributes – much faster than iterating every
-  //    element with getComputedStyle; only touches elements that actually
-  //    have a style attribute.
   for (const el of documentClone.querySelectorAll('[style]')) {
     const raw = el.getAttribute('style')
     if (raw && MODERN_COLOR_RE.test(raw)) {
@@ -328,6 +340,12 @@ async function renderAtScale({
     putOnlyUsedFonts: true,
   })
 
+  // Rewrite oklch/oklab in the live document's stylesheets so that
+  // html2canvas clones already-normalised CSS (covers <link> sheets,
+  // pseudo-elements, and CSS custom properties).
+  const restoreColors = applyColorNormalization()
+
+  try {
   for (let index = 0; index < sheets.length; index += 1) {
     const pageNumber = index + 1
     onProgress?.({
@@ -345,7 +363,7 @@ async function renderAtScale({
       ignoreElements: shouldIgnorePdfCloneElement,
       onclone: (documentClone, clonedSheet) => {
         prunePdfClone(documentClone, clonedSheet)
-        normalizeModernColors(documentClone)
+        normalizeCloneInlineStyles(documentClone)
       },
       useCORS: true,
       allowTaint: false,
@@ -377,6 +395,9 @@ async function renderAtScale({
   })
 
   return pdf.output('blob')
+  } finally {
+    restoreColors()
+  }
 }
 
 async function loadPdfLibraries() {
