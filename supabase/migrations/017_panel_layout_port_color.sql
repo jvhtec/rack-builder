@@ -1,5 +1,6 @@
 -- Add optional color column to panel_layout_ports
-alter table panel_layout_ports add column color text;
+alter table panel_layout_ports add column color text
+  check (color is null or color ~ '^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$');
 
 -- Update rpc_save_panel_layout to include color
 create or replace function rpc_save_panel_layout(
