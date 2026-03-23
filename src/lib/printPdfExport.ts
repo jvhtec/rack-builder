@@ -29,7 +29,7 @@ const SHEET_SELECTOR = '.layout-print-sheet'
 const EXPORT_IGNORE_SELECTORS = ['.layout-print-toolbar', '[data-pdf-export-ignore="true"]']
 const DEFAULT_FILE_NAME = 'rack-builder-export.pdf'
 let pdfLibrariesPromise: Promise<{
-  html2canvas: typeof import('html2canvas').default
+  html2canvas: typeof import('html2canvas-pro').default
   jsPDF: typeof import('jspdf').jsPDF
 }> | null = null
 
@@ -131,116 +131,9 @@ function shouldIgnorePdfCloneElement(element: Element): boolean {
   return EXPORT_IGNORE_SELECTORS.some((selector) => element.matches(selector))
 }
 
-/**
- * Convert an oklab() color value to an rgb()/rgba() string that html2canvas
- * can parse.  Returns `null` when the input cannot be understood.
- *
- * Accepts the inner arguments of `oklab(...)`, e.g.:
- *   "0.5 0.02 -0.03"          → rgb(...)
- *   "50% 0.02 -0.03 / 0.8"   → rgba(... , 0.8)
- *   "17.7638% -2.23517e-8 0/.3" → rgba(... , 0.3)
- */
-function oklabToRgba(inner: string): string | null {
-  const parts = inner.trim().split('/')
-  const tokens = parts[0].trim().split(/\s+/)
-  if (tokens.length < 3) return null
-
-  let L = parseFloat(tokens[0])
-  const a = parseFloat(tokens[1])
-  const b = parseFloat(tokens[2])
-  if (!Number.isFinite(L) || !Number.isFinite(a) || !Number.isFinite(b)) return null
-
-  if (tokens[0].endsWith('%')) L /= 100
-
-  // OKLab → linear-light sRGB (via LMS intermediary)
-  const l_ = L + 0.3963377774 * a + 0.2158037573 * b
-  const m_ = L - 0.1055613458 * a - 0.0638541728 * b
-  const s_ = L - 0.0894841775 * a - 1.291485548 * b
-
-  const l3 = l_ * l_ * l_
-  const m3 = m_ * m_ * m_
-  const s3 = s_ * s_ * s_
-
-  const rLin = +4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3
-  const gLin = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3
-  const bLin = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3
-
-  const gamma = (c: number): number => {
-    const v = Math.max(0, Math.min(1, c))
-    return Math.round(
-      (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055) * 255,
-    )
-  }
-
-  const ri = gamma(rLin)
-  const gi = gamma(gLin)
-  const bi = gamma(bLin)
-
-  const alphaPart = parts[1]?.trim()
-  if (alphaPart !== undefined && alphaPart !== '') {
-    const alphaVal = parseFloat(alphaPart)
-    if (Number.isFinite(alphaVal)) return `rgba(${ri}, ${gi}, ${bi}, ${alphaVal})`
-  }
-
-  return `rgb(${ri}, ${gi}, ${bi})`
-}
-
-/**
- * Rewrite CSS text so that html2canvas (which does not understand OKLab /
- * `color-mix`) can render the document.
- *
- * 1. Strips `@supports` blocks that upgrade hex fallbacks to `color-mix(in oklab …)`.
- * 2. Converts bare `oklab(…)` values to `rgb()`/`rgba()`.
- * 3. Simplifies gradient interpolation hints (`to bottom in oklab` → `to bottom`).
- */
-function rewriteOklabInCss(css: string): string {
-  if (!css.includes('oklab')) return css
-
-  // 1. Remove @supports blocks that wrap color-mix(in oklab …) overrides.
-  //    Tailwind v4 always emits a hex fallback *before* these blocks, so
-  //    dropping them is safe.
-  css = css.replace(
-    /@supports\s*\([^)]*color-mix[^)]*\)\s*\{[^{}]*\{[^}]*\}\s*\}/g,
-    '',
-  )
-
-  // 2. Replace bare oklab() values with sRGB equivalents.
-  css = css.replace(/oklab\(([^)]+)\)/g, (_match, args: string) => {
-    return oklabToRgba(args) ?? `rgb(0, 0, 0)`
-  })
-
-  // 3. Strip "in oklab" from gradient position strings.
-  css = css.replace(
-    /\b(to\s+(?:top|bottom|left|right)(?:\s+(?:top|bottom|left|right))?)\s+in\s+oklab\b/g,
-    '$1',
-  )
-
-  return css
-}
-
-/**
- * Walk all `<style>` elements and inline `style` attributes in the cloned
- * document, converting any oklab-based colors to sRGB so that html2canvas
- * can parse them.
- */
-function neutralizeOklabColors(documentClone: Document): void {
-  for (const styleEl of Array.from(documentClone.querySelectorAll('style'))) {
-    const text = styleEl.textContent ?? ''
-    if (!text.includes('oklab')) continue
-    styleEl.textContent = rewriteOklabInCss(text)
-  }
-
-  for (const el of Array.from(documentClone.querySelectorAll<HTMLElement>('[style]'))) {
-    const style = el.getAttribute('style') ?? ''
-    if (!style.includes('oklab')) continue
-    el.setAttribute('style', rewriteOklabInCss(style))
-  }
-}
-
 function prunePdfClone(documentClone: Document, clonedSheet: HTMLElement) {
   const clonedRoot = clonedSheet.closest(`.${EXPORT_ROOT_CLASS}`) ?? documentClone
   clonedRoot.querySelectorAll(EXPORT_IGNORE_SELECTORS.join(', ')).forEach((node) => node.remove())
-  neutralizeOklabColors(documentClone)
 }
 
 async function triggerPdfDownload(blob: Blob, fileName: string): Promise<void> {
@@ -405,7 +298,7 @@ async function renderAtScale({
 
 async function loadPdfLibraries() {
   if (!pdfLibrariesPromise) {
-    pdfLibrariesPromise = Promise.all([import('html2canvas'), import('jspdf')]).then(
+    pdfLibrariesPromise = Promise.all([import('html2canvas-pro'), import('jspdf')]).then(
       ([html2canvasModule, jsPdfModule]) => ({
         html2canvas: html2canvasModule.default,
         jsPDF: jsPdfModule.jsPDF,
