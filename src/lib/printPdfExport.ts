@@ -138,25 +138,6 @@ function prunePdfClone(documentClone: Document, clonedSheet: HTMLElement) {
 
 const MODERN_COLOR_RE = /oklch\([^)]*\)|oklab\([^)]*\)/gi
 
-const COLOR_PROPERTIES = [
-  'color',
-  'background-color',
-  'border-color',
-  'border-top-color',
-  'border-right-color',
-  'border-bottom-color',
-  'border-left-color',
-  'outline-color',
-  'text-decoration-color',
-]
-
-const COMPLEX_COLOR_PROPERTIES = [
-  'box-shadow',
-  'background',
-  'background-image',
-  'text-shadow',
-]
-
 /**
  * Convert oklch()/oklab() CSS color values to sRGB hex so that html2canvas
  * (which does not support modern CSS color functions) can parse them.
@@ -164,6 +145,13 @@ const COMPLEX_COLOR_PROPERTIES = [
  * Uses the browser's canvas 2D context as a colour converter: assigning a
  * CSS colour string to `ctx.fillStyle` causes the browser to resolve it
  * to an sRGB hex string automatically.
+ *
+ * Three sources are patched:
+ * 1. Linked stylesheets (<link>) – read via CSSOM, replaced with inline
+ *    <style> elements containing rewritten CSS text.
+ * 2. Inline <style> elements – textContent is rewritten in-place.
+ * 3. Inline style attributes – scanned via querySelectorAll('[style]')
+ *    (no getComputedStyle, so this is fast).
  */
 function normalizeModernColors(documentClone: Document) {
   const canvas = document.createElement('canvas')
@@ -179,44 +167,53 @@ function normalizeModernColors(documentClone: Document) {
     return safeCtx.fillStyle
   }
 
-  function replaceModernColorsInValue(value: string): string {
-    return value.replace(MODERN_COLOR_RE, (match) => toSrgb(match))
+  function replaceModernColors(text: string): string {
+    return text.replace(MODERN_COLOR_RE, (match) => toSrgb(match))
   }
 
-  // 1. Rewrite oklch()/oklab() inside <style> elements so html2canvas's
-  //    internal CSS parser never encounters unsupported color functions.
+  // 1. Rewrite linked stylesheets via CSSOM.  Tailwind v4 compiles to a
+  //    bundled CSS file loaded via <link>; html2canvas parses these and
+  //    chokes on oklch/oklab.  We serialise the rules, rewrite colours,
+  //    and replace the <link> with an inline <style>.
+  const win = documentClone.defaultView
+  for (const sheet of Array.from(documentClone.styleSheets)) {
+    if (!sheet.ownerNode) continue
+    const isLink = win
+      ? sheet.ownerNode instanceof win.HTMLLinkElement
+      : sheet.ownerNode.nodeName === 'LINK'
+    if (!isLink) continue
+    try {
+      let cssText = ''
+      for (const rule of sheet.cssRules) {
+        cssText += rule.cssText + '\n'
+      }
+      if (MODERN_COLOR_RE.test(cssText)) {
+        MODERN_COLOR_RE.lastIndex = 0
+        const inlineStyle = documentClone.createElement('style')
+        inlineStyle.textContent = replaceModernColors(cssText)
+        sheet.ownerNode.replaceWith(inlineStyle)
+      }
+    } catch {
+      // Cross-origin stylesheet – cannot read rules, skip.
+    }
+  }
+
+  // 2. Rewrite <style> elements (e.g. CSS-in-JS, Vite injected styles).
   for (const style of documentClone.querySelectorAll('style')) {
     if (style.textContent && MODERN_COLOR_RE.test(style.textContent)) {
       MODERN_COLOR_RE.lastIndex = 0
-      style.textContent = replaceModernColorsInValue(style.textContent)
+      style.textContent = replaceModernColors(style.textContent)
     }
   }
 
-  // 2. Patch computed inline styles on individual elements for any
-  //    remaining oklch/oklab values (e.g. from inline style attributes).
-  const elements = documentClone.querySelectorAll('*')
-  const win = documentClone.defaultView
-  if (!win) return
-
-  for (const el of elements) {
-    if (!(el instanceof win.HTMLElement)) continue
-
-    const computed = win.getComputedStyle(el)
-
-    for (const prop of COLOR_PROPERTIES) {
-      const val = computed.getPropertyValue(prop)
-      if (val && MODERN_COLOR_RE.test(val)) {
-        MODERN_COLOR_RE.lastIndex = 0
-        el.style.setProperty(prop, toSrgb(val))
-      }
-    }
-
-    for (const prop of COMPLEX_COLOR_PROPERTIES) {
-      const val = computed.getPropertyValue(prop)
-      if (val && MODERN_COLOR_RE.test(val)) {
-        MODERN_COLOR_RE.lastIndex = 0
-        el.style.setProperty(prop, replaceModernColorsInValue(val))
-      }
+  // 3. Rewrite inline style attributes – much faster than iterating every
+  //    element with getComputedStyle; only touches elements that actually
+  //    have a style attribute.
+  for (const el of documentClone.querySelectorAll('[style]')) {
+    const raw = el.getAttribute('style')
+    if (raw && MODERN_COLOR_RE.test(raw)) {
+      MODERN_COLOR_RE.lastIndex = 0
+      el.setAttribute('style', replaceModernColors(raw))
     }
   }
 }
