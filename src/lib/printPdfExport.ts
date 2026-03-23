@@ -379,6 +379,11 @@ async function loadPdfLibraries() {
         jsPDF: jsPdfModule.jsPDF,
       }),
     )
+    // If the dynamic import fails (e.g. network error), clear the cached
+    // promise so a subsequent call can retry instead of replaying the failure.
+    pdfLibrariesPromise.catch(() => {
+      pdfLibrariesPromise = null
+    })
   }
 
   return pdfLibrariesPromise
@@ -429,6 +434,11 @@ export async function exportPrintSheetsToPdf({
     })
 
     await waitForFontsAndPaint()
+
+    // Eagerly load PDF libraries before the scale-fallback loop so that
+    // import failures (network errors, missing chunks) surface immediately
+    // rather than being silently retried at every quality level.
+    await loadPdfLibraries()
 
     let lastError: unknown = null
     for (const scale of scales) {
