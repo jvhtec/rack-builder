@@ -263,6 +263,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
               span_w: port.span_w,
               span_h: port.span_h,
               label: port.label ?? null,
+              color: port.color ?? null,
               created_at: panel.created_at,
               updated_at: panel.updated_at,
             })),
@@ -316,6 +317,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
           span_w: port.span_w,
           span_h: port.span_h,
           label: port.label,
+          color: port.color,
         })),
       }
       localStorage.setItem(draftStorageKey, JSON.stringify(draft))
@@ -380,6 +382,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
       span_w: connector.grid_width,
       span_h: connector.grid_height,
       label: null,
+      color: null,
       created_at: panel.created_at,
       updated_at: panel.updated_at,
     }
@@ -443,6 +446,16 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
     setDirty(true)
   }
 
+  const updateSelectedPortColor = (color: string | null) => {
+    if (!selectedPort) return
+    setPorts((current) => current.map((port) => (
+      port.id === selectedPort.id
+        ? { ...port, color }
+        : port
+    )))
+    setDirty(true)
+  }
+
   const removeSelectedPort = () => {
     if (!selectedPort) return
     const remaining = ports.filter((port) => port.id !== selectedPort.id)
@@ -486,6 +499,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
           span_w: port.span_w,
           span_h: port.span_h,
           label: port.label ?? null,
+          color: port.color ?? null,
         })),
       )
       localStorage.removeItem(draftStorageKey)
@@ -872,6 +886,26 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
                       onChange={updateSelectedPortLabel}
                       placeholder={selectedPortConnector?.name ?? 'Label'}
                     />
+                    <div>
+                      <DarkLabel>Port color</DarkLabel>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={selectedPort.color ?? '#0f172a'}
+                          onChange={(e) => updateSelectedPortColor(e.target.value)}
+                          className="h-10 w-14 cursor-pointer rounded border border-slate-700 bg-transparent"
+                        />
+                        {selectedPort.color && (
+                          <button
+                            type="button"
+                            onClick={() => updateSelectedPortColor(null)}
+                            className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-slate-400 hover:text-slate-200"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={() => { removeSelectedPort(); setMobileSheet(null) }}
@@ -1173,6 +1207,26 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
                     onChange={updateSelectedPortLabel}
                     placeholder={connectorById.get(selectedPort.connector_id)?.name ?? 'Label'}
                   />
+                  <div>
+                    <DarkLabel>Port color</DarkLabel>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={selectedPort.color ?? '#0f172a'}
+                        onChange={(e) => updateSelectedPortColor(e.target.value)}
+                        className="h-10 w-14 cursor-pointer rounded border border-slate-700 bg-transparent"
+                      />
+                      {selectedPort.color && (
+                        <button
+                          type="button"
+                          onClick={() => updateSelectedPortColor(null)}
+                          className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-400 hover:text-slate-200"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={removeSelectedPort}

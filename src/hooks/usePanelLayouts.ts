@@ -102,7 +102,7 @@ export function usePanelLayouts(projectId: string | undefined) {
     id: string,
     meta: { name: string; facing: DeviceFacing; has_lacing_bar: boolean; notes: string | null },
     rows: Array<Pick<PanelLayoutRow, 'row_index' | 'hole_count' | 'active_column_map'>>,
-    ports: Array<Pick<PanelLayoutPort, 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label'>>,
+    ports: Array<Pick<PanelLayoutPort, 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label' | 'color'>>,
   ) => {
     const { error: rpcError } = await supabase.rpc('rpc_save_panel_layout', {
       p_id: id,
@@ -122,6 +122,7 @@ export function usePanelLayouts(projectId: string | undefined) {
         span_w: port.span_w,
         span_h: port.span_h,
         label: port.label ?? null,
+        color: port.color ?? null,
       })),
     })
     if (rpcError) throw rpcError
@@ -147,7 +148,7 @@ export function usePanelLayouts(projectId: string | undefined) {
 
   const replacePorts = async (
     panelLayoutId: string,
-    ports: Array<Pick<PanelLayoutPort, 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label'>>,
+    ports: Array<Pick<PanelLayoutPort, 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label' | 'color'>>,
   ) => {
     const { error: rpcError } = await supabase.rpc('rpc_replace_panel_layout_ports', {
       p_panel_layout_id: panelLayoutId,
@@ -158,6 +159,7 @@ export function usePanelLayouts(projectId: string | undefined) {
         span_w: port.span_w,
         span_h: port.span_h,
         label: port.label ?? null,
+        color: port.color ?? null,
       })),
     })
     if (rpcError) throw rpcError

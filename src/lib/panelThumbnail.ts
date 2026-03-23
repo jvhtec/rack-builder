@@ -78,7 +78,7 @@ export function buildPanelThumbnailSvg(
     if (!row) return ''
     const { x, y, width: portWidth, height: portHeight } = getPortGeometry(port, row, cellWidth, rowHeight, facing)
     const connector = connectorById.get(port.connector_id)
-    const fill = CATEGORY_COLORS[connector?.category ?? 'other'] ?? '#374151'
+    const fill = port.color ?? CATEGORY_COLORS[connector?.category ?? 'other'] ?? '#374151'
     const label = port.label?.trim() || connector?.name || `Unknown (${port.connector_id})`
     const imageUrl = getDeviceImageUrl(connector?.image_path ?? null, 'connector-images')
     const bodyX = innerPad + x + 2
