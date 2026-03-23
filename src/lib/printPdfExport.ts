@@ -183,6 +183,17 @@ function normalizeModernColors(documentClone: Document) {
     return value.replace(MODERN_COLOR_RE, (match) => toSrgb(match))
   }
 
+  // 1. Rewrite oklch()/oklab() inside <style> elements so html2canvas's
+  //    internal CSS parser never encounters unsupported color functions.
+  for (const style of documentClone.querySelectorAll('style')) {
+    if (style.textContent && MODERN_COLOR_RE.test(style.textContent)) {
+      MODERN_COLOR_RE.lastIndex = 0
+      style.textContent = replaceModernColorsInValue(style.textContent)
+    }
+  }
+
+  // 2. Patch computed inline styles on individual elements for any
+  //    remaining oklch/oklab values (e.g. from inline style attributes).
   const elements = documentClone.querySelectorAll('*')
   const win = documentClone.defaultView
   if (!win) return
