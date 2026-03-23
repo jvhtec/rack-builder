@@ -46,6 +46,7 @@ export interface LayoutItemRow {
       span_w: number
       span_h: number
       label: string | null
+      color: string | null
       created_at: string
       updated_at: string
     }>
@@ -94,6 +95,7 @@ function mapPanelLayout(raw: NonNullable<LayoutItemRow['panel_layout']>): PanelL
     span_w: port.span_w,
     span_h: port.span_h,
     label: port.label,
+    color: port.color ?? null,
     created_at: port.created_at,
     updated_at: port.updated_at,
   }))

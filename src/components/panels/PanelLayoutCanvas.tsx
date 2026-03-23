@@ -59,7 +59,10 @@ function PortVisual({ port, connectorById }: { port: PanelLayoutPort; connectorB
   )
 }
 
-function portStyle(leftPct: number, yPct: number, widthPct: number, heightPct: number, active: boolean, opacity = 1): React.CSSProperties {
+function portStyle(leftPct: number, yPct: number, widthPct: number, heightPct: number, active: boolean, opacity = 1, color?: string | null): React.CSSProperties {
+  const bg = color
+    ? `linear-gradient(to bottom, ${color}dd, ${color}cc)`
+    : 'linear-gradient(to bottom, rgba(15,23,42,0.92), rgba(2,6,23,0.96))'
   return {
     left: `${leftPct}%`,
     top: `${yPct}%`,
@@ -70,7 +73,7 @@ function portStyle(leftPct: number, yPct: number, widthPct: number, heightPct: n
     boxShadow: active
       ? '0 0 0 2px rgba(251,191,36,0.45), 0 8px 14px rgba(0,0,0,0.55)'
       : '0 6px 12px rgba(0,0,0,0.55)',
-    background: 'linear-gradient(to bottom, rgba(15,23,42,0.92), rgba(2,6,23,0.96))',
+    background: bg,
   }
 }
 
@@ -126,7 +129,7 @@ function DraggablePort({
       onClick={() => onPortClick?.(port.id)}
       className="absolute z-20 rounded-md border transition-all cursor-grab active:cursor-grabbing hover:brightness-110"
       style={{
-        ...portStyle(leftPct, yPct, widthPct, heightPct, active, isDragging ? 0.4 : 1),
+        ...portStyle(leftPct, yPct, widthPct, heightPct, active, isDragging ? 0.4 : 1, port.color),
         touchAction: 'none',
         WebkitUserSelect: 'none',
         userSelect: 'none',
@@ -160,7 +163,7 @@ function StaticPort({
   return (
     <div
       className="absolute z-20 rounded-md border"
-      style={portStyle(leftPct, yPct, widthPct, heightPct, active)}
+      style={portStyle(leftPct, yPct, widthPct, heightPct, active, 1, port.color)}
     >
       <PortVisual port={port} connectorById={connectorById} />
     </div>

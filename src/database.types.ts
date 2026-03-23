@@ -332,6 +332,7 @@ export interface Database {
           span_w: number
           span_h: number
           label: string | null
+          color: string | null
           created_at: string
           updated_at: string
         }
@@ -344,6 +345,7 @@ export interface Database {
           span_w?: number
           span_h?: number
           label?: string | null
+          color?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -356,6 +358,7 @@ export interface Database {
           span_w?: number
           span_h?: number
           label?: string | null
+          color?: string | null
           created_at?: string
           updated_at?: string
         }

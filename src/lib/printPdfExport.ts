@@ -136,6 +136,105 @@ function prunePdfClone(documentClone: Document, clonedSheet: HTMLElement) {
   clonedRoot.querySelectorAll(EXPORT_IGNORE_SELECTORS.join(', ')).forEach((node) => node.remove())
 }
 
+const MODERN_COLOR_RE = /oklch\([^)]*\)|oklab\([^)]*\)/gi
+
+/**
+ * Temporarily rewrite oklch()/oklab() in the **live** document's stylesheets
+ * to sRGB hex so that html2canvas (which cannot parse modern CSS colour
+ * functions) inherits clean values when it clones the DOM.
+ *
+ * Modifying the original document before cloning is the only reliable
+ * strategy because:
+ *  - Linked stylesheets (<link>) may not be accessible via CSSOM in the
+ *    html2canvas clone (the clone's sheets haven't loaded yet).
+ *  - Pseudo-elements (::before, ::after) and CSS custom properties can
+ *    carry oklch/oklab but can't be patched via inline style overrides.
+ *
+ * Returns a cleanup function that restores every modified stylesheet.
+ */
+function applyColorNormalization(): () => void {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1
+  canvas.height = 1
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return () => {}
+  const safeCtx = ctx
+
+  function toSrgb(color: string): string {
+    safeCtx.fillStyle = '#000000'
+    safeCtx.fillStyle = color
+    return safeCtx.fillStyle
+  }
+
+  function replaceModernColors(text: string): string {
+    return text.replace(MODERN_COLOR_RE, (match) => toSrgb(match))
+  }
+
+  const cleanups: Array<() => void> = []
+
+  for (const sheet of Array.from(document.styleSheets)) {
+    if (!sheet.ownerNode) continue
+    try {
+      let cssText = ''
+      for (const rule of sheet.cssRules) {
+        cssText += rule.cssText + '\n'
+      }
+      if (!MODERN_COLOR_RE.test(cssText)) continue
+      MODERN_COLOR_RE.lastIndex = 0
+
+      // Physically replace the owner node (<link> or <style>) with a
+      // rewritten <style>.  We cannot just set sheet.disabled = true
+      // because that is a CSSOM property — when html2canvas clones the
+      // DOM into its iframe the cloned <link> gets a *new* non-disabled
+      // CSSStyleSheet that re-fetches the original oklch/oklab CSS.
+      const ownerNode = sheet.ownerNode as Element
+      const parent = ownerNode.parentNode
+      if (!parent) continue
+
+      const replacement = document.createElement('style')
+      replacement.textContent = replaceModernColors(cssText)
+      parent.replaceChild(replacement, ownerNode)
+
+      cleanups.push(() => {
+        parent.replaceChild(ownerNode, replacement)
+      })
+    } catch {
+      // Cross-origin stylesheet – cannot read rules, skip.
+    }
+  }
+
+  return () => cleanups.forEach((fn) => fn())
+}
+
+/**
+ * Patch any remaining oklch/oklab in inline style attributes on the
+ * html2canvas clone (fast – only touches elements with a style attr).
+ */
+function normalizeCloneInlineStyles(documentClone: Document) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1
+  canvas.height = 1
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  const safeCtx = ctx
+
+  function replaceModernColors(text: string): string {
+    return text.replace(MODERN_COLOR_RE, (match) => {
+      safeCtx.fillStyle = '#000000'
+      safeCtx.fillStyle = match
+      return safeCtx.fillStyle
+    })
+  }
+
+  for (const el of documentClone.querySelectorAll('[style]')) {
+    const raw = el.getAttribute('style')
+    if (raw && MODERN_COLOR_RE.test(raw)) {
+      MODERN_COLOR_RE.lastIndex = 0
+      el.setAttribute('style', replaceModernColors(raw))
+    }
+  }
+}
+
 async function triggerPdfDownload(blob: Blob, fileName: string): Promise<void> {
   // Web Share API requires a recent user activation. After a long async
   // render pipeline the gesture is typically expired, so we skip it and
@@ -246,6 +345,12 @@ async function renderAtScale({
     putOnlyUsedFonts: true,
   })
 
+  // Rewrite oklch/oklab in the live document's stylesheets so that
+  // html2canvas clones already-normalised CSS (covers <link> sheets,
+  // pseudo-elements, and CSS custom properties).
+  const restoreColors = applyColorNormalization()
+
+  try {
   for (let index = 0; index < sheets.length; index += 1) {
     const pageNumber = index + 1
     onProgress?.({
@@ -263,6 +368,7 @@ async function renderAtScale({
       ignoreElements: shouldIgnorePdfCloneElement,
       onclone: (documentClone, clonedSheet) => {
         prunePdfClone(documentClone, clonedSheet)
+        normalizeCloneInlineStyles(documentClone)
       },
       useCORS: true,
       allowTaint: false,
@@ -294,6 +400,9 @@ async function renderAtScale({
   })
 
   return pdf.output('blob')
+  } finally {
+    restoreColors()
+  }
 }
 
 async function loadPdfLibraries() {
@@ -304,6 +413,11 @@ async function loadPdfLibraries() {
         jsPDF: jsPdfModule.jsPDF,
       }),
     )
+    // If the dynamic import fails (e.g. network error), clear the cached
+    // promise so a subsequent call can retry instead of replaying the failure.
+    pdfLibrariesPromise.catch(() => {
+      pdfLibrariesPromise = null
+    })
   }
 
   return pdfLibrariesPromise
@@ -354,6 +468,11 @@ export async function exportPrintSheetsToPdf({
     })
 
     await waitForFontsAndPaint()
+
+    // Eagerly load PDF libraries before the scale-fallback loop so that
+    // import failures (network errors, missing chunks) surface immediately
+    // rather than being silently retried at every quality level.
+    await loadPdfLibraries()
 
     let lastError: unknown = null
     for (const scale of scales) {

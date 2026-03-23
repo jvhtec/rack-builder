@@ -21,6 +21,7 @@ import { CONNECTOR_ITEM_TYPE, type ConnectorDragItem } from '../components/panel
 
 const DRAFT_STORAGE_PREFIX = 'panel-layout-draft'
 const AUTO_HOLE_COUNT = 16
+const DEFAULT_PORT_COLOR = '#0f172a'
 
 interface DraftState {
   name: string
@@ -28,7 +29,7 @@ interface DraftState {
   hasLacingBar: boolean
   notes: string
   rows: Array<Pick<PanelLayoutRow, 'row_index' | 'hole_count' | 'active_column_map'>>
-  ports: Array<Pick<PanelLayoutPort, 'id' | 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label'>>
+  ports: Array<Pick<PanelLayoutPort, 'id' | 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label' | 'color'>>
 }
 
 function normalizeRowsToAutoGrid(
@@ -115,6 +116,41 @@ function DarkSelect({
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
+    </div>
+  )
+}
+
+function PortColorPicker({
+  value,
+  onChange,
+  onReset,
+  resetClassName,
+}: {
+  value: string | null
+  onChange: (color: string) => void
+  onReset: () => void
+  resetClassName?: string
+}) {
+  return (
+    <div>
+      <DarkLabel>Port color</DarkLabel>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value ?? DEFAULT_PORT_COLOR}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-14 cursor-pointer rounded border border-slate-700 bg-transparent"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={onReset}
+            className={resetClassName ?? 'rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-400 hover:text-slate-200'}
+          >
+            Reset
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -263,6 +299,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
               span_w: port.span_w,
               span_h: port.span_h,
               label: port.label ?? null,
+              color: port.color ?? null,
               created_at: panel.created_at,
               updated_at: panel.updated_at,
             })),
@@ -316,6 +353,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
           span_w: port.span_w,
           span_h: port.span_h,
           label: port.label,
+          color: port.color,
         })),
       }
       localStorage.setItem(draftStorageKey, JSON.stringify(draft))
@@ -380,6 +418,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
       span_w: connector.grid_width,
       span_h: connector.grid_height,
       label: null,
+      color: null,
       created_at: panel.created_at,
       updated_at: panel.updated_at,
     }
@@ -443,6 +482,16 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
     setDirty(true)
   }
 
+  const updateSelectedPortColor = (color: string | null) => {
+    if (!selectedPort) return
+    setPorts((current) => current.map((port) => (
+      port.id === selectedPort.id
+        ? { ...port, color }
+        : port
+    )))
+    setDirty(true)
+  }
+
   const removeSelectedPort = () => {
     if (!selectedPort) return
     const remaining = ports.filter((port) => port.id !== selectedPort.id)
@@ -486,6 +535,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
           span_w: port.span_w,
           span_h: port.span_h,
           label: port.label ?? null,
+          color: port.color ?? null,
         })),
       )
       localStorage.removeItem(draftStorageKey)
@@ -872,6 +922,12 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
                       onChange={updateSelectedPortLabel}
                       placeholder={selectedPortConnector?.name ?? 'Label'}
                     />
+                    <PortColorPicker
+                      value={selectedPort.color}
+                      onChange={updateSelectedPortColor}
+                      onReset={() => updateSelectedPortColor(null)}
+                      resetClassName="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-slate-400 hover:text-slate-200"
+                    />
                     <button
                       type="button"
                       onClick={() => { removeSelectedPort(); setMobileSheet(null) }}
@@ -1172,6 +1228,11 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
                     value={selectedPort.label ?? ''}
                     onChange={updateSelectedPortLabel}
                     placeholder={connectorById.get(selectedPort.connector_id)?.name ?? 'Label'}
+                  />
+                  <PortColorPicker
+                    value={selectedPort.color}
+                    onChange={updateSelectedPortColor}
+                    onReset={() => updateSelectedPortColor(null)}
                   />
                   <button
                     type="button"

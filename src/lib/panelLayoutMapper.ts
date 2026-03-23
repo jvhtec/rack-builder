@@ -20,6 +20,7 @@ export interface PanelLayoutPortRecord {
   span_w: number
   span_h: number
   label: string | null
+  color: string | null
   created_at: string
   updated_at: string
 }
@@ -53,6 +54,7 @@ export function mapPanelLayoutPort(record: PanelLayoutPortRecord): PanelLayoutPo
     span_w: record.span_w,
     span_h: record.span_h,
     label: record.label,
+    color: record.color ?? null,
     created_at: record.created_at,
     updated_at: record.updated_at,
   }
