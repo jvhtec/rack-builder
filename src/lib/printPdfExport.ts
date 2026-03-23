@@ -26,6 +26,7 @@ interface PageSizeMm {
 const EXPORT_ROOT_CLASS = 'layout-print-exporting'
 const FORCE_LIGHT_CLASS = 'layout-print-force-light'
 const SHEET_SELECTOR = '.layout-print-sheet'
+const EXPORT_IGNORE_SELECTORS = ['.layout-print-toolbar', '[data-pdf-export-ignore="true"]']
 const DEFAULT_FILE_NAME = 'rack-builder-export.pdf'
 let pdfLibrariesPromise: Promise<{
   html2canvas: typeof import('html2canvas').default
@@ -124,6 +125,15 @@ function toErrorMessage(error: unknown): string {
 function isIosDevice(): boolean {
   return /iP(ad|hone|od)/i.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+function shouldIgnorePdfCloneElement(element: Element): boolean {
+  return EXPORT_IGNORE_SELECTORS.some((selector) => element.matches(selector))
+}
+
+function prunePdfClone(documentClone: Document, clonedSheet: HTMLElement) {
+  const clonedRoot = clonedSheet.closest(`.${EXPORT_ROOT_CLASS}`) ?? documentClone
+  clonedRoot.querySelectorAll(EXPORT_IGNORE_SELECTORS.join(', ')).forEach((node) => node.remove())
 }
 
 async function triggerPdfDownload(blob: Blob, fileName: string): Promise<void> {
@@ -250,6 +260,10 @@ async function renderAtScale({
       scale,
       width: widthPx,
       height: heightPx,
+      ignoreElements: shouldIgnorePdfCloneElement,
+      onclone: (documentClone, clonedSheet) => {
+        prunePdfClone(documentClone, clonedSheet)
+      },
       useCORS: true,
       allowTaint: false,
       imageTimeout: 15000,

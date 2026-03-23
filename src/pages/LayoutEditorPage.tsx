@@ -288,6 +288,9 @@ export default function LayoutEditorPage() {
       { weightKg: 0, powerW: 0 },
     )
   }, [items])
+  const fullProjectExportTitle = panelLayouts.length > 0
+    ? 'Export the project cover, index, rack layouts, and panel layouts as one PDF.'
+    : 'Export the project cover, index, and rack layouts as one PDF.'
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 767px)')
@@ -986,8 +989,7 @@ export default function LayoutEditorPage() {
                   <Button
                     variant="secondary"
                     onClick={() => navigate(`/editor/project/${project.id}/print/all`)}
-                    disabled={layouts.length <= 1}
-                    title={layouts.length <= 1 ? 'Add more layouts to export the full project PDF' : undefined}
+                    title={fullProjectExportTitle}
                   >
                     Export Full Project PDF
                   </Button>
@@ -1625,9 +1627,8 @@ export default function LayoutEditorPage() {
                   </button>
                   <button
                     onClick={() => navigate(`/editor/project/${project.id}/print/all`)}
-                    disabled={layouts.length <= 1}
-                    className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800 disabled:opacity-40"
-                    title={layouts.length <= 1 ? 'Add more layouts to export the full project PDF' : undefined}
+                    className="w-full py-2 rounded-lg border text-sm border-slate-700 bg-slate-800"
+                    title={fullProjectExportTitle}
                   >
                     Export Full Project PDF
                   </button>
