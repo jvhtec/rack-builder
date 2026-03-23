@@ -182,16 +182,21 @@ function applyColorNormalization(): () => void {
       if (!MODERN_COLOR_RE.test(cssText)) continue
       MODERN_COLOR_RE.lastIndex = 0
 
-      // Disable the original sheet and insert a rewritten <style> next to it.
-      // This preserves rule order / specificity while swapping colours.
-      sheet.disabled = true
+      // Physically replace the owner node (<link> or <style>) with a
+      // rewritten <style>.  We cannot just set sheet.disabled = true
+      // because that is a CSSOM property — when html2canvas clones the
+      // DOM into its iframe the cloned <link> gets a *new* non-disabled
+      // CSSStyleSheet that re-fetches the original oklch/oklab CSS.
+      const ownerNode = sheet.ownerNode as Element
+      const parent = ownerNode.parentNode
+      if (!parent) continue
+
       const replacement = document.createElement('style')
       replacement.textContent = replaceModernColors(cssText)
-      sheet.ownerNode.parentNode!.insertBefore(replacement, sheet.ownerNode)
+      parent.replaceChild(replacement, ownerNode)
 
       cleanups.push(() => {
-        sheet.disabled = false
-        replacement.remove()
+        parent.replaceChild(ownerNode, replacement)
       })
     } catch {
       // Cross-origin stylesheet – cannot read rules, skip.
