@@ -131,9 +131,68 @@ function shouldIgnorePdfCloneElement(element: Element): boolean {
   return EXPORT_IGNORE_SELECTORS.some((selector) => element.matches(selector))
 }
 
+/**
+ * Rewrite CSS text to remove color functions that html2canvas-pro cannot parse.
+ *
+ * html2canvas-pro supports oklab/oklch/lab/lch/color, but NOT color-mix().
+ * Tailwind v4 emits `color-mix(in oklab, …)` for opacity variants and wraps
+ * them in `@supports` blocks with hex fallbacks before them.  Stripping these
+ * blocks is safe because the hex fallback is always emitted first.
+ *
+ * Also converts any remaining bare oklab() values and gradient "in oklab"
+ * hints to sRGB equivalents as a safety net.
+ */
+function rewriteUnsupportedColorsInCss(css: string): string {
+  if (!css.includes('oklab') && !css.includes('color-mix')) return css
+
+  // 1. Remove @supports blocks that wrap color-mix overrides – the hex
+  //    fallback emitted before them is sufficient for rendering.
+  css = css.replace(
+    /@supports\s*\([^)]*color-mix[^)]*\)\s*\{[^{}]*\{[^}]*\}\s*\}/g,
+    '',
+  )
+
+  // 2. Replace standalone color-mix() calls with a safe opaque fallback.
+  //    Nested parentheses are handled by matching up to 2 levels deep.
+  css = css.replace(
+    /color-mix\((?:[^()]*|\((?:[^()]*|\([^()]*\))*\))*\)/g,
+    'rgb(0, 0, 0)',
+  )
+
+  // 3. Strip "in oklab" / "in oklch" from gradient interpolation hints.
+  css = css.replace(
+    /\b(to\s+(?:top|bottom|left|right)(?:\s+(?:top|bottom|left|right))?)\s+in\s+ok(?:lab|lch)\b/g,
+    '$1',
+  )
+
+  return css
+}
+
+/**
+ * Walk all `<style>` elements and inline `style` attributes in the cloned
+ * document, stripping unsupported CSS color functions (primarily color-mix)
+ * so that html2canvas-pro can parse them.
+ */
+function neutralizeUnsupportedColors(documentClone: Document): void {
+  for (const styleEl of Array.from(documentClone.querySelectorAll('style'))) {
+    const text = styleEl.textContent ?? ''
+    if (text.includes('oklab') || text.includes('color-mix')) {
+      styleEl.textContent = rewriteUnsupportedColorsInCss(text)
+    }
+  }
+
+  for (const el of Array.from(documentClone.querySelectorAll<HTMLElement>('[style]'))) {
+    const style = el.getAttribute('style') ?? ''
+    if (style.includes('oklab') || style.includes('color-mix')) {
+      el.setAttribute('style', rewriteUnsupportedColorsInCss(style))
+    }
+  }
+}
+
 function prunePdfClone(documentClone: Document, clonedSheet: HTMLElement) {
   const clonedRoot = clonedSheet.closest(`.${EXPORT_ROOT_CLASS}`) ?? documentClone
   clonedRoot.querySelectorAll(EXPORT_IGNORE_SELECTORS.join(', ')).forEach((node) => node.remove())
+  neutralizeUnsupportedColors(documentClone)
 }
 
 async function triggerPdfDownload(blob: Blob, fileName: string): Promise<void> {
