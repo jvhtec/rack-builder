@@ -154,6 +154,7 @@ const COMPLEX_COLOR_PROPERTIES = [
   'box-shadow',
   'background',
   'background-image',
+  'text-shadow',
 ]
 
 /**
@@ -170,11 +171,12 @@ function normalizeModernColors(documentClone: Document) {
   canvas.height = 1
   const ctx = canvas.getContext('2d')
   if (!ctx) return
+  const safeCtx = ctx
 
   function toSrgb(color: string): string {
-    ctx.fillStyle = '#000000'
-    ctx.fillStyle = color
-    return ctx.fillStyle
+    safeCtx.fillStyle = '#000000'
+    safeCtx.fillStyle = color
+    return safeCtx.fillStyle
   }
 
   function replaceModernColorsInValue(value: string): string {

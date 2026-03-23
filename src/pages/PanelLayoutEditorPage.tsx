@@ -28,7 +28,7 @@ interface DraftState {
   hasLacingBar: boolean
   notes: string
   rows: Array<Pick<PanelLayoutRow, 'row_index' | 'hole_count' | 'active_column_map'>>
-  ports: Array<Pick<PanelLayoutPort, 'id' | 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label'>>
+  ports: Array<Pick<PanelLayoutPort, 'id' | 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label' | 'color'>>
 }
 
 function normalizeRowsToAutoGrid(
