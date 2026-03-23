@@ -136,6 +136,78 @@ function prunePdfClone(documentClone: Document, clonedSheet: HTMLElement) {
   clonedRoot.querySelectorAll(EXPORT_IGNORE_SELECTORS.join(', ')).forEach((node) => node.remove())
 }
 
+const MODERN_COLOR_RE = /oklch\([^)]*\)|oklab\([^)]*\)/gi
+
+const COLOR_PROPERTIES = [
+  'color',
+  'background-color',
+  'border-color',
+  'border-top-color',
+  'border-right-color',
+  'border-bottom-color',
+  'border-left-color',
+  'outline-color',
+  'text-decoration-color',
+]
+
+const COMPLEX_COLOR_PROPERTIES = [
+  'box-shadow',
+  'background',
+  'background-image',
+]
+
+/**
+ * Convert oklch()/oklab() CSS color values to sRGB hex so that html2canvas
+ * (which does not support modern CSS color functions) can parse them.
+ *
+ * Uses the browser's canvas 2D context as a colour converter: assigning a
+ * CSS colour string to `ctx.fillStyle` causes the browser to resolve it
+ * to an sRGB hex string automatically.
+ */
+function normalizeModernColors(documentClone: Document) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1
+  canvas.height = 1
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  function toSrgb(color: string): string {
+    ctx.fillStyle = '#000000'
+    ctx.fillStyle = color
+    return ctx.fillStyle
+  }
+
+  function replaceModernColorsInValue(value: string): string {
+    return value.replace(MODERN_COLOR_RE, (match) => toSrgb(match))
+  }
+
+  const elements = documentClone.querySelectorAll('*')
+  const win = documentClone.defaultView
+  if (!win) return
+
+  for (const el of elements) {
+    if (!(el instanceof win.HTMLElement)) continue
+
+    const computed = win.getComputedStyle(el)
+
+    for (const prop of COLOR_PROPERTIES) {
+      const val = computed.getPropertyValue(prop)
+      if (val && MODERN_COLOR_RE.test(val)) {
+        MODERN_COLOR_RE.lastIndex = 0
+        el.style.setProperty(prop, toSrgb(val))
+      }
+    }
+
+    for (const prop of COMPLEX_COLOR_PROPERTIES) {
+      const val = computed.getPropertyValue(prop)
+      if (val && MODERN_COLOR_RE.test(val)) {
+        MODERN_COLOR_RE.lastIndex = 0
+        el.style.setProperty(prop, replaceModernColorsInValue(val))
+      }
+    }
+  }
+}
+
 async function triggerPdfDownload(blob: Blob, fileName: string): Promise<void> {
   // Web Share API requires a recent user activation. After a long async
   // render pipeline the gesture is typically expired, so we skip it and
@@ -263,6 +335,7 @@ async function renderAtScale({
       ignoreElements: shouldIgnorePdfCloneElement,
       onclone: (documentClone, clonedSheet) => {
         prunePdfClone(documentClone, clonedSheet)
+        normalizeModernColors(documentClone)
       },
       useCORS: true,
       allowTaint: false,
