@@ -3,6 +3,7 @@ import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import type { LayoutItemWithDevice } from '../../types'
+import { useHaptic } from '../../contexts/HapticContext'
 
 interface DeviceNotesProps {
   item: LayoutItemWithDevice | null
@@ -23,6 +24,7 @@ export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps)
   const [rackEarOffset, setRackEarOffset] = useState(String(item?.rack_ear_offset_mm ?? 0))
   const [validationError, setValidationError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const { trigger } = useHaptic()
 
   const handleSave = async () => {
     if (!item) return
@@ -45,8 +47,10 @@ export default function DeviceNotes({ item, onSave, onClose }: DeviceNotesProps)
         rack_ear_offset_mm: nextOffset,
         ...(item.device.is_half_rack ? { force_full_width: forceFullWidth } : {}),
       })
+      trigger('success')
       onClose()
     } catch {
+      trigger('error')
       setValidationError('Failed to save. Please try again.')
     } finally {
       setSaving(false)

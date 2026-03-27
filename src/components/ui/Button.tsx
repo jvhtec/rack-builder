@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, PointerEvent } from 'react'
+import { useHaptic } from '../../contexts/HapticContext'
 
 type Variant = 'primary' | 'secondary' | 'danger'
 
@@ -16,10 +17,21 @@ export default function Button({
   variant = 'primary',
   className = '',
   children,
+  disabled,
+  onPointerDown,
   ...props
 }: ButtonProps) {
+  const { trigger } = useHaptic()
+
+  const handlePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!disabled) trigger('nudge')
+    onPointerDown?.(e)
+  }
+
   return (
     <button
+      disabled={disabled}
+      onPointerDown={handlePointerDown}
       className={`inline-flex min-h-11 items-center justify-center px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variantStyles[variant]} ${className}`}
       {...props}
     >

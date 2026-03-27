@@ -3,6 +3,7 @@ import Button from '../ui/Button'
 import Input from '../ui/Input'
 import Select from '../ui/Select'
 import type { Rack } from '../../types'
+import { useHaptic } from '../../contexts/HapticContext'
 
 interface LayoutFormProps {
   racks: Rack[]
@@ -14,12 +15,16 @@ export default function LayoutForm({ racks, onSubmit, onCancel }: LayoutFormProp
   const [name, setName] = useState('')
   const [rackId, setRackId] = useState(racks[0]?.id ?? '')
   const [saving, setSaving] = useState(false)
+  const { trigger } = useHaptic()
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setSaving(true)
     try {
       await onSubmit({ name, rack_id: rackId })
+      trigger('success')
+    } catch {
+      trigger('error')
     } finally {
       setSaving(false)
     }

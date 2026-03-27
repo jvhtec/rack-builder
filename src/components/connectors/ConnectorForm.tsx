@@ -6,6 +6,7 @@ import Select from '../ui/Select'
 import Modal from '../ui/Modal'
 import ImageCropper from '../devices/ImageCropper'
 import { useImageUpload } from '../../hooks/useImageUpload'
+import { useHaptic } from '../../contexts/HapticContext'
 
 const D_SIZE_FLANGE_WIDTH_UNITS = 26
 const D_SIZE_FLANGE_HEIGHT_UNITS = 31
@@ -44,6 +45,7 @@ export default function ConnectorForm({ initialData, onSubmit, onCancel }: Conne
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { uploadImage, uploading } = useImageUpload()
+  const { trigger } = useHaptic()
   const normalizedGridWidth = Number.isFinite(gridWidth) && gridWidth > 0 ? Math.max(1, Math.round(gridWidth)) : 1
   const normalizedGridHeight = Number.isFinite(gridHeight) && gridHeight > 0 ? Math.max(1, Math.round(gridHeight)) : 1
   const cropTargetWidthUnits = isDSize ? normalizedGridWidth * D_SIZE_FLANGE_WIDTH_UNITS : normalizedGridWidth
@@ -75,6 +77,9 @@ export default function ConnectorForm({ initialData, onSubmit, onCancel }: Conne
         notes: notes.trim(),
         weight_kg: Number.isFinite(weightKg) ? Math.max(0, weightKg) : 0,
       })
+      trigger('success')
+    } catch {
+      trigger('error')
     } finally {
       setSaving(false)
     }
