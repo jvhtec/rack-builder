@@ -173,6 +173,8 @@ export interface Database {
           id: string
           name: string
           owner: string | null
+          drawing_state: 'preliminary' | 'rev' | 'as_built'
+          revision_number: number
           created_at: string
           updated_at: string
         }
@@ -180,6 +182,8 @@ export interface Database {
           id?: string
           name: string
           owner?: string | null
+          drawing_state?: 'preliminary' | 'rev' | 'as_built'
+          revision_number?: number
           created_at?: string
           updated_at?: string
         }
@@ -187,6 +191,8 @@ export interface Database {
           id?: string
           name?: string
           owner?: string | null
+          drawing_state?: 'preliminary' | 'rev' | 'as_built'
+          revision_number?: number
           created_at?: string
           updated_at?: string
         }
@@ -198,6 +204,8 @@ export interface Database {
           project_id: string
           rack_id: string
           name: string
+          drawing_state: 'preliminary' | 'rev' | 'as_built'
+          revision_number: number
           created_at: string
           updated_at: string
         }
@@ -206,6 +214,8 @@ export interface Database {
           project_id: string
           rack_id: string
           name: string
+          drawing_state?: 'preliminary' | 'rev' | 'as_built'
+          revision_number?: number
           created_at?: string
           updated_at?: string
         }
@@ -214,6 +224,8 @@ export interface Database {
           project_id?: string
           rack_id?: string
           name?: string
+          drawing_state?: 'preliminary' | 'rev' | 'as_built'
+          revision_number?: number
           created_at?: string
           updated_at?: string
         }
@@ -239,6 +251,8 @@ export interface Database {
           id: string
           project_id: string
           name: string
+          drawing_state: 'preliminary' | 'rev' | 'as_built'
+          revision_number: number
           height_ru: number
           depth_mm: number
           facing: 'front' | 'rear'
@@ -252,6 +266,8 @@ export interface Database {
           id?: string
           project_id: string
           name: string
+          drawing_state?: 'preliminary' | 'rev' | 'as_built'
+          revision_number?: number
           height_ru: number
           depth_mm?: number
           facing?: 'front' | 'rear'
@@ -265,6 +281,8 @@ export interface Database {
           id?: string
           project_id?: string
           name?: string
+          drawing_state?: 'preliminary' | 'rev' | 'as_built'
+          revision_number?: number
           height_ru?: number
           depth_mm?: number
           facing?: 'front' | 'rear'
@@ -445,6 +463,7 @@ export interface Database {
     Enums: {
       rack_width: 'single' | 'dual'
       device_facing: 'front' | 'rear'
+      drawing_state: 'preliminary' | 'rev' | 'as_built'
     }
   }
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { HoleCount } from '../lib/panelGrid'
 import { mapPanelLayout, type PanelLayoutRecord } from '../lib/panelLayoutMapper'
-import type { DeviceFacing, PanelLayout, PanelLayoutPort, PanelLayoutRow } from '../types'
+import type { DeviceFacing, DrawingState, PanelLayout, PanelLayoutPort, PanelLayoutRow } from '../types'
 
 export function usePanelLayouts(projectId: string | undefined) {
   const [panelLayouts, setPanelLayouts] = useState<PanelLayout[]>([])
@@ -55,6 +55,7 @@ export function usePanelLayouts(projectId: string | undefined) {
   const createPanelLayout = async (payload: {
     name: string
     height_ru: number
+    drawing_state: DrawingState
     facing: DeviceFacing
     has_lacing_bar: boolean
     notes?: string | null
@@ -78,6 +79,11 @@ export function usePanelLayouts(projectId: string | undefined) {
 
     if (rpcError) throw rpcError
     const newId = data as string
+    const { error: stateError } = await supabase
+      .from('panel_layouts')
+      .update({ drawing_state: payload.drawing_state })
+      .eq('id', newId)
+    if (stateError) throw stateError
 
     await fetchPanelLayouts()
     return newId
@@ -85,7 +91,7 @@ export function usePanelLayouts(projectId: string | undefined) {
 
   const updatePanelLayout = async (
     id: string,
-    updates: Partial<Pick<PanelLayout, 'name' | 'facing' | 'has_lacing_bar' | 'notes' | 'weight_kg'>>,
+    updates: Partial<Pick<PanelLayout, 'name' | 'drawing_state' | 'facing' | 'has_lacing_bar' | 'notes' | 'weight_kg'>>,
   ) => {
     const { error: updateError } = await supabase
       .from('panel_layouts')
@@ -100,7 +106,7 @@ export function usePanelLayouts(projectId: string | undefined) {
 
   const savePanelLayout = async (
     id: string,
-    meta: { name: string; facing: DeviceFacing; has_lacing_bar: boolean; notes: string | null },
+    meta: { name: string; drawing_state: DrawingState; facing: DeviceFacing; has_lacing_bar: boolean; notes: string | null },
     rows: Array<Pick<PanelLayoutRow, 'row_index' | 'hole_count' | 'active_column_map'>>,
     ports: Array<Pick<PanelLayoutPort, 'connector_id' | 'row_index' | 'hole_index' | 'span_w' | 'span_h' | 'label' | 'color'>>,
   ) => {
@@ -126,6 +132,11 @@ export function usePanelLayouts(projectId: string | undefined) {
       })),
     })
     if (rpcError) throw rpcError
+    const { error: stateError } = await supabase
+      .from('panel_layouts')
+      .update({ drawing_state: meta.drawing_state })
+      .eq('id', id)
+    if (stateError) throw stateError
     await fetchPanelLayouts()
   }
 
