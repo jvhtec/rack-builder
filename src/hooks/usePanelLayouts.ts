@@ -69,6 +69,7 @@ export function usePanelLayouts(projectId: string | undefined) {
     const { data, error: rpcError } = await supabase.rpc('rpc_create_panel_layout', {
       p_project_id: projectId,
       p_name: payload.name.trim(),
+      p_drawing_state: payload.drawing_state,
       p_height_ru: safeHeight,
       p_facing: payload.facing,
       p_has_lacing_bar: payload.has_lacing_bar,
@@ -79,11 +80,6 @@ export function usePanelLayouts(projectId: string | undefined) {
 
     if (rpcError) throw rpcError
     const newId = data as string
-    const { error: stateError } = await supabase
-      .from('panel_layouts')
-      .update({ drawing_state: payload.drawing_state })
-      .eq('id', newId)
-    if (stateError) throw stateError
 
     await fetchPanelLayouts()
     return newId
@@ -113,6 +109,7 @@ export function usePanelLayouts(projectId: string | undefined) {
     const { error: rpcError } = await supabase.rpc('rpc_save_panel_layout', {
       p_id: id,
       p_name: meta.name,
+      p_drawing_state: meta.drawing_state,
       p_facing: meta.facing,
       p_has_lacing_bar: meta.has_lacing_bar,
       p_notes: meta.notes,
@@ -132,11 +129,6 @@ export function usePanelLayouts(projectId: string | undefined) {
       })),
     })
     if (rpcError) throw rpcError
-    const { error: stateError } = await supabase
-      .from('panel_layouts')
-      .update({ drawing_state: meta.drawing_state })
-      .eq('id', id)
-    if (stateError) throw stateError
     await fetchPanelLayouts()
   }
 
