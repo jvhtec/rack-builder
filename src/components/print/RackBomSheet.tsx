@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import PrintCartouche from './PrintCartouche'
 import type { Layout, LayoutItemWithDevice, Rack } from '../../types'
+import { formatDrawingState, formatRevisionLabel } from '../../lib/drawingState'
 
 interface BomRow {
   deviceId: string
@@ -201,6 +202,8 @@ export default function RackBomSheet({
                 extraFields={[
                   { label: 'Rack', value: rack.name },
                   { label: 'Rack Spec', value: `${rack.rack_units}U | ${rack.width} | ${rack.depth_mm}mm` },
+                  { label: 'State', value: formatDrawingState(layout.drawing_state) },
+                  { label: 'Revision', value: formatRevisionLabel(layout.drawing_state, layout.revision_number) },
                   { label: 'Devices', value: `${bomRows.length} unique / ${totalDevices} total` },
                   { label: 'Weight / Power', value: `${totalWeightKg.toFixed(2)} kg / ${totalPowerW} W` },
                   { label: 'Generated', value: generatedBy },

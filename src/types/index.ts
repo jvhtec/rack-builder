@@ -1,5 +1,6 @@
 export type RackWidth = 'single' | 'dual'
 export type DeviceFacing = 'front' | 'rear'
+export type DrawingState = 'preliminary' | 'rev' | 'as_built'
 export type ConnectorMounting = 'front' | 'rear' | 'both'
 export type ConnectorCategory = 'audio' | 'data' | 'power' | 'multipin' | 'other'
 
@@ -101,6 +102,8 @@ export interface Project {
   id: string
   name: string
   owner: string | null
+  drawing_state: DrawingState
+  revision_number: number
   created_at: string
   updated_at: string
 }
@@ -114,6 +117,8 @@ export interface Layout {
   project_id: string
   rack_id: string
   name: string
+  drawing_state: DrawingState
+  revision_number: number
   created_at: string
   updated_at: string
 }

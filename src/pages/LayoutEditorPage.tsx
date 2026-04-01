@@ -19,7 +19,7 @@ import {
   type ItemSlot,
   preferenceToSlot,
 } from '../lib/rackPositions'
-import type { DeviceFacing, LayoutItemWithDevice, Project, RackWidth } from '../types'
+import type { DeviceFacing, DrawingState, LayoutItemWithDevice, Project, RackWidth } from '../types'
 import { buildPanelThumbnailDataUrl } from '../lib/panelThumbnail'
 import { buildRackFaceViewModel, selectFacingImagePath } from '../lib/rackViewModel'
 import DevicePalette from '../components/editor/DevicePalette'
@@ -35,6 +35,7 @@ import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
 import { useTheme } from '../hooks/useTheme'
 import ThemeToggle from '../components/ui/ThemeToggle'
+import { DRAWING_STATE_OPTIONS } from '../lib/drawingState'
 
 function getTopU(item: LayoutItemWithDevice): number {
   return item.start_u + item.device.rack_units - 1
@@ -248,6 +249,7 @@ export default function LayoutEditorPage() {
   const [deleteLayoutOpen, setDeleteLayoutOpen] = useState(false)
   const [layoutNameDraft, setLayoutNameDraft] = useState('')
   const [layoutRackDraft, setLayoutRackDraft] = useState('')
+  const [layoutStateDraft, setLayoutStateDraft] = useState<DrawingState>('preliminary')
   const [layoutSaving, setLayoutSaving] = useState(false)
 
   const { project, loading: projectLoading, error: projectError } = useProject(projectId)
@@ -818,12 +820,14 @@ export default function LayoutEditorPage() {
   const openCreateLayoutModal = () => {
     setLayoutNameDraft('')
     setLayoutRackDraft(rack?.id ?? racks[0]?.id ?? '')
+    setLayoutStateDraft('preliminary')
     setCreateLayoutOpen(true)
   }
 
   const openRenameLayoutModal = () => {
     if (!activeLayout) return
     setLayoutNameDraft(activeLayout.name)
+    setLayoutStateDraft(activeLayout.drawing_state)
     setRenameLayoutOpen(true)
   }
 
@@ -836,6 +840,7 @@ export default function LayoutEditorPage() {
         project_id: projectId,
         name: layoutNameDraft,
         rack_id: layoutRackDraft,
+        drawing_state: layoutStateDraft,
       })
       if (created) {
         setCreateLayoutOpen(false)
@@ -851,7 +856,7 @@ export default function LayoutEditorPage() {
 
     setLayoutSaving(true)
     try {
-      await updateLayout(activeLayout.id, { name: layoutNameDraft })
+      await updateLayout(activeLayout.id, { name: layoutNameDraft, drawing_state: layoutStateDraft })
       setRenameLayoutOpen(false)
     } finally {
       setLayoutSaving(false)
@@ -1133,6 +1138,12 @@ export default function LayoutEditorPage() {
               onChange={(e) => setLayoutRackDraft(e.target.value)}
               options={racks.map((entry) => ({ value: entry.id, label: `${entry.name} (${entry.rack_units}U)` }))}
             />
+            <Select
+              label="Drawing State"
+              value={layoutStateDraft}
+              onChange={(e) => setLayoutStateDraft(e.target.value as DrawingState)}
+              options={DRAWING_STATE_OPTIONS}
+            />
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="secondary" type="button" onClick={() => setCreateLayoutOpen(false)}>
                 Cancel
@@ -1154,6 +1165,12 @@ export default function LayoutEditorPage() {
               value={layoutNameDraft}
               onChange={(e) => setLayoutNameDraft(e.target.value)}
               required
+            />
+            <Select
+              label="Drawing State"
+              value={layoutStateDraft}
+              onChange={(e) => setLayoutStateDraft(e.target.value as DrawingState)}
+              options={DRAWING_STATE_OPTIONS}
             />
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="secondary" type="button" onClick={() => setRenameLayoutOpen(false)}>
@@ -1669,6 +1686,12 @@ export default function LayoutEditorPage() {
             onChange={(e) => setLayoutRackDraft(e.target.value)}
             options={racks.map((entry) => ({ value: entry.id, label: `${entry.name} (${entry.rack_units}U)` }))}
           />
+          <Select
+            label="Drawing State"
+            value={layoutStateDraft}
+            onChange={(e) => setLayoutStateDraft(e.target.value as DrawingState)}
+            options={DRAWING_STATE_OPTIONS}
+          />
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setCreateLayoutOpen(false)}>
               Cancel
@@ -1687,6 +1710,12 @@ export default function LayoutEditorPage() {
             value={layoutNameDraft}
             onChange={(e) => setLayoutNameDraft(e.target.value)}
             required
+          />
+          <Select
+            label="Drawing State"
+            value={layoutStateDraft}
+            onChange={(e) => setLayoutStateDraft(e.target.value as DrawingState)}
+            options={DRAWING_STATE_OPTIONS}
           />
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setRenameLayoutOpen(false)}>

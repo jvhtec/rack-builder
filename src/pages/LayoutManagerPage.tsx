@@ -8,7 +8,7 @@ import Modal from '../components/ui/Modal'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
 import LayoutList from '../components/layouts/LayoutList'
 import LayoutForm from '../components/layouts/LayoutForm'
-import type { Layout } from '../types'
+import type { DrawingState, Layout } from '../types'
 
 export default function LayoutManagerPage() {
   const { layouts, loading: layoutsLoading, createLayout, deleteLayout } = useLayouts()
@@ -17,7 +17,7 @@ export default function LayoutManagerPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [deletingLayout, setDeletingLayout] = useState<Layout | undefined>()
 
-  const handleSubmit = async (data: { name: string; rack_id: string }) => {
+  const handleSubmit = async (data: { name: string; rack_id: string; drawing_state: DrawingState }) => {
     const layout = await createLayout(data)
     setFormOpen(false)
     if (layout) {
