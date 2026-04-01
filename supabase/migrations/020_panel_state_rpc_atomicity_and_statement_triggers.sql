@@ -64,6 +64,8 @@ begin
     from jsonb_array_elements(p_rows) as elem;
   end if;
 
+  delete from panel_layout_ports where panel_layout_id = p_id;
+
   if jsonb_array_length(p_ports) > 0 then
     insert into panel_layout_ports (panel_layout_id, connector_id, row_index, hole_index, span_w, span_h, label, color)
     select
