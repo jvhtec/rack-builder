@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { HOLE_COUNT_OPTIONS, type HoleCount } from '../lib/panelGrid'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
-import type { DeviceFacing, Project } from '../types'
+import { DRAWING_STATE_OPTIONS, formatDrawingState, formatRevisionLabel } from '../lib/drawingState'
+import type { DeviceFacing, DrawingState, Project } from '../types'
 import PageHeader from '../components/layout/PageHeader'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -30,6 +31,7 @@ export default function PanelLayoutManagerPage() {
   const [name, setName] = useState('New Panel')
   const [heightRu, setHeightRu] = useState(1)
   const [facing, setFacing] = useState<DeviceFacing>('front')
+  const [drawingState, setDrawingState] = useState<DrawingState>('preliminary')
   const [defaultHoleCount, setDefaultHoleCount] = useState<HoleCount>(16)
   const [operationError, setCreateError] = useState<string | null>(null)
 
@@ -72,6 +74,7 @@ export default function PanelLayoutManagerPage() {
     setName('New Panel')
     setHeightRu(1)
     setFacing('front')
+    setDrawingState('preliminary')
     setDefaultHoleCount(16)
     setCreateError(null)
     setCreateOpen(true)
@@ -85,6 +88,7 @@ export default function PanelLayoutManagerPage() {
       const id = await createPanelLayout({
         name,
         height_ru: heightRu,
+        drawing_state: drawingState,
         facing,
         has_lacing_bar: false,
         default_hole_count: defaultHoleCount,
@@ -166,6 +170,9 @@ export default function PanelLayoutManagerPage() {
                 {panel.height_ru}U • Facing: {panel.facing} • Lacing bar: {panel.has_lacing_bar ? 'Yes' : 'No'}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
+                State: {formatDrawingState(panel.drawing_state)} • Rev: {formatRevisionLabel(panel.drawing_state, panel.revision_number)}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Row densities: {rowsSummary(panel.height_ru, (panel.rows ?? []).map((row) => row.hole_count))}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -205,6 +212,12 @@ export default function PanelLayoutManagerPage() {
               { value: 'front', label: 'Front' },
               { value: 'rear', label: 'Rear' },
             ]}
+          />
+          <Select
+            label="Drawing State"
+            value={drawingState}
+            onChange={(event) => setDrawingState(event.target.value as DrawingState)}
+            options={DRAWING_STATE_OPTIONS}
           />
           <Select
             label="Default Row Density"

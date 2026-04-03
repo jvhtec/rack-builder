@@ -2,7 +2,8 @@ import { type FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProjects } from '../hooks/useProjects'
 import { useRacks } from '../hooks/useRacks'
-import type { ProjectSummary } from '../types'
+import { DRAWING_STATE_OPTIONS, formatDrawingState, formatRevisionLabel } from '../lib/drawingState'
+import type { DrawingState, ProjectSummary } from '../types'
 import PageHeader from '../components/layout/PageHeader'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -20,16 +21,20 @@ export default function ProjectManagerPage() {
   const [deletingProject, setDeletingProject] = useState<ProjectSummary | undefined>()
   const [projectName, setProjectName] = useState('')
   const [projectOwner, setProjectOwner] = useState('')
+  const [projectState, setProjectState] = useState<DrawingState>('preliminary')
   const [initialLayoutName, setInitialLayoutName] = useState('Main Layout')
+  const [initialLayoutState, setInitialLayoutState] = useState<DrawingState>('preliminary')
   const [rackId, setRackId] = useState('')
   const [editName, setEditName] = useState('')
   const [editOwner, setEditOwner] = useState('')
+  const [editState, setEditState] = useState<DrawingState>('preliminary')
   const [editError, setEditError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const openEditModal = (project: ProjectSummary) => {
     setEditName(project.name)
     setEditOwner(project.owner ?? '')
+    setEditState(project.drawing_state)
     setEditError(null)
     setEditingProject(project)
   }
@@ -41,7 +46,7 @@ export default function ProjectManagerPage() {
     if (!editingProject || !name) return
     setSaving(true)
     try {
-      await updateProject(editingProject.id, { name, owner })
+      await updateProject(editingProject.id, { name, owner, drawing_state: editState })
       setEditingProject(undefined)
     } catch (err) {
       console.error('Failed to update project:', err)
@@ -54,7 +59,9 @@ export default function ProjectManagerPage() {
   const openCreateModal = () => {
     setProjectName('')
     setProjectOwner('')
+    setProjectState('preliminary')
     setInitialLayoutName('Main Layout')
+    setInitialLayoutState('preliminary')
     setRackId(racks[0]?.id ?? '')
     setFormOpen(true)
   }
@@ -71,7 +78,9 @@ export default function ProjectManagerPage() {
       const result = await createProjectWithInitialLayout({
         project_name: trimmedName,
         project_owner: trimmedOwner,
+        drawing_state: projectState,
         initial_layout_name: trimmedLayoutName,
+        initial_layout_state: initialLayoutState,
         rack_id: rackId,
       })
 
@@ -118,6 +127,10 @@ export default function ProjectManagerPage() {
                   <dd className="text-right">{project.layout_count}</dd>
                   <dt>Created</dt>
                   <dd className="text-right">{new Date(project.created_at).toLocaleDateString()}</dd>
+                  <dt>State</dt>
+                  <dd className="text-right">{formatDrawingState(project.drawing_state)}</dd>
+                  <dt>Revision</dt>
+                  <dd className="text-right">{formatRevisionLabel(project.drawing_state, project.revision_number)}</dd>
                 </dl>
                 <div className="mt-3 grid grid-cols-1 gap-2">
                   <Button onClick={() => navigate(`/editor/project/${project.id}`)}>Open Editor</Button>
@@ -138,6 +151,8 @@ export default function ProjectManagerPage() {
                   <th className="pb-2 font-medium">Name</th>
                   <th className="pb-2 font-medium">Owner</th>
                   <th className="pb-2 font-medium">Layouts</th>
+                  <th className="pb-2 font-medium">State</th>
+                  <th className="pb-2 font-medium">Revision</th>
                   <th className="pb-2 font-medium">Created</th>
                   <th className="pb-2 font-medium text-right">Actions</th>
                 </tr>
@@ -148,6 +163,8 @@ export default function ProjectManagerPage() {
                     <td className="py-3 font-medium text-gray-900 dark:text-white">{project.name}</td>
                     <td className="py-3 text-gray-500 dark:text-gray-400">{project.owner ?? '—'}</td>
                     <td className="py-3 dark:text-gray-300">{project.layout_count}</td>
+                    <td className="py-3 text-gray-500 dark:text-gray-400">{formatDrawingState(project.drawing_state)}</td>
+                    <td className="py-3 text-gray-500 dark:text-gray-400">{formatRevisionLabel(project.drawing_state, project.revision_number)}</td>
                     <td className="py-3 text-gray-500 dark:text-gray-400">{new Date(project.created_at).toLocaleDateString()}</td>
                     <td className="py-3 text-right">
                       <div className="flex justify-end gap-2">
@@ -181,11 +198,23 @@ export default function ProjectManagerPage() {
             onChange={(e) => setProjectOwner(e.target.value)}
             placeholder="e.g. John Smith"
           />
+          <Select
+            label="Project Drawing State"
+            value={projectState}
+            onChange={(e) => setProjectState(e.target.value as DrawingState)}
+            options={DRAWING_STATE_OPTIONS}
+          />
           <Input
             label="Initial Layout Name"
             value={initialLayoutName}
             onChange={(e) => setInitialLayoutName(e.target.value)}
             required
+          />
+          <Select
+            label="Initial Layout State"
+            value={initialLayoutState}
+            onChange={(e) => setInitialLayoutState(e.target.value as DrawingState)}
+            options={DRAWING_STATE_OPTIONS}
           />
           <Select
             label="Rack"
@@ -218,6 +247,12 @@ export default function ProjectManagerPage() {
             value={editOwner}
             onChange={(e) => setEditOwner(e.target.value)}
             placeholder="e.g. John Smith"
+          />
+          <Select
+            label="Project Drawing State"
+            value={editState}
+            onChange={(e) => setEditState(e.target.value as DrawingState)}
+            options={DRAWING_STATE_OPTIONS}
           />
           {editError && <p className="text-sm text-red-600">{editError}</p>}
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">

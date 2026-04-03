@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import type { Layout, Rack } from '../../types'
 import Button from '../ui/Button'
+import { formatDrawingState, formatRevisionLabel } from '../../lib/drawingState'
 
 interface LayoutListProps {
   layouts: Layout[]
@@ -30,6 +31,10 @@ export default function LayoutList({ layouts, racks, onDelete }: LayoutListProps
                 <dd className="text-right">{rack ? `${rack.name} (${rack.rack_units}U)` : 'Unknown'}</dd>
                 <dt>Created</dt>
                 <dd className="text-right">{new Date(layout.created_at).toLocaleDateString()}</dd>
+                <dt>State</dt>
+                <dd className="text-right">{formatDrawingState(layout.drawing_state)}</dd>
+                <dt>Revision</dt>
+                <dd className="text-right">{formatRevisionLabel(layout.drawing_state, layout.revision_number)}</dd>
               </dl>
               <div className="mt-3 grid gap-2">
                 <Button onClick={() => navigate(`/editor/${layout.id}`)}>Open Editor</Button>
@@ -48,6 +53,8 @@ export default function LayoutList({ layouts, racks, onDelete }: LayoutListProps
             <tr className="border-b text-left text-gray-500">
               <th className="pb-2 font-medium">Name</th>
               <th className="pb-2 font-medium">Rack</th>
+              <th className="pb-2 font-medium">State</th>
+              <th className="pb-2 font-medium">Revision</th>
               <th className="pb-2 font-medium">Created</th>
               <th className="pb-2 font-medium text-right">Actions</th>
             </tr>
@@ -59,6 +66,8 @@ export default function LayoutList({ layouts, racks, onDelete }: LayoutListProps
                 <tr key={layout.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="py-3 font-medium text-gray-900">{layout.name}</td>
                   <td className="py-3">{rack ? `${rack.name} (${rack.rack_units}U)` : 'Unknown'}</td>
+                  <td className="py-3 text-gray-500">{formatDrawingState(layout.drawing_state)}</td>
+                  <td className="py-3 text-gray-500">{formatRevisionLabel(layout.drawing_state, layout.revision_number)}</td>
                   <td className="py-3 text-gray-500">
                     {new Date(layout.created_at).toLocaleDateString()}
                   </td>

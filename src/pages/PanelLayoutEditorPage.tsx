@@ -13,7 +13,8 @@ import {
   getActiveColumns,
 } from '../lib/panelGrid'
 import { usePanelLayouts } from '../hooks/usePanelLayouts'
-import type { ConnectorDefinition, DeviceFacing, PanelLayoutPort, PanelLayoutRow } from '../types'
+import { DRAWING_STATE_OPTIONS } from '../lib/drawingState'
+import type { ConnectorDefinition, DeviceFacing, DrawingState, PanelLayoutPort, PanelLayoutRow } from '../types'
 import { useTheme } from '../hooks/useTheme'
 import ThemeToggle from '../components/ui/ThemeToggle'
 import PanelLayoutCanvas from '../components/panels/PanelLayoutCanvas'
@@ -25,6 +26,7 @@ const DEFAULT_PORT_COLOR = '#0f172a'
 
 interface DraftState {
   name: string
+  drawingState: DrawingState
   facing: DeviceFacing
   hasLacingBar: boolean
   notes: string
@@ -239,6 +241,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
   const [mobileSheet, setMobileSheet] = useState<'connectors' | 'properties' | 'port-edit' | null>(null)
 
   const [name, setName] = useState('')
+  const [drawingState, setDrawingState] = useState<DrawingState>('preliminary')
   const [facing, setFacing] = useState<DeviceFacing>('front')
   const [hasLacingBar, setHasLacingBar] = useState(false)
   const [notes, setNotes] = useState('')
@@ -269,6 +272,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
         try {
           const draft = JSON.parse(draftRaw) as DraftState
           setName(draft.name)
+          setDrawingState(draft.drawingState ?? panel.drawing_state)
           setFacing(draft.facing)
           setHasLacingBar(draft.hasLacingBar)
           setNotes(draft.notes)
@@ -316,6 +320,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
 
     if (!dirty) {
       setName(panel.name)
+      setDrawingState(panel.drawing_state)
       setFacing(panel.facing)
       setHasLacingBar(panel.has_lacing_bar)
       setNotes(panel.notes ?? '')
@@ -337,6 +342,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
     const timeoutId = window.setTimeout(() => {
       const draft: DraftState = {
         name,
+        drawingState,
         facing,
         hasLacingBar,
         notes,
@@ -360,7 +366,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
     }, 500)
 
     return () => window.clearTimeout(timeoutId)
-  }, [dirty, draftStorageKey, facing, hasLacingBar, name, notes, panel, ports, rows])
+  }, [dirty, draftStorageKey, drawingState, facing, hasLacingBar, name, notes, panel, ports, rows])
 
   const selectedConnector = selectedConnectorId ? connectorById.get(selectedConnectorId) ?? null : null
   const selectedPort = selectedPortId ? ports.find((port) => port.id === selectedPortId) ?? null : null
@@ -522,7 +528,7 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
     try {
       await savePanelLayout(
         panel.id,
-        { name: name.trim(), facing, has_lacing_bar: hasLacingBar, notes: notes.trim() || null },
+        { name: name.trim(), drawing_state: drawingState, facing, has_lacing_bar: hasLacingBar, notes: notes.trim() || null },
         rows.map((row) => ({
           row_index: row.row_index,
           hole_count: row.hole_count,
@@ -943,6 +949,12 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
                   <div className="space-y-5">
                     <DarkInput label="Name" value={name} onChange={(v) => { setName(v); setDirty(true) }} />
                     <DarkSelect
+                      label="Drawing State"
+                      value={drawingState}
+                      onChange={(v) => { setDrawingState(v as DrawingState); setDirty(true) }}
+                      options={DRAWING_STATE_OPTIONS}
+                    />
+                    <DarkSelect
                       label="Facing"
                       value={facing}
                       onChange={(v) => { setFacing(v as DeviceFacing); setDirty(true) }}
@@ -1156,6 +1168,13 @@ function PanelLayoutEditorInner({ isMobile, isPortrait, isTouchDevice }: { isMob
           <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
             {/* Core props */}
             <DarkInput label="Name" value={name} onChange={(v) => { setName(v); setDirty(true) }} />
+
+            <DarkSelect
+              label="Drawing State"
+              value={drawingState}
+              onChange={(v) => { setDrawingState(v as DrawingState); setDirty(true) }}
+              options={DRAWING_STATE_OPTIONS}
+            />
 
             <DarkSelect
               label="Facing"

@@ -4,6 +4,7 @@ import RackPrintView from './RackPrintView'
 import PrintCartouche from './PrintCartouche'
 import { useConnectors } from '../../hooks/useConnectors'
 import type { Layout, LayoutItemWithDevice, Rack } from '../../types'
+import { formatDrawingState, formatRevisionLabel } from '../../lib/drawingState'
 
 interface LayoutPrintSheetProps {
   layout: Layout
@@ -135,6 +136,8 @@ export default function LayoutPrintSheet({
             { label: 'Rack Spec', value: `${rack.rack_units}U | ${rack.width} | ${rack.depth_mm}mm` },
             { label: 'Total Weight', value: `${totalWeightKg.toFixed(2)} kg` },
             { label: 'Total Power', value: `${totalPowerW} W` },
+            { label: 'State', value: formatDrawingState(layout.drawing_state) },
+            { label: 'Revision', value: formatRevisionLabel(layout.drawing_state, layout.revision_number) },
             { label: 'Scale', value: effectiveScaleLabel },
             { label: 'Generated', value: generatedBy },
           ]}

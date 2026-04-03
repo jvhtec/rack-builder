@@ -20,6 +20,8 @@ export interface LayoutItemRow {
     id: string
     project_id: string
     name: string
+    drawing_state: 'preliminary' | 'rev' | 'as_built'
+    revision_number: number
     height_ru: number
     depth_mm: number
     facing: DeviceFacing
@@ -103,6 +105,8 @@ function mapPanelLayout(raw: NonNullable<LayoutItemRow['panel_layout']>): PanelL
     id: raw.id,
     project_id: raw.project_id,
     name: raw.name,
+    drawing_state: raw.drawing_state,
+    revision_number: raw.revision_number,
     height_ru: raw.height_ru,
     depth_mm: Number(raw.depth_mm ?? 80),
     facing: raw.facing,

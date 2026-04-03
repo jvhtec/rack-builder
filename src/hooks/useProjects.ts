@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Project, ProjectSummary } from '../types'
+import type { DrawingState, Project, ProjectSummary } from '../types'
 
 interface ProjectWithLayoutsRow extends Project {
   layouts?: Array<{ id: string }>
@@ -26,6 +26,8 @@ export function useProjects() {
         id: row.id,
         name: row.name,
         owner: row.owner ?? null,
+        drawing_state: row.drawing_state,
+        revision_number: row.revision_number,
         created_at: row.created_at,
         updated_at: row.updated_at,
         layout_count: row.layouts?.length ?? 0,
@@ -49,12 +51,18 @@ export function useProjects() {
   const createProjectWithInitialLayout = async (payload: {
     project_name: string
     project_owner?: string
+    drawing_state: DrawingState
     initial_layout_name: string
+    initial_layout_state: DrawingState
     rack_id: string
   }) => {
     const { data: projectData, error: projectErr } = await supabase
       .from('projects')
-      .insert({ name: payload.project_name, owner: payload.project_owner ?? null })
+      .insert({
+        name: payload.project_name,
+        owner: payload.project_owner ?? null,
+        drawing_state: payload.drawing_state,
+      })
       .select()
       .single()
 
@@ -68,6 +76,7 @@ export function useProjects() {
         project_id: project.id,
         name: payload.initial_layout_name,
         rack_id: payload.rack_id,
+        drawing_state: payload.initial_layout_state,
       })
       .select('id')
       .single()
@@ -85,7 +94,10 @@ export function useProjects() {
     }
   }
 
-  const updateProject = async (id: string, updates: Partial<{ name: string; owner: string | null }>) => {
+  const updateProject = async (
+    id: string,
+    updates: Partial<{ name: string; owner: string | null; drawing_state: DrawingState }>,
+  ) => {
     const { error: err } = await supabase
       .from('projects')
       .update({ ...updates, updated_at: new Date().toISOString() })

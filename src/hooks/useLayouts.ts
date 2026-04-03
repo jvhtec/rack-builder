@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Layout } from '../types'
+import type { DrawingState, Layout } from '../types'
 
 export function useLayouts(projectId?: string) {
   const [layouts, setLayouts] = useState<Layout[]>([])
@@ -41,7 +41,7 @@ export function useLayouts(projectId?: string) {
     }
   }, [fetchLayouts, projectId])
 
-  const createLayout = async (layout: { project_id?: string; rack_id: string; name: string }) => {
+  const createLayout = async (layout: { project_id?: string; rack_id: string; name: string; drawing_state: DrawingState }) => {
     const resolvedProjectId = layout.project_id ?? projectId
     if (!resolvedProjectId) throw new Error('Missing project id')
 
@@ -57,7 +57,7 @@ export function useLayouts(projectId?: string) {
 
   const updateLayout = async (
     id: string,
-    updates: Partial<{ name: string; rack_id: string; project_id: string }>,
+    updates: Partial<{ name: string; rack_id: string; project_id: string; drawing_state: DrawingState }>,
   ) => {
     const { error: err } = await supabase
       .from('layouts')

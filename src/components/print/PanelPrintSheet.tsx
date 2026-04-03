@@ -1,5 +1,6 @@
 import { useConnectors } from '../../hooks/useConnectors'
 import type { DeviceFacing, PanelLayout, PanelLayoutPort } from '../../types'
+import { formatDrawingState, formatRevisionLabel } from '../../lib/drawingState'
 import PanelLayoutCanvas from '../panels/PanelLayoutCanvas'
 import PrintCartouche from './PrintCartouche'
 
@@ -111,6 +112,8 @@ export default function PanelPrintSheet({
             { label: 'Panel Spec', value: `${panel.height_ru}U | ${facing}` },
             { label: 'Rows', value: String((panel.rows ?? []).length) },
             { label: 'Connectors', value: String(ports.length) },
+            { label: 'State', value: formatDrawingState(panel.drawing_state) },
+            { label: 'Revision', value: formatRevisionLabel(panel.drawing_state, panel.revision_number) },
             { label: 'Weight', value: `${panel.weight_kg.toFixed(2)} kg` },
             { label: 'Lacing Bar', value: panel.has_lacing_bar ? 'Enabled' : 'Disabled' },
             { label: 'Generated', value: projectOwner ? `${projectOwner} — ${generatedAtLabel}` : generatedAtLabel },

@@ -2,24 +2,26 @@ import { type FormEvent, useState } from 'react'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import Select from '../ui/Select'
-import type { Rack } from '../../types'
+import { DRAWING_STATE_OPTIONS } from '../../lib/drawingState'
+import type { DrawingState, Rack } from '../../types'
 
 interface LayoutFormProps {
   racks: Rack[]
-  onSubmit: (data: { name: string; rack_id: string }) => Promise<void>
+  onSubmit: (data: { name: string; rack_id: string; drawing_state: DrawingState }) => Promise<void>
   onCancel: () => void
 }
 
 export default function LayoutForm({ racks, onSubmit, onCancel }: LayoutFormProps) {
   const [name, setName] = useState('')
   const [rackId, setRackId] = useState(racks[0]?.id ?? '')
+  const [drawingState, setDrawingState] = useState<DrawingState>('preliminary')
   const [saving, setSaving] = useState(false)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setSaving(true)
     try {
-      await onSubmit({ name, rack_id: rackId })
+      await onSubmit({ name, rack_id: rackId, drawing_state: drawingState })
     } finally {
       setSaving(false)
     }
@@ -33,6 +35,12 @@ export default function LayoutForm({ racks, onSubmit, onCancel }: LayoutFormProp
         value={rackId}
         onChange={(e) => setRackId(e.target.value)}
         options={racks.map((r) => ({ value: r.id, label: `${r.name} (${r.rack_units}U)` }))}
+      />
+      <Select
+        label="Drawing State"
+        value={drawingState}
+        onChange={(e) => setDrawingState(e.target.value as DrawingState)}
+        options={DRAWING_STATE_OPTIONS}
       />
       <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
         <Button variant="secondary" type="button" onClick={onCancel} className="w-full sm:w-auto">
