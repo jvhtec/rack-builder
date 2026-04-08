@@ -16,6 +16,11 @@ export default function ProjectPrintCover({ project, generatedAt }: ProjectPrint
     <section className="layout-print-sheet layout-print-page-break" aria-label="Project print cover">
       <div className="layout-print-sheet-inner">
         <div className="project-print-cover project-print-cover--full-height">
+          {project.drawing_state === 'as_built' && (
+            <div className="project-print-cover-stamp-wrap" aria-label="As built stamp">
+              <span className="project-print-cover-stamp">AS BUILT</span>
+            </div>
+          )}
           <img src={logoUrl} alt="Sector Pro" className="project-print-cover-logo" crossOrigin="anonymous" />
           <p className="project-print-cover-kicker">Technical Documentation</p>
           <h1 className="project-print-cover-title">{project.name}</h1>

@@ -548,6 +548,7 @@
 .project-print-cover {
   flex: 1;
   border: 2px solid #000;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -560,6 +561,31 @@
 
 .project-print-cover--full-height {
   height: 100%;
+}
+
+.project-print-cover-stamp-wrap {
+  position: absolute;
+  top: 24mm;
+  right: 20mm;
+  transform: rotate(-14deg);
+}
+
+.project-print-cover-stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44mm;
+  min-height: 44mm;
+  padding: 4mm;
+  border: 2px solid #b91c1c;
+  border-radius: 1mm;
+  color: #b91c1c;
+  background: rgba(248, 113, 113, 0.12);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 .project-print-cover-logo {
@@ -953,6 +979,17 @@
   .project-print-cover-logo {
     width: 60px;
   }
+  .project-print-cover-stamp-wrap {
+    top: 6mm;
+    right: 5mm;
+  }
+  .project-print-cover-stamp {
+    min-width: 18mm;
+    min-height: 18mm;
+    padding: 1.4mm;
+    font-size: 4.5px;
+    border-width: 1px;
+  }
   .project-print-cover-kicker {
     font-size: 5px;
     letter-spacing: 0.1em;
@@ -1063,6 +1100,16 @@
   }
   .project-print-cover-logo {
     width: 120px;
+  }
+  .project-print-cover-stamp-wrap {
+    top: 12mm;
+    right: 10mm;
+  }
+  .project-print-cover-stamp {
+    min-width: 28mm;
+    min-height: 28mm;
+    padding: 2.5mm;
+    font-size: 7px;
   }
   .project-print-cover-kicker {
     font-size: 8px;
@@ -1303,6 +1350,17 @@ html.layout-print-force-light .layout-print-toolbar-error {
 }
 .layout-print-exporting .project-print-cover-logo {
   width: 220px !important;
+}
+.layout-print-exporting .project-print-cover-stamp-wrap {
+  top: 24mm !important;
+  right: 20mm !important;
+}
+.layout-print-exporting .project-print-cover-stamp {
+  min-width: 44mm !important;
+  min-height: 44mm !important;
+  padding: 4mm !important;
+  font-size: 11px !important;
+  border-width: 2px !important;
 }
 
 /* Keep panel content readable at all export scales */
